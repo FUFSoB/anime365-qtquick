@@ -1,17 +1,16 @@
+# This Python file uses the following encoding: utf-8
 import sys
-from PySide6.QtWidgets import QApplication
-from PySide6.QtQuick import QQuickView, QQuickItem
-from PySide6.QtCore import QUrl
+from pathlib import Path
+
+from PySide6.QtGui import QGuiApplication
+from PySide6.QtQml import QQmlApplicationEngine
+
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-
-    view = QQuickView()
-    view.setSource(QUrl("style/Top.ui.qml"))
-    view.show()
-
-    root = view.rootObject()
-    removeButton = root.findChild(QQuickItem, "searchButton")
-    removeButton.setProperty("text", "Test text")
-
+    app = QGuiApplication(sys.argv)
+    engine = QQmlApplicationEngine()
+    qml_file = Path(__file__).resolve().parent / "main.qml"
+    engine.load(qml_file)
+    if not engine.rootObjects():
+        sys.exit(-1)
     sys.exit(app.exec())
