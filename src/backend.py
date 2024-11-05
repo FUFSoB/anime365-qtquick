@@ -15,6 +15,8 @@ class AnimeSearchResult:
     type: str
     score: float
     year: int
+    hentai: bool
+    h_type: str
 
 
 class Worker(QThread):
@@ -35,17 +37,19 @@ class Worker(QThread):
             self.error.emit(str(e))
 
     async def fetch_anime_data(self, query: str) -> list[dict]:
-        print(123)
         async with aiohttp.ClientSession() as session:
-            # Example using an anime API
-            url = f"https://anime365.ru/api/series"
+            collection = []
             async with session.get(
-                url, params={"query": query, "limit": 100, "offset": 0, "isHentai": 0}
+                "https://anime365.ru/api/series",
+                params={"query": query, "limit": 100, "offset": 0, "isHentai": 0},
             ) as response:
-                if response.status == 200:
-                    return await response.json()
-                else:
-                    raise Exception(f"API error: {response.status}")
+                collection.extend((await response.json())["data"])
+            async with session.get(
+                "https://hentai365.ru/api/series",
+                params={"query": query, "limit": 100, "offset": 0, "isHentai": 1},
+            ) as response:
+                collection.extend((await response.json())["data"])
+            return collection
 
     def perform_search_operation(self) -> list[AnimeSearchResult]:
         # Run async code in sync context
@@ -58,8 +62,8 @@ class Worker(QThread):
             results = [
                 AnimeSearchResult(
                     id=item["id"],
-                    title=item["titles"].get("en")
-                    or item["titles"].get("romaji")
+                    title=item["titles"].get("romaji")
+                    or item["titles"].get("en")
                     or item["titles"].get("ru")
                     or item["titles"].get("ja"),
                     episodes=item["numberOfEpisodes"],
@@ -67,8 +71,10 @@ class Worker(QThread):
                     type=item["type"],
                     score=float(item.get("myAnimeListScore") or 0),
                     year=int(item["year"]),
+                    hentai=item["isHentai"],
+                    h_type="hentai" if item["isHentai"] else item["type"],
                 )
-                for item in raw_results["data"]
+                for item in sorted(raw_results, key=lambda x: x["year"], reverse=True)
             ]
             return results
         except Exception as e:

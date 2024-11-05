@@ -91,7 +91,7 @@ Rectangle {
 
                 // Search results list
                 Rectangle {
-                    width: parent.width * 0.6
+                    width: parent.width
                     height: parent.height
                     color: "#2A2A2A"
                     radius: 4
@@ -104,9 +104,27 @@ Rectangle {
                             id: searchResultsModel
                         }
                         delegate: Rectangle {
-                            width: parent.width
+                            width: ListView.view.width
                             height: 140
-                            color: "#2A2A2A"
+                            color: mouseArea.containsMouse ? "#383838" : (index % 2 == 0 ? "#2A2A2A" : "#333333")
+
+                            MouseArea {
+                                id: mouseArea
+                                anchors.fill: parent
+                                hoverEnabled: true
+
+                                onClicked: {
+                                    onClicked: console.log("Selected anime:", title)
+                                }
+
+                                onEntered: {
+                                    cursorShape = Qt.PointingHandCursor
+                                }
+
+                                onExited: {
+                                    cursorShape = Qt.ArrowCursor
+                                }
+                            }
 
                             Row {
                                 spacing: 10
@@ -136,7 +154,7 @@ Rectangle {
                                     }
 
                                     Text {
-                                        text: `Type: ${model.type} | Year: ${model.year}`
+                                        text: `Type: ${model.h_type} | Year: ${model.year}`
                                         color: "white"
                                         font.pixelSize: 14
                                     }
@@ -151,20 +169,6 @@ Rectangle {
                         }
                     }
                 }
-
-                // Image panel
-                Rectangle {
-                    width: parent.width * 0.4
-                    height: parent.height
-                    color: "#2A2A2A"
-                    radius: 4
-
-                    Image {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        fillMode: Image.PreserveAspectFit
-                    }
-                }
             }
 
             // Bottom controls
@@ -174,7 +178,7 @@ Rectangle {
                 color: "transparent"
 
                 Row {
-                    anchors.right: parent.right
+                    anchors.left: parent.left
                     height: parent.height
                     spacing: 12
 

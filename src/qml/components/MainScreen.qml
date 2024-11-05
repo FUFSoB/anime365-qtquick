@@ -96,7 +96,7 @@ Rectangle {
             spacing: 12
 
             Rectangle {
-                width: parent.width * 0.6
+                width: parent.width * 0.6 - 6
                 height: parent.height
                 color: "#2A2A2A"
                 radius: 4
@@ -138,7 +138,7 @@ Rectangle {
             }
 
             Rectangle {
-                width: parent.width * 0.4
+                width: parent.width * 0.4 - 6
                 height: parent.height
                 color: "#2A2A2A"
                 radius: 4

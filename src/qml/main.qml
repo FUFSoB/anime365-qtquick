@@ -16,7 +16,6 @@ ApplicationWindow {
         initialItem: mainScreen
     }
 
-    // Component references
     Component { id: mainScreen; MainScreen {} }
     Component { id: settingsScreen; SettingsScreen {} }
     Component { id: searchScreen; SearchScreen {} }
