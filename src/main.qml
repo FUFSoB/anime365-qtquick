@@ -62,6 +62,7 @@ ApplicationWindow {
                             }
                         }
 
+                        // TODO: create button template
                         Button {
                             id: searchButton
                             width: 100
@@ -94,7 +95,7 @@ ApplicationWindow {
                     Button {
                         width: parent.width
                         height: 36
-                        text: "Shikimori list"
+                        text: "Tracker List"
                         background: Rectangle {
                             color: mouseArea1.pressed ? "#404040" : (mouseArea1.containsMouse ? "#383838" : "#333333")
                             radius: 4
@@ -110,7 +111,7 @@ ApplicationWindow {
                             id: mouseArea1
                             anchors.fill: parent
                             hoverEnabled: true
-                            onClicked: console.log("Shikimori list clicked")
+                            onClicked: console.log("Tracker List clicked")
                         }
                     }
 
@@ -120,9 +121,10 @@ ApplicationWindow {
                         spacing: 12
 
                         Button {
+                            objectName: "openUgetButton"
                             width: (parent.width - parent.spacing) / 2
                             height: parent.height
-                            text: "Open UGet"
+                            text: "Open Downloads"
                             background: Rectangle {
                                 color: mouseArea2.pressed ? "#404040" : (mouseArea2.containsMouse ? "#383838" : "#333333")
                                 radius: 4
@@ -138,7 +140,7 @@ ApplicationWindow {
                                 id: mouseArea2
                                 anchors.fill: parent
                                 hoverEnabled: true
-                                onClicked: console.log("UGet clicked")
+                                onClicked: console.log("Downloads clicked")
                             }
                         }
 
@@ -245,20 +247,6 @@ ApplicationWindow {
                         anchors.fill: parent
                         spacing: 12
 
-                        Text {
-                            id: episodeText
-                            height: parent.height
-                            verticalAlignment: Text.AlignVCenter
-                            text: "Viewed 1 / 24 episodes — [en, sub, bd, 1080p] Doki"
-                            color: "white"
-                            font.pixelSize: 14
-                        }
-
-                        Item {
-                            width: parent.width - episodeText.width - buttonRow.width - parent.spacing * 2
-                            height: parent.height
-                        }
-
                         Row {
                             id: buttonRow
                             height: parent.height
@@ -332,6 +320,20 @@ ApplicationWindow {
                                     onClicked: console.log("Next Episode clicked")
                                 }
                             }
+                        }
+
+                        Item {
+                            width: parent.width - episodeText.width - buttonRow.width - parent.spacing * 2
+                            height: parent.height
+                        }
+
+                        Text {
+                            id: episodeText
+                            height: parent.height
+                            verticalAlignment: Text.AlignVCenter
+                            text: "Viewed 1 / 24 episodes — [en, sub, bd, 1080p] Doki"
+                            color: "white"
+                            font.pixelSize: 14
                         }
                     }
                 }
@@ -428,6 +430,38 @@ ApplicationWindow {
                             }
                         }
                     }
+
+                    // UGet path setting
+                    Column {
+                        width: parent.width
+                        spacing: 8
+
+                        Text {
+                            text: "Path to UGet binary"
+                            color: "white"
+                            font.pixelSize: 14
+                        }
+
+                        Row {
+                            width: parent.width
+                            spacing: 12
+                            height: 36
+
+                            TextField {
+                                id: ugetPathField
+                                width: parent.width - parent.spacing
+                                height: parent.height
+                                text: "/usr/bin/uget-gtk"
+                                background: Rectangle {
+                                    color: "#333333"
+                                    radius: 4
+                                }
+                                color: "white"
+                                font.pixelSize: 14
+                            }
+                        }
+                    }
+
                 }
             }
         }
@@ -456,9 +490,11 @@ ApplicationWindow {
                         color: "transparent"
 
                         Row {
+                            width: parent.width
                             spacing: 12
 
                             Button {
+                                id: searchBackButton
                                 width: 100
                                 height: 36
                                 text: "← Back"
@@ -481,54 +517,116 @@ ApplicationWindow {
                                 }
                             }
 
-                            Text {
+                            TextField {
+                                id: searchScreenField
+                                width: parent.width - searchBackButton.width - searchScreenButton.width - parent.spacing * 2
                                 height: parent.height
-                                verticalAlignment: Text.AlignVCenter
-                                text: "Search Results: " + searchQuery
+                                text: searchQuery
+                                placeholderText: "Search anime"
+                                background: Rectangle {
+                                    color: "#333333"
+                                    radius: 4
+                                }
                                 color: "white"
-                                font.pixelSize: 18
-                                font.bold: true
+                                font.pixelSize: 14
+                                onAccepted: {
+                                    if (text.trim() !== "") {
+                                        searchQuery = text
+                                        // Here you would trigger the search function
+                                    }
+                                }
+                            }
+
+                            Button {
+                                id: searchScreenButton
+                                width: 100
+                                height: parent.height
+                                text: "Search"
+                                background: Rectangle {
+                                    color: searchScreenMouseArea.pressed ? "#404040" : (searchScreenMouseArea.containsMouse ? "#383838" : "#333333")
+                                    radius: 4
+                                }
+                                contentItem: Text {
+                                    text: parent.text
+                                    color: "white"
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignVCenter
+                                    font.pixelSize: 14
+                                }
+                                MouseArea {
+                                    id: searchScreenMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    onClicked: {
+                                        if (searchScreenField.text.trim() !== "") {
+                                            searchQuery = searchScreenField.text
+                                            // Here you would trigger the search function
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
 
                     // Search results list
-                    Rectangle {
+                    Row {
                         width: parent.width
                         height: parent.height - 96  // Account for header and bottom controls
-                        color: "#2A2A2A"
-                        radius: 4
+                        spacing: 12
 
-                        ListView {
-                            anchors.fill: parent
-                            anchors.margins: 4
-                            clip: true
-                            model: ListModel {
-                                // Example results - in real app, this would be populated based on search
-                                ListElement { title: "Search Result 1" }
-                                ListElement { title: "Search Result 2" }
-                                ListElement { title: "Search Result 3" }
+                        // Search results list
+                        Rectangle {
+                            width: parent.width * 0.6
+                            height: parent.height
+                            color: "#2A2A2A"
+                            radius: 4
+
+                            ListView {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                clip: true
+                                model: ListModel {
+                                    // Example results - in real app, this would be populated based on search
+                                    ListElement { title: "Search Result 1" }
+                                    ListElement { title: "Search Result 2" }
+                                    ListElement { title: "Search Result 3" }
+                                }
+                                delegate: Rectangle {
+                                    width: ListView.view.width
+                                    height: 36
+                                    color: searchResultMouseArea.containsMouse ? "#383838" : (index % 2 == 0 ? "#2A2A2A" : "#333333")
+
+                                    Text {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        anchors.left: parent.left
+                                        anchors.leftMargin: 12
+                                        text: title
+                                        color: "white"
+                                        font.pixelSize: 14
+                                    }
+
+                                    MouseArea {
+                                        id: searchResultMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        onClicked: console.log("Selected search result:", title)
+                                    }
+                                }
                             }
-                            delegate: Rectangle {
-                                width: ListView.view.width
-                                height: 36
-                                color: searchResultMouseArea.containsMouse ? "#383838" : (index % 2 == 0 ? "#2A2A2A" : "#333333")
+                        }
 
-                                Text {
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    anchors.left: parent.left
-                                    anchors.leftMargin: 12
-                                    text: title
-                                    color: "white"
-                                    font.pixelSize: 14
-                                }
+                        // Image panel
+                        Rectangle {
+                            width: parent.width * 0.4
+                            height: parent.height
+                            color: "#2A2A2A"
+                            radius: 4
 
-                                MouseArea {
-                                    id: searchResultMouseArea
-                                    anchors.fill: parent
-                                    hoverEnabled: true
-                                    onClicked: console.log("Selected search result:", title)
-                                }
+                            Image {
+                                anchors.fill: parent
+                                anchors.margins: 4
+                                source: "placeholder.png"
+                                fillMode: Image.PreserveAspectFit
                             }
                         }
                     }
