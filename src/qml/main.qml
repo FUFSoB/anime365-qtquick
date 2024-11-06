@@ -19,4 +19,5 @@ ApplicationWindow {
     Component { id: mainScreen; MainScreen {} }
     Component { id: settingsScreen; SettingsScreen {} }
     Component { id: searchScreen; SearchScreen {} }
+    Component { id: animeScreen; AnimeScreen {} }
 }

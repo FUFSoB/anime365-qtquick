@@ -118,7 +118,7 @@ Rectangle {
                                 hoverEnabled: true
 
                                 onClicked: {
-                                    onClicked: console.log("Selected anime:", title)
+                                    onClicked: stackView.push(animeScreen, { anime: model })
                                 }
 
                                 onEntered: {
