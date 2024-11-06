@@ -37,7 +37,7 @@ Rectangle {
                     font.pixelSize: 14
                     onAccepted: {
                         if (text.trim() !== "") {
-                            backend.perform_search(searchField.text.trim())
+                            searchBackend.perform_search(searchField.text.trim())
                             stackView.push(searchScreen, { searchQuery: text })
                         }
                     }
@@ -50,7 +50,7 @@ Rectangle {
                     text: "Search"
                     onClicked: {
                         if (searchField.text.trim() !== "") {
-                            backend.perform_search(searchField.text.trim())
+                            searchBackend.perform_search(searchField.text.trim())
                             stackView.push(searchScreen, { searchQuery: searchField.text })
                         }
                     }

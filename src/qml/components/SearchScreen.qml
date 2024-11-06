@@ -6,7 +6,7 @@ Rectangle {
     color: "#1E1E1E"
 
     Connections {
-        target: backend
+        target: searchBackend
 
         function onSearch_completed(results) {
             searchResultsModel.clear()
@@ -62,7 +62,7 @@ Rectangle {
                         font.pixelSize: 14
                         onAccepted: {
                             if (text.trim() !== "") {
-                                backend.perform_search(searchField.text.trim())
+                                searchBackend.perform_search(searchField.text.trim())
                                 searchQuery = text
                             }
                         }
@@ -75,8 +75,8 @@ Rectangle {
                         text: "Search"
                         onClicked: {
                             if (searchField.text.trim() !== "") {
-                                backend.perform_search(searchField.text.trim())
-                                searchQuery = searchScreenField.text
+                                searchBackend.perform_search(searchField.text.trim())
+                                searchQuery = searchField.text
                             }
                         }
                     }
@@ -107,6 +107,10 @@ Rectangle {
                             width: ListView.view.width
                             height: 140
                             color: mouseArea.containsMouse ? "#383838" : (index % 2 == 0 ? "#2A2A2A" : "#333333")
+
+                            ToolTip.visible: mouseArea.containsMouse && model.description !== ""
+                            ToolTip.text: model.description
+                            ToolTip.delay: 1000
 
                             MouseArea {
                                 id: mouseArea
@@ -149,6 +153,12 @@ Rectangle {
 
                                     Text {
                                         text: `Episodes: ${model.episodes}`
+                                        color: "white"
+                                        font.pixelSize: 14
+                                    }
+
+                                    Text {
+                                        text: `Genres: ${model.genres}`
                                         color: "white"
                                         font.pixelSize: 14
                                     }
