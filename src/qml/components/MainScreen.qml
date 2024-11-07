@@ -172,9 +172,9 @@ Rectangle {
                         width: 100
                         height: parent.height
                         text: "Remove"
-                        baseColor: "#FF3333"
-                        hoverColor: "#FF4444"
-                        pressColor: "#FF5555"
+                        baseColor: "#993333"
+                        hoverColor: "#994444"
+                        pressColor: "#995555"
                         onClicked: console.log("Remove clicked")
                     }
 

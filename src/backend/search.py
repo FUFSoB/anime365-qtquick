@@ -1,10 +1,12 @@
 import asyncio
 import aiohttp
+from aiohttp_socks import ProxyConnector
 import json
 from dataclasses import dataclass, asdict
 from PySide6.QtCore import QObject, Slot, Signal, QThread
 
 from constants import LOG_DIR
+from typing import TYPE_CHECKING
 
 
 @dataclass
@@ -15,7 +17,7 @@ class AnimeSearchResult:
     episode_list: list[dict]
     image_url: str
     type: str
-    score: float
+    score: str
     year: int
     hentai: bool
     h_type: str
@@ -40,18 +42,23 @@ class Worker(QThread):
             self.error.emit(str(e))
 
     async def fetch_anime_data(self, query: str) -> list[dict]:
+        params = (
+            ("https://anime365.ru/api/series", query, False),
+            # ("https://hentai365.ru/api/series", query, True),
+        )
+        tasks = []
         async with asyncio.TaskGroup() as tg:
-            anime_results = tg.create_task(
-                self._fetch_from_source("https://anime365.ru/api/series", query, False)
-            )
-            hentai_results = tg.create_task(
-                self._fetch_from_source("https://hentai365.ru/api/series", query, True)
-            )
-        return anime_results.result() + hentai_results.result()
+            for param in params:
+                tasks.append(tg.create_task(self._fetch_from_source(*param)))
+        result = []
+        for task in tasks:
+            result.extend(task.result())
+        return result
 
     async def _fetch_from_source(
         self, url: str, query: str, is_hentai: bool
     ) -> list[dict]:
+        # connector = ProxyConnector.from_url("socks5://127.0.0.1:12345")
         async with aiohttp.ClientSession() as session:
             async with session.get(
                 url,
@@ -64,6 +71,43 @@ class Worker(QThread):
             ) as response:
                 return (await response.json())["data"]
 
+    @staticmethod
+    def _create_search_result(item: dict) -> AnimeSearchResult:
+        title = (
+            item["titles"].get("romaji")
+            or item["titles"].get("en")
+            or item["titles"].get("ru")
+            or item["titles"].get("ja")
+        )
+
+        score = item.get("myAnimeListScore")
+        if score == "-1":
+            score = "N/A"
+
+        description = ""
+        if item.get("descriptions"):
+            description = (
+                f"{item['descriptions'][0]['value']}\n\n"
+                f"Source: {item['descriptions'][0]['source']}"
+            )
+
+        genres = ", ".join(i["title"] for i in item.get("genres", []))
+
+        return AnimeSearchResult(
+            id=item["id"],
+            title=title,
+            episodes=item["numberOfEpisodes"],
+            episode_list=item.get("episodes", []),
+            image_url=item["posterUrl"],
+            type=item["type"],
+            score=score,
+            year=int(item["year"]),
+            hentai=item["isHentai"],
+            h_type="hentai" if item["isHentai"] else item["type"],
+            description=description,
+            genres=genres,
+        )
+
     def perform_search_operation(self) -> list[AnimeSearchResult]:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -72,27 +116,7 @@ class Worker(QThread):
             with open(LOG_DIR / "results.json", "w") as f:
                 json.dump(raw_results, f, indent=4, ensure_ascii=False)
             results = [
-                AnimeSearchResult(
-                    id=item["id"],
-                    title=item["titles"].get("romaji")
-                    or item["titles"].get("en")
-                    or item["titles"].get("ru")
-                    or item["titles"].get("ja"),
-                    episodes=item["numberOfEpisodes"],
-                    episode_list=item.get("episodes", []),
-                    image_url=item["posterUrl"],
-                    type=item["type"],
-                    score=float(item.get("myAnimeListScore") or 0),
-                    year=int(item["year"]),
-                    hentai=item["isHentai"],
-                    h_type="hentai" if item["isHentai"] else item["type"],
-                    description=item.get("descriptions")
-                    and item["descriptions"][0]["value"]
-                    + "\n\nSource: "
-                    + item["descriptions"][0]["source"]
-                    or "",
-                    genres=", ".join(i["title"] for i in item.get("genres", [])),
-                )
+                self._create_search_result(item)
                 for item in sorted(raw_results, key=lambda x: x["year"], reverse=True)
             ]
             return results
@@ -106,9 +130,10 @@ class Backend(QObject):
     search_completed = Signal(list)
     search_error = Signal(str)
 
-    def __init__(self):
+    def __init__(self, settings):
         super().__init__()
         self.search_worker = None
+        self.settings = settings
 
     @Slot(str)
     def perform_search(self, query: str):

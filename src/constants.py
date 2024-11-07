@@ -1,9 +1,10 @@
 from pathlib import Path
 
 # TODO: add extra checks for pyinstaller
-SRC_DIR = Path(__file__).parent
+SRC_DIR = Path(__file__).parent  # src/
 QML_DIR = SRC_DIR / "qml"
 LOG_DIR = SRC_DIR.parent / "logs"
+SETTINGS_FILE = SRC_DIR.parent / "settings.json"
 
 
 def create_dirs():
