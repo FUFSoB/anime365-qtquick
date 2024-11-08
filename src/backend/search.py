@@ -14,7 +14,8 @@ class AnimeSearchResult:
     id: int
     title: str
     episodes: int
-    episode_list: list[dict]
+    episode_list: str
+    episode_ids: str
     image_url: str
     type: str
     score: str
@@ -93,11 +94,15 @@ class Worker(QThread):
 
         genres = ", ".join(i["title"] for i in item.get("genres", []))
 
+        episode_list = ";".join(i["episodeFull"] for i in item.get("episodes", []))
+        episode_ids = ";".join(str(i["id"]) for i in item.get("episodes", []))
+
         return AnimeSearchResult(
             id=item["id"],
             title=title,
             episodes=item["numberOfEpisodes"],
-            episode_list=item.get("episodes", []),
+            episode_list=episode_list,
+            episode_ids=episode_ids,
             image_url=item["posterUrl"],
             type=item["type"],
             score=score,

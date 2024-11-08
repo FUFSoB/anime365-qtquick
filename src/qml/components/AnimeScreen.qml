@@ -7,6 +7,10 @@ Rectangle {
 
     property var anime: {}
 
+    Component.onCompleted: {
+        episodeDropdown.model = anime.episode_list.split(";")
+    }
+
     Rectangle {
         anchors.fill: parent
         anchors.margins: 12
@@ -50,24 +54,31 @@ Rectangle {
                     fillMode: Image.PreserveAspectFit
                 }
 
-                Column {
+                ScrollView {
                     width: parent.width - coverImage.width - parent.spacing
                     height: parent.height
-                    spacing: 8
+                    clip: true
 
-                    Text {
-                        text: anime.title
-                        color: "white"
-                        font.pixelSize: 24
-                        font.bold: true
-                    }
-
-                    Text {
-                        text: anime.description
-                        color: "#CCCCCC"
-                        font.pixelSize: 14
-                        wrapMode: Text.WordWrap
+                    Column {
                         width: parent.width
+                        height: parent.height
+                        spacing: 8
+
+                        Text {
+                            text: anime.title
+                            color: "white"
+                            font.pixelSize: 24
+                            font.bold: true
+                            width: parent.width
+                        }
+
+                        Text {
+                            text: anime.description
+                            color: "#CCCCCC"
+                            font.pixelSize: 14
+                            wrapMode: Text.WordWrap
+                            width: parent.width
+                        }
                     }
                 }
             }
@@ -81,34 +92,54 @@ Rectangle {
                     id: episodeDropdown
                     width: parent.width
                     placeholder: "Select Episode"
-                    model: ["Episode 1", "Episode 2", "Episode 3", "Episode 4", "Episode 5", "Episode 6", "Episode 7", "Episode 8", "Episode 9", "Episode 10", "Episode 11", "Episode 12", "Episode 13", "Episode 14", "Episode 15", "Episode 16", "Episode 17", "Episode 18", "Episode 19", "Episode 20", "Episode 21", "Episode 22", "Episode 23", "Episode 24", "Episode 25", "Episode 26", "Episode 27", "Episode 28", "Episode 29", "Episode 30", "Episode 31", "Episode 32", "Episode 33", "Episode 34", "Episode 35", "Episode 36", "Episode 37", "Episode 38", "Episode 39", "Episode 40", "Episode 41", "Episode 42", "Episode 43", "Episode 44", "Episode 45", "Episode 46", "Episode 47", "Episode 48", "Episode 49", "Episode 50"]
-                    onSelectionChanged: function(value) {
-                        // Handle episode selection
+                    onSelectionChangedIndex: function(value) {
+                        console.log("Selected episode index:", value)
+                        var split = anime.episode_ids.split(";")
+                        animeBackend.select_episode(split[value])
+                        sourceTypeDropdown.visible = true
                     }
                 }
 
                 CustomDropdown {
-                    id: qualityDropdown
+                    id: sourceTypeDropdown
+                    visible: false
                     width: parent.width
-                    placeholder: "Select Quality"
-                    model: ["1080p", "720p", "480p"]
+                    placeholder: "Select Source Language and Type"
                     onSelectionChanged: function(value) {
-                        // Handle quality selection
                     }
                 }
 
                 CustomDropdown {
                     id: sourceDropdown
+                    visible: false
                     width: parent.width
-                    placeholder: "Select Video Source"
-                    model: ["Source 1", "Source 2", "Source 3"]
+                    placeholder: "Select Source"
                     onSelectionChanged: function(value) {
-                        // Handle source selection
+                    }
+                }
+
+                CustomDropdown {
+                    id: videoSourceDropdown
+                    visible: false
+                    width: parent.width
+                    placeholder: "Select Different Video Source"
+                    onSelectionChanged: function(value) {
+                    }
+                }
+
+                CustomDropdown {
+                    id: qualityDropdown
+                    visible: false
+                    width: parent.width
+                    placeholder: "Select Quality"
+                    onSelectionChanged: function(value) {
                     }
                 }
 
                 // Video URLs section
                 Rectangle {
+                    id: urlsContainer
+                    visible: false
                     width: parent.width
                     height: urlsColumn.height + 16
                     color: "#2A2A2A"
@@ -129,7 +160,7 @@ Rectangle {
                             spacing: 8
 
                             TextField {
-                                width: parent.width - dlButton.width - ugetButton.width - parent.spacing * 2
+                                width: parent.width - ugetButton.width - parent.spacing * 2
                                 height: parent.height
                                 text: "https://example.com/video"
                                 readOnly: true
@@ -138,13 +169,6 @@ Rectangle {
                                     color: "#333333"
                                     radius: 4
                                 }
-                            }
-
-                            CustomButton {
-                                id: dlButton
-                                width: 80
-                                height: parent.height
-                                text: "DL"
                             }
 
                             CustomButton {
@@ -162,7 +186,7 @@ Rectangle {
                             spacing: 8
 
                             TextField {
-                                width: parent.width - dlButton2.width - ugetButton2.width - parent.spacing * 2
+                                width: parent.width - ugetButton2.width - parent.spacing * 2
                                 height: parent.height
                                 text: "https://example.com/subtitles"
                                 readOnly: true
@@ -174,13 +198,6 @@ Rectangle {
                             }
 
                             CustomButton {
-                                id: dlButton2
-                                width: 80
-                                height: parent.height
-                                text: "DL"
-                            }
-
-                            CustomButton {
                                 id: ugetButton2
                                 width: 80
                                 height: parent.height
@@ -188,23 +205,23 @@ Rectangle {
                             }
                         }
                     }
-                }
 
-                // Stream buttons
-                Row {
-                    spacing: 8
-                    height: 36
+                    // Stream buttons
+                    Row {
+                        spacing: 8
+                        height: 36
 
-                    CustomButton {
-                        width: 80
-                        height: parent.height
-                        text: "mpv"
-                    }
+                        CustomButton {
+                            width: 80
+                            height: parent.height
+                            text: "mpv"
+                        }
 
-                    CustomButton {
-                        width: 80
-                        height: parent.height
-                        text: "vlc"
+                        CustomButton {
+                            width: 80
+                            height: parent.height
+                            text: "vlc"
+                        }
                     }
                 }
             }

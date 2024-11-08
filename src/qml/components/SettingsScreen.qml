@@ -235,8 +235,8 @@ Rectangle {
                         background: Rectangle {
                             color: "#333333"
                             border.color: anime365TokenField.isValidToken
-                                ? "green"   // Valid path
-                                : (anime365TokenField.text ? "red" : "transparent")  // Invalid or empty
+                                ? "green"
+                                : (anime365TokenField.text ? "red" : "transparent")
                             border.width: 2
                             radius: 4
                         }
@@ -250,7 +250,7 @@ Rectangle {
 
                         onTriggered: {
                             if (anime365TokenField.text) {
-                                anime365TokenField.isValidToken = settingsBackend.is_valid_token(anime365TokenField.text)
+                                settingsBackend.is_valid_token(anime365TokenField.text)
                             } else {
                                 anime365TokenField.isValidToken = false
                             }

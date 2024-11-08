@@ -13,6 +13,7 @@ Item {
     property string searchText: ""
 
     signal selectionChanged(string value)
+    signal selectionChangedIndex(int value)
 
     // Filtered model for search
     property var filteredModel: {
@@ -129,6 +130,7 @@ Item {
                                 dropdown.selectedValue = matchedItem
                                 dropdown.selectedIndex = dropdown.model.indexOf(matchedItem)
                                 dropdown.selectionChanged(matchedItem)
+                                dropdown.selectionChangedIndex(dropdown.selectedIndex)
                                 dropdownPopup.close()
                             }
                             event.accepted = true
@@ -169,6 +171,7 @@ Item {
                             dropdown.selectedValue = modelData
                             dropdown.selectedIndex = dropdown.model.indexOf(modelData)
                             dropdown.selectionChanged(modelData)
+                            dropdown.selectionChangedIndex(dropdown.selectedIndex)
                             dropdownPopup.close()
                         }
                     }
@@ -192,6 +195,7 @@ Item {
                         selectedIndex--
                         selectedValue = dropdown.model[selectedIndex]
                         selectionChanged(selectedValue)
+                        selectionChangedIndex(selectedIndex)
                     }
                 } else {
                     // Scroll down
@@ -199,6 +203,7 @@ Item {
                         selectedIndex++
                         selectedValue = dropdown.model[selectedIndex]
                         selectionChanged(selectedValue)
+                        selectionChangedIndex(selectedIndex)
                     }
                 }
             }
@@ -207,9 +212,5 @@ Item {
 
     // Update when model changes
     onModelChanged: {
-        if (selectedIndex === -1 && model.length > 0) {
-            selectedIndex = 0
-            selectedValue = model[0]
-        }
     }
 }

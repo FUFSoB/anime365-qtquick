@@ -7,19 +7,7 @@ from PySide6.QtCore import QObject, Slot, QThread, Signal
 from constants import SETTINGS_FILE
 
 from .net import Api
-
-
-class Worker(QThread):
-    result = Signal(bool)
-
-    def __init__(self, func, *args, **kwargs):
-        super().__init__()
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    def run(self):
-        self.result.emit(asyncio.run(self.func(*self.args, **self.kwargs)))
+from .utils import AsyncFunctionWorker
 
 
 class Backend(QObject):
@@ -29,7 +17,7 @@ class Backend(QObject):
 
     def __init__(self):
         super().__init__()
-        self.settings = None
+        self._settings = None
         self.worker = None
         self.api = Api(self)
 
@@ -41,16 +29,16 @@ class Backend(QObject):
 
     @Slot(result=dict)
     def get_settings(self):
-        if self.settings is not None:
-            return self.settings
+        if self._settings is not None:
+            return self._settings
 
         try:
             with SETTINGS_FILE.open() as file:
-                self.settings = json.load(file)
+                self._settings = json.load(file)
         except FileNotFoundError:
-            self.settings = {}
+            self._settings = {}
 
-        return self.settings
+        return self._settings
 
     @Slot(result=dict)
     def get_defaults(self):
@@ -62,7 +50,7 @@ class Backend(QObject):
 
     @Slot(dict)
     def save_settings(self, settings: dict[str, str]):
-        self.settings = settings
+        self._settings = settings
 
         settings["mpv_path"] = shutil.which(settings["mpv_path"])
         settings["uget_path"] = shutil.which(settings["uget_path"])
@@ -75,9 +63,9 @@ class Backend(QObject):
         shutil_path = shutil.which(path) or False
         return shutil_path and os.access(shutil_path, os.X_OK)
 
-    @Slot(str, result=bool)
+    @Slot(str)
     def is_valid_token(self, token):
-        self.worker = Worker(self.api.check_token, token)
+        self.worker = AsyncFunctionWorker(self.api.check_token, token)
         self.worker.result.connect(self.handle_token_checked)
         self.worker.start()
 

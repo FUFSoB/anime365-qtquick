@@ -3,6 +3,7 @@ from PySide6.QtCore import QObject, Slot
 
 from .search import Backend as SearchBackend
 from .settings import Backend as SettingsBackend
+from .anime import Backend as AnimeBackend
 
 
 settings = SettingsBackend()
@@ -21,5 +22,6 @@ class Backend(QObject):
 backends = {
     "settingsBackend": settings,
     "searchBackend": SearchBackend(settings),
+    "animeBackend": AnimeBackend(settings),
     "backend": Backend(settings),
 }
