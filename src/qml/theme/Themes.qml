@@ -11,6 +11,7 @@ QtObject {
             background: "#FFFFFF",
             secondaryBackground: "#F5F5F5",
             thirdBackground: "#EEEEEE",
+            border: "#E0E0E0",
 
             // Buttons and other elements
             elementBase: "#E8E8E8",
@@ -52,6 +53,7 @@ QtObject {
             background: "#121212",
             secondaryBackground: "#1E1E1E",
             thirdBackground: "#252525",
+            border: "#2C2C2C",
 
             // Buttons and other elements
             elementBase: "#2C2C2C",

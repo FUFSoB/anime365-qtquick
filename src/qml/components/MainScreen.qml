@@ -66,7 +66,6 @@ Rectangle {
                 onClicked: console.log("Tracker List clicked")
             }
 
-
             Row {
                 width: parent.width
                 height: 36
@@ -88,127 +87,23 @@ Rectangle {
             }
         }
 
-        Row {
-            anchors.top: topControls.bottom
-            anchors.bottom: bottomControls.top
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 12
-            anchors.bottomMargin: 12
-            spacing: 12
-
-            Rectangle {
-                width: parent.width * 0.6 - 6
-                height: parent.height
-                color: Themes.currentTheme.secondaryBackground
-                radius: 4
-
-                ListView {
-                    id: animeList
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    clip: true
-                    model: ListModel {
-                        ListElement { title: "History entry 1" }
-                        ListElement { title: "History entry 2" }
-                        ListElement { title: "History entry 3" }
-                        ListElement { title: "History entry 4" }
-                        ListElement { title: "History entry 5" }
-                    }
-                    delegate: Rectangle {
-                        width: ListView.view.width
-                        height: 36
-                        color: Themes.currentTheme.secondaryBackground
-
-                        Text {
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.left: parent.left
-                            anchors.leftMargin: 12
-                            text: title
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 14
-                        }
-
-                        MouseArea {
-                            id: mouseArea
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            onClicked: console.log("Selected anime:", title)
-                        }
-                    }
-                }
-            }
-
-            Rectangle {
-                width: parent.width * 0.4 - 6
-                height: parent.height
-                color: Themes.currentTheme.secondaryBackground
-                radius: 4
-
-                Image {
-                    anchors.fill: parent
-                    anchors.margins: 4
-                    fillMode: Image.PreserveAspectFit
-                }
-            }
-        }
-
         Rectangle {
-            id: bottomControls
+            anchors.top: topControls.bottom
             anchors.bottom: parent.bottom
             anchors.left: parent.left
             anchors.right: parent.right
-            height: 36
-            color: "transparent"
+            anchors.topMargin: 12
+            color: Themes.currentTheme.secondaryBackground
+            radius: 4
 
-            Row {
+            CustomListView {
+                id: historyList
                 anchors.fill: parent
-                spacing: 12
-
-                Row {
-                    id: buttonRow
-                    height: parent.height
-                    spacing: 12
-
-                    CustomButton {
-                        width: 100
-                        height: parent.height
-                        text: "Remove"
-                        textColor: Themes.currentTheme.colorfulText
-                        baseColor: Themes.currentTheme.dangerBase
-                        hoverColor: Themes.currentTheme.dangerHover
-                        pressColor: Themes.currentTheme.dangerPress
-                        onClicked: console.log("Remove clicked")
-                    }
-
-                    CustomButton {
-                        width: 100
-                        height: parent.height
-                        text: "Select"
-                        onClicked: console.log("Select clicked")
-                    }
-
-                    CustomButton {
-                        width: 120
-                        height: parent.height
-                        text: "Next Episode"
-                        onClicked: console.log("Next Episode clicked")
-                    }
+                model: ListModel {
+                    id: historyModel
                 }
-
-                // Separator
-                Item {
-                    width: parent.width - episodeText.width - buttonRow.width - parent.spacing * 2
-                    height: parent.height
-                }
-
-                Text {
-                    id: episodeText
-                    height: parent.height
-                    verticalAlignment: Text.AlignVCenter
-                    text: "Viewed 1 / 24 episodes — [en, sub, bd, 1080p] Doki"
-                    color: Themes.currentTheme.text
-                    font.pixelSize: 14
+                onItemClicked: (item) => {
+                    stackView.push(animeScreen, { anime: item })
                 }
             }
         }

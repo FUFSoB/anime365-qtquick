@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtCore
 import Themes
 
 Rectangle {
@@ -106,88 +107,21 @@ Rectangle {
                     color: Themes.currentTheme.secondaryBackground
                     radius: 4
 
-                    ListView {
-                        anchors.fill: parent
-                        anchors.margins: 4
-                        clip: true
+                    CustomListView {
+                        id: searchResultsList
+                        width: parent.width
+                        height: parent.height
                         model: ListModel {
                             id: searchResultsModel
                         }
-                        delegate: Rectangle {
-                            width: ListView.view.width
-                            height: 140
-                            color: mouseArea.containsMouse ? Themes.currentTheme.elementHover : (index % 2 == 0 ? "transparent" : Themes.currentTheme.thirdBackground)
-
-                            ToolTip.visible: mouseArea.containsMouse && model.description !== ""
-                            ToolTip.text: model.description
-                            ToolTip.delay: 1000
-
-                            MouseArea {
-                                id: mouseArea
-                                anchors.fill: parent
-                                hoverEnabled: true
-
-                                onClicked: {
-                                    onClicked: stackView.push(animeScreen, { anime: model })
-                                }
-
-                                onEntered: {
-                                    cursorShape = Qt.PointingHandCursor
-                                }
-
-                                onExited: {
-                                    cursorShape = Qt.ArrowCursor
-                                }
-                            }
-
-                            Row {
-                                spacing: 10
-                                padding: 10
-
-                                Image {
-                                    width: 120
-                                    height: 120
-                                    source: model.image_url
-                                    fillMode: Image.PreserveAspectFit
-
-                                    cache: true
-                                    asynchronous: true
-                                }
-
-                                Column {
-                                    spacing: 5
-
-                                    Text {
-                                        text: model.title
-                                        color: Themes.currentTheme.text
-                                        font.bold: true
-                                        font.pixelSize: 16
-                                    }
-
-                                    Text {
-                                        text: `Episodes: ${model.episodes}`
-                                        color: Themes.currentTheme.text
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        text: `Genres: ${model.genres}`
-                                        color: Themes.currentTheme.text
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        text: `Type: ${model.h_type} | Year: ${model.year}`
-                                        color: Themes.currentTheme.text
-                                        font.pixelSize: 14
-                                    }
-
-                                    Text {
-                                        text: `Score: ${model.score}`
-                                        color: Themes.currentTheme.text
-                                        font.pixelSize: 14
-                                    }
-                                }
+                        onItemClicked: (item) => {
+                            stackView.push(animeScreen, { anime: item })
+                        }
+                        onContextMenuAction: function(action, item) {
+                            switch(action) {
+                                case "goto_details":
+                                    stackView.push(animeScreen, { anime: item })
+                                    break
                             }
                         }
                     }
