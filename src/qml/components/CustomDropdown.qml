@@ -15,12 +15,29 @@ Item {
     signal selectionChanged(string value)
     signal selectionChangedIndex(int value)
 
+    function fuzzyMatch(search, target) {
+        if (search === "") return true;
+
+        search = search.toLowerCase();
+        target = target.toLowerCase();
+
+        let searchIndex = 0;
+        let targetIndex = 0;
+
+        while (searchIndex < search.length && targetIndex < target.length) {
+            if (search[searchIndex] === target[targetIndex]) {
+                searchIndex++;
+            }
+            targetIndex++;
+        }
+
+        return searchIndex === search.length;
+    }
+
     // Filtered model for search
     property var filteredModel: {
         if (searchText === "") return model;
-        return model.filter(item =>
-            item.toLowerCase().includes(searchText.toLowerCase())
-        );
+        return model.filter(item => fuzzyMatch(searchText, item));
     }
 
     // Main button
@@ -212,5 +229,7 @@ Item {
 
     // Update when model changes
     onModelChanged: {
+        selectedValue = null
+        selectedIndex = -1
     }
 }

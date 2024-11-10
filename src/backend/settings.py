@@ -1,8 +1,7 @@
-import asyncio
 import json
 import os
 import shutil
-from PySide6.QtCore import QObject, Slot, QThread, Signal
+from PySide6.QtCore import QObject, Slot, Signal
 
 from constants import SETTINGS_FILE
 
@@ -66,7 +65,7 @@ class Backend(QObject):
     @Slot(str)
     def is_valid_token(self, token):
         self.worker = AsyncFunctionWorker(self.api.check_token, token)
-        self.worker.result.connect(self.handle_token_checked)
+        self.worker.result_bool.connect(self.handle_token_checked)
         self.worker.start()
 
     def handle_token_checked(self, result):

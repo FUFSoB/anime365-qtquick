@@ -3,7 +3,8 @@ from PySide6.QtCore import QThread, Signal
 
 
 class AsyncFunctionWorker(QThread):
-    result = Signal(bool)
+    result_bool = Signal(bool)
+    result_list = Signal(list)
 
     def __init__(self, func, *args, **kwargs):
         super().__init__()
@@ -12,4 +13,8 @@ class AsyncFunctionWorker(QThread):
         self.kwargs = kwargs
 
     def run(self):
-        self.result.emit(asyncio.run(self.func(*self.args, **self.kwargs)))
+        result = asyncio.run(self.func(*self.args, **self.kwargs))
+        if isinstance(result, bool):
+            self.result_bool.emit(result)
+        elif isinstance(result, list):
+            self.result_list.emit(result)

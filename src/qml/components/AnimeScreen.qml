@@ -6,9 +6,41 @@ Rectangle {
     color: "#1E1E1E"
 
     property var anime: {}
+    property var translations: {}
+    property var streams: {}
+    property var videoStreams: {}
 
     Component.onCompleted: {
         episodeDropdown.model = anime.episode_list.split(";")
+    }
+
+    Connections {
+        target: animeBackend
+
+        function onTranslations_got(results) {
+            translations = results
+            var data = []
+            for (var i = 0; i < results.length; i++) {
+                var item = results[i]
+                var info = item.language + ", " + item.kind + ", " + item.quality_type + ", " + item.height + "p"
+                var title = "[" + info + "] " + item.authors_string
+                data.push(title)
+            }
+            sourceDropdown.model = data
+            sourceDropdown.visible = true
+        }
+
+        function onStreams_got(results) {
+            streams = results
+            var data = []
+            for (var i = 0; i < results.length; i++) {
+                var item = results[i]
+                var title = item.height + "p"
+                data.push(title)
+            }
+            qualityDropdown.model = data
+            qualityDropdown.visible = true
+        }
     }
 
     Rectangle {
@@ -93,19 +125,8 @@ Rectangle {
                     width: parent.width
                     placeholder: "Select Episode"
                     onSelectionChangedIndex: function(value) {
-                        console.log("Selected episode index:", value)
                         var split = anime.episode_ids.split(";")
                         animeBackend.select_episode(split[value])
-                        sourceTypeDropdown.visible = true
-                    }
-                }
-
-                CustomDropdown {
-                    id: sourceTypeDropdown
-                    visible: false
-                    width: parent.width
-                    placeholder: "Select Source Language and Type"
-                    onSelectionChanged: function(value) {
                     }
                 }
 
@@ -114,7 +135,9 @@ Rectangle {
                     visible: false
                     width: parent.width
                     placeholder: "Select Source"
-                    onSelectionChanged: function(value) {
+                    onSelectionChangedIndex: function(value) {
+                        var item = translations[value]
+                        animeBackend.get_streams(item.id)
                     }
                 }
 
@@ -132,7 +155,14 @@ Rectangle {
                     visible: false
                     width: parent.width
                     placeholder: "Select Quality"
-                    onSelectionChanged: function(value) {
+                    onSelectionChangedIndex: function(value) {
+                        urlsContainer.visible = true
+                        if (videoStreams !== undefined) {
+                            videoUrlField.text = videoStreams[value].url
+                        } else {
+                            videoUrlField.text = streams[value].url
+                        }
+                        subsUrlField.text = streams[0].subs_url
                     }
                 }
 
@@ -160,14 +190,27 @@ Rectangle {
                             spacing: 8
 
                             TextField {
-                                width: parent.width - ugetButton.width - parent.spacing * 2
+                                id: videoUrlField
+                                width: parent.width - copyButton.width - ugetButton.width - parent.spacing
                                 height: parent.height
-                                text: "https://example.com/video"
                                 readOnly: true
                                 color: "white"
+                                Component.onCompleted: cursorPosition = 0
+                                onTextChanged: cursorPosition = 0
                                 background: Rectangle {
                                     color: "#333333"
                                     radius: 4
+                                }
+                            }
+
+                            CustomButton {
+                                id: copyButton
+                                width: 80
+                                height: parent.height
+                                text: "Copy"
+                                onClicked: {
+                                    videoUrlField.selectAll()
+                                    videoUrlField.copy()
                                 }
                             }
 
@@ -186,9 +229,9 @@ Rectangle {
                             spacing: 8
 
                             TextField {
-                                width: parent.width - ugetButton2.width - parent.spacing * 2
+                                id: subsUrlField
+                                width: parent.width - copyButtonSubs.width - ugetButtonSubs.width - parent.spacing
                                 height: parent.height
-                                text: "https://example.com/subtitles"
                                 readOnly: true
                                 color: "white"
                                 background: Rectangle {
@@ -198,29 +241,39 @@ Rectangle {
                             }
 
                             CustomButton {
-                                id: ugetButton2
+                                id: copyButtonSubs
+                                width: 80
+                                height: parent.height
+                                text: "Copy"
+                                onClicked: {
+                                    subsUrlField.selectAll()
+                                    subsUrlField.copy()
+                                }
+                            }
+
+                            CustomButton {
+                                id: ugetButtonSubs
                                 width: 80
                                 height: parent.height
                                 text: "UGet"
                             }
                         }
-                    }
 
-                    // Stream buttons
-                    Row {
-                        spacing: 8
-                        height: 36
+                        Row {
+                            spacing: 8
+                            height: 36
 
-                        CustomButton {
-                            width: 80
-                            height: parent.height
-                            text: "mpv"
-                        }
+                            CustomButton {
+                                width: 80
+                                height: parent.height
+                                text: "mpv"
+                            }
 
-                        CustomButton {
-                            width: 80
-                            height: parent.height
-                            text: "vlc"
+                            CustomButton {
+                                width: 80
+                                height: parent.height
+                                text: "vlc"
+                            }
                         }
                     }
                 }
