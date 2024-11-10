@@ -3,7 +3,7 @@ import sys
 import signal
 from pathlib import Path
 from PySide6.QtCore import QUrl, QTimer
-from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonType
 from PySide6.QtWidgets import QApplication
 
 from backend import backends
@@ -17,12 +17,18 @@ class Anime365:
         self.app = QApplication(sys.argv)
         self.engine = QQmlApplicationEngine()
 
+        self.app.setApplicationName("Anime365")
+
         for name, backend in backends.items():
             self.engine.rootContext().setContextProperty(name, backend)
 
         qml_dir = Path(__file__).parent / "qml"
         main_qml = qml_dir / "main.qml"
+        themes_qml = qml_dir / "theme" / "Themes.qml"
 
+        qmlRegisterSingletonType(
+            QUrl.fromLocalFile(str(themes_qml)), "Themes", 1, 0, "Themes"
+        )
         self.engine.load(QUrl.fromLocalFile(str(main_qml)))
 
         if not self.engine.rootObjects():

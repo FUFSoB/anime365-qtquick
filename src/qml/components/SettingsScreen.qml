@@ -1,8 +1,9 @@
 import QtQuick
 import QtQuick.Controls
+import Themes
 
 Rectangle {
-    color: "#1E1E1E"
+    color: Themes.currentTheme.background
 
     property var settings: {}
     property var defaults: {}
@@ -52,9 +53,9 @@ Rectangle {
                         width: 100
                         height: 36
                         text: "← Back"
-                        baseColor: "#993333"
-                        hoverColor: "#994444"
-                        pressColor: "#995555"
+                        baseColor: Themes.currentTheme.dangerBase
+                        hoverColor: Themes.currentTheme.dangerHover
+                        pressColor: Themes.currentTheme.dangerPress
                         onClicked: stackView.pop()
                     }
 
@@ -68,7 +69,7 @@ Rectangle {
                             height: parent.height
                             verticalAlignment: Text.AlignVCenter
                             text: "Settings"
-                            color: "white"
+                            color: Themes.currentTheme.text
                             font.pixelSize: 18
                             font.bold: true
                         }
@@ -79,9 +80,9 @@ Rectangle {
                         width: 100
                         height: 36
                         text: "Save"
-                        baseColor: "#339933"
-                        hoverColor: "#449944"
-                        pressColor: "#559955"
+                        baseColor: Themes.currentTheme.saveBase
+                        hoverColor: Themes.currentTheme.saveHover
+                        pressColor: Themes.currentTheme.savePress
 
                         enabled: {
                             var settingsChanged = mpvPathField.text !== settings.mpv_path
@@ -111,7 +112,7 @@ Rectangle {
 
                 Text {
                     text: "Path to MPV binary"
-                    color: "white"
+                    color: Themes.currentTheme.text
                     font.pixelSize: 14
                 }
 
@@ -125,6 +126,8 @@ Rectangle {
                         width: parent.width
                         height: parent.height
                         placeholderText: "Enter MPV binary path"
+                        color: Themes.currentTheme.text
+                        placeholderTextColor: Themes.currentTheme.placeholderText
 
                         property bool isValidPath: true
 
@@ -137,10 +140,10 @@ Rectangle {
                         }
 
                         background: Rectangle {
-                            color: "#333333"
+                            color: Themes.currentTheme.inputBackground
                             border.color: mpvPathField.isValidPath
-                                ? "green"
-                                : (mpvPathField.text ? "red" : "transparent")
+                                ? Themes.currentTheme.success
+                                : (mpvPathField.text ? Themes.currentTheme.fail : "transparent")
                             border.width: 2
                             radius: 4
                         }
@@ -155,7 +158,7 @@ Rectangle {
 
                 Text {
                     text: "Path to UGet binary"
-                    color: "white"
+                    color: Themes.currentTheme.text
                     font.pixelSize: 14
                 }
 
@@ -169,6 +172,8 @@ Rectangle {
                         width: parent.width
                         height: parent.height
                         placeholderText: "Enter UGet binary path"
+                        color: Themes.currentTheme.text
+                        placeholderTextColor: Themes.currentTheme.placeholderText
 
                         property bool isValidPath: true
 
@@ -181,10 +186,10 @@ Rectangle {
                         }
 
                         background: Rectangle {
-                            color: "#333333"
+                            color: Themes.currentTheme.inputBackground
                             border.color: ugetPathField.isValidPath
-                                ? "green"
-                                : (ugetPathField.text ? "red" : "transparent")
+                                ? Themes.currentTheme.success
+                                : (ugetPathField.text ? Themes.currentTheme.fail : "transparent")
                             border.width: 2
                             radius: 4
                         }
@@ -199,10 +204,10 @@ Rectangle {
 
                 Text {
                     text: "Anime365 token (<a href='https://anime365.ru/api/accessToken?app=pvb'>Get token</a>)"
-                    color: "white"
+                    color: Themes.currentTheme.text
                     font.pixelSize: 14
                     textFormat: Text.RichText
-                    linkColor: "cyan"
+                    linkColor: Themes.currentTheme.link
                     onLinkActivated: (url) => {
                         Qt.openUrlExternally(url)
                     }
@@ -217,7 +222,7 @@ Rectangle {
                         id: anime365TokenField
                         width: parent.width
                         height: parent.height
-                        color: "white"
+                        color: Themes.currentTheme.text
                         font.pixelSize: 14
 
                         property bool isValidToken: false
@@ -233,10 +238,10 @@ Rectangle {
                         }
 
                         background: Rectangle {
-                            color: "#333333"
+                            color: Themes.currentTheme.inputBackground
                             border.color: anime365TokenField.isValidToken
-                                ? "green"
-                                : (anime365TokenField.text ? "red" : "transparent")
+                                ? Themes.currentTheme.success
+                                : (anime365TokenField.text ? Themes.currentTheme.fail : "transparent")
                             border.width: 2
                             radius: 4
                         }

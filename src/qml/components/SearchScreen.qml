@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Controls
+import Themes
 
 Rectangle {
     property string searchQuery: ""
-    color: "#1E1E1E"
+    color: Themes.currentTheme.background
 
     Component.onCompleted: {
         busyIndicator.running = true
@@ -61,10 +62,11 @@ Rectangle {
                         text: searchQuery
                         placeholderText: "Search anime"
                         background: Rectangle {
-                            color: "#333333"
+                            color: Themes.currentTheme.inputBackground
                             radius: 4
                         }
-                        color: "white"
+                        color: Themes.currentTheme.text
+                        placeholderTextColor: Themes.currentTheme.placeholderText
                         font.pixelSize: 14
                         onAccepted: {
                             if (text.trim() !== "") {
@@ -101,7 +103,7 @@ Rectangle {
                 Rectangle {
                     width: parent.width
                     height: parent.height
-                    color: "#2A2A2A"
+                    color: Themes.currentTheme.secondaryBackground
                     radius: 4
 
                     ListView {
@@ -114,7 +116,7 @@ Rectangle {
                         delegate: Rectangle {
                             width: ListView.view.width
                             height: 140
-                            color: mouseArea.containsMouse ? "#383838" : (index % 2 == 0 ? "#2A2A2A" : "#333333")
+                            color: mouseArea.containsMouse ? Themes.currentTheme.elementHover : (index % 2 == 0 ? "transparent" : Themes.currentTheme.thirdBackground)
 
                             ToolTip.visible: mouseArea.containsMouse && model.description !== ""
                             ToolTip.text: model.description
@@ -154,32 +156,32 @@ Rectangle {
 
                                     Text {
                                         text: model.title
-                                        color: "white"
+                                        color: Themes.currentTheme.text
                                         font.bold: true
                                         font.pixelSize: 16
                                     }
 
                                     Text {
                                         text: `Episodes: ${model.episodes}`
-                                        color: "white"
+                                        color: Themes.currentTheme.text
                                         font.pixelSize: 14
                                     }
 
                                     Text {
                                         text: `Genres: ${model.genres}`
-                                        color: "white"
+                                        color: Themes.currentTheme.text
                                         font.pixelSize: 14
                                     }
 
                                     Text {
                                         text: `Type: ${model.h_type} | Year: ${model.year}`
-                                        color: "white"
+                                        color: Themes.currentTheme.text
                                         font.pixelSize: 14
                                     }
 
                                     Text {
                                         text: `Score: ${model.score}`
-                                        color: "white"
+                                        color: Themes.currentTheme.text
                                         font.pixelSize: 14
                                     }
                                 }

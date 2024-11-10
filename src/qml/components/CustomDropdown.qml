@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import Themes
 
 Item {
     id: dropdown
@@ -45,7 +46,7 @@ Item {
         id: header
         width: parent.width
         height: parent.height
-        color: "#333333"
+        color: Themes.currentTheme.elementBase
         radius: 4
 
         Row {
@@ -58,7 +59,7 @@ Item {
                 width: parent.width - arrow.width - parent.spacing
                 height: parent.height
                 text: selectedValue || placeholder
-                color: "white"
+                color: Themes.currentTheme.text
                 font.pixelSize: 14
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
@@ -69,7 +70,7 @@ Item {
                 width: 12
                 height: parent.height
                 text: dropdown.isOpen ? "▲" : "▼"
-                color: "white"
+                color: Themes.currentTheme.text
                 font.pixelSize: 12
                 verticalAlignment: Text.AlignVCenter
             }
@@ -96,7 +97,7 @@ Item {
         padding: 0
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: Rectangle {
-            color: "#2A2A2A"
+            color: Themes.currentTheme.secondaryBackground
             radius: 4
         }
 
@@ -120,18 +121,18 @@ Item {
                 id: searchRow
                 width: parent.width
                 height: 36
-                color: "#333333"
+                color: Themes.currentTheme.inputBackground
 
                 TextField {
                     id: searchInput
                     anchors.fill: parent
                     anchors.margins: 4
-                    color: "white"
+                    color: Themes.currentTheme.text
                     placeholderText: "Search..."
-                    placeholderTextColor: "#888"
+                    placeholderTextColor: Themes.currentTheme.placeholderText
                     font.pixelSize: 14
                     background: Rectangle {
-                        color: "#404040"
+                        color: Themes.currentTheme.inputFieldBackground
                         radius: 2
                     }
                     onTextChanged: {
@@ -167,14 +168,13 @@ Item {
                 delegate: Rectangle {
                     width: dropdown.width
                     height: 36
-                    color: mouseArea.containsMouse ? "#383838" :
-                           (modelData === dropdown.selectedValue ? "#404040" : "transparent")
+                    color: mouseArea.containsMouse ? Themes.currentTheme.elementHover : (modelData === dropdown.selectedValue ? Themes.currentTheme.elementPress : "transparent")
 
                     Text {
                         anchors.fill: parent
                         anchors.margins: 8
                         text: modelData
-                        color: "white"
+                        color: Themes.currentTheme.text
                         font.pixelSize: 14
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight

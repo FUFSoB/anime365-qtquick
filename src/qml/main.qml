@@ -7,7 +7,6 @@ ApplicationWindow {
     width: 1280
     height: 720
     visible: true
-    color: "#1E1E1E"
     title: "Anime365"
 
     StackView {

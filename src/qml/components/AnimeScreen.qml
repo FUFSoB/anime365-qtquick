@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Controls
+import Themes
 
 Rectangle {
     id: root
-    color: "#1E1E1E"
+    color: Themes.currentTheme.background
 
     property var anime: {}
     property var translations: {}
@@ -181,7 +182,7 @@ Rectangle {
 
                         Text {
                             text: anime.title
-                            color: "white"
+                            color: Themes.currentTheme.text
                             font.pixelSize: 24
                             font.bold: true
                             width: parent.width
@@ -189,7 +190,7 @@ Rectangle {
 
                         Text {
                             text: anime.description
-                            color: "#CCCCCC"
+                            color: Themes.currentTheme.secondaryText
                             font.pixelSize: 14
                             wrapMode: Text.WordWrap
                             width: parent.width
@@ -305,7 +306,7 @@ Rectangle {
                     visible: false
                     width: parent.width
                     height: urlsColumn.height + 16
-                    color: "#2A2A2A"
+                    color: Themes.currentTheme.secondaryBackground
                     radius: 4
 
                     Column {
@@ -327,11 +328,11 @@ Rectangle {
                                 width: parent.width - copyButton.width - ugetButton.width - parent.spacing * 2
                                 height: parent.height
                                 readOnly: true
-                                color: "white"
+                                color: Themes.currentTheme.text
                                 Component.onCompleted: cursorPosition = 0
                                 onTextChanged: cursorPosition = 0
                                 background: Rectangle {
-                                    color: "#333333"
+                                    color: Themes.currentTheme.inputBackground
                                     radius: 4
                                 }
                             }
@@ -375,9 +376,9 @@ Rectangle {
                                 width: parent.width - copyButtonSubs.width - ugetButtonSubs.width - parent.spacing * 2
                                 height: parent.height
                                 readOnly: true
-                                color: "white"
+                                color: Themes.currentTheme.text
                                 background: Rectangle {
-                                    color: "#333333"
+                                    color: Themes.currentTheme.inputBackground
                                     radius: 4
                                 }
                             }

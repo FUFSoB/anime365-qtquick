@@ -1,12 +1,13 @@
 import QtQuick
 import QtQuick.Controls
+import Themes
 
 Button {
     id: customButton
 
-    property color baseColor: "#333333"
-    property color hoverColor: "#383838"
-    property color pressColor: "#404040"
+    property color baseColor: Themes.currentTheme.elementBase
+    property color hoverColor: Themes.currentTheme.elementHover
+    property color pressColor: Themes.currentTheme.elementPress
 
     background: Rectangle {
         color: mouseArea.pressed ? pressColor : (mouseArea.containsMouse ? hoverColor : baseColor)
@@ -15,7 +16,7 @@ Button {
 
     contentItem: Text {
         text: parent.text
-        color: "white"
+        color: Themes.currentTheme.text
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: 14

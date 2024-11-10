@@ -54,7 +54,8 @@ class EpisodeWorker(AsyncFunctionWorker):
             language_weight.get(translation["language"], 1) * 10_000_000
             + kind_weight.get(translation["kind"], 1) * 1_000_000
             + quality_type_weight.get(translation["quality_type"], 1) * 100_000
-            + translation["height"]
+            + translation["height"],
+            translation["authors_string"],
         )
 
     async def perform_get_episode_operation(self):

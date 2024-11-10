@@ -1,9 +1,10 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Themes
 
 Rectangle {
-    color: "#1E1E1E"
+    color: Themes.currentTheme.background
 
     Rectangle {
         id: mainContent
@@ -30,10 +31,11 @@ Rectangle {
                     height: parent.height
                     placeholderText: "Search anime"
                     background: Rectangle {
-                        color: "#333333"
+                        color: Themes.currentTheme.inputBackground
                         radius: 4
                     }
-                    color: "white"
+                    placeholderTextColor: Themes.currentTheme.placeholderText
+                    color: Themes.currentTheme.text
                     font.pixelSize: 14
                     onAccepted: {
                         if (text.trim() !== "") {
@@ -98,7 +100,7 @@ Rectangle {
             Rectangle {
                 width: parent.width * 0.6 - 6
                 height: parent.height
-                color: "#2A2A2A"
+                color: Themes.currentTheme.secondaryBackground
                 radius: 4
 
                 ListView {
@@ -116,14 +118,14 @@ Rectangle {
                     delegate: Rectangle {
                         width: ListView.view.width
                         height: 36
-                        color: mouseArea.containsMouse ? "#383838" : (index % 2 == 0 ? "#2A2A2A" : "#333333")
+                        color: Themes.currentTheme.secondaryBackground
 
                         Text {
                             anchors.verticalCenter: parent.verticalCenter
                             anchors.left: parent.left
                             anchors.leftMargin: 12
                             text: title
-                            color: "white"
+                            color: Themes.currentTheme.text
                             font.pixelSize: 14
                         }
 
@@ -140,7 +142,7 @@ Rectangle {
             Rectangle {
                 width: parent.width * 0.4 - 6
                 height: parent.height
-                color: "#2A2A2A"
+                color: Themes.currentTheme.secondaryBackground
                 radius: 4
 
                 Image {
@@ -172,9 +174,9 @@ Rectangle {
                         width: 100
                         height: parent.height
                         text: "Remove"
-                        baseColor: "#993333"
-                        hoverColor: "#994444"
-                        pressColor: "#995555"
+                        baseColor: Themes.currentTheme.dangerBase
+                        hoverColor: Themes.currentTheme.dangerHover
+                        pressColor: Themes.currentTheme.dangerPress
                         onClicked: console.log("Remove clicked")
                     }
 
@@ -204,7 +206,7 @@ Rectangle {
                     height: parent.height
                     verticalAlignment: Text.AlignVCenter
                     text: "Viewed 1 / 24 episodes — [en, sub, bd, 1080p] Doki"
-                    color: "white"
+                    color: Themes.currentTheme.text
                     font.pixelSize: 14
                 }
             }
