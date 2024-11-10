@@ -63,8 +63,6 @@ class Worker(AsyncFunctionWorker):
     async def perform_search_operation(self):
         try:
             raw_results = await self.api.find_anime(self.query)
-            with open(LOG_DIR / "results.json", "w") as f:
-                json.dump(raw_results, f, indent=4, ensure_ascii=False)
             results = [
                 self._create_search_result(item)
                 for item in sorted(raw_results, key=lambda x: x["year"], reverse=True)

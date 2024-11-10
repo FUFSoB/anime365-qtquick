@@ -1,5 +1,8 @@
+import subprocess
+import re
 from PySide6.QtCore import QObject, Slot, Signal
 
+from constants import DOWNLOADS_DIR
 from .utils import AsyncFunctionWorker
 from .net import BASE_URL
 
@@ -113,9 +116,47 @@ class Backend(QObject):
         self.worker.error.connect(self.translations_got.emit)
         self.worker.start()
 
-    @Slot(int)
-    def get_streams(self, translation_id: int):
+    @Slot(int, bool)
+    def get_streams(self, translation_id: int, is_for_other_video: bool):
         self.worker = StreamsWorker(translation_id, self.settings)
         self.worker.finished.connect(self.streams_got.emit)
         self.worker.error.connect(self.streams_got.emit)
         self.worker.start()
+
+    @Slot(str, str, str)
+    def launch_mpv(self, url: str, subs_url: str, title: str):
+        command = [self.settings.mpv_path, url, "-title", title]
+
+        if subs_url:
+            command.extend(["-sub-file", subs_url])
+
+        subprocess.Popen(command)
+
+    @staticmethod
+    def _title_to_filename(title: str, episodes_total: int, ext: str) -> str:
+        title, episode = title.split(" — ")
+
+        title = re.sub(r"[^\w\d\-_]", "_", title).strip("_")
+
+        episode = episode.split(" ")[0].rjust(len(str(episodes_total)), "0")
+
+        return f"{title}-{episode}.{ext}"
+
+    @Slot(str, str, int, bool)
+    def launch_uget(self, url: str, title: str, episodes_total: int, is_subs: bool):
+        name = self._title_to_filename(
+            title, episodes_total, "ass" if is_subs else "mp4"
+        )
+        command = [
+            self.settings.uget_path,
+            "--quiet",
+            f"--folder={DOWNLOADS_DIR}",
+            f"--filename={name}",
+            url,
+        ]
+        subprocess.Popen(
+            command,
+            shell=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )

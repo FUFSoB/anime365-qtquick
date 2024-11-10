@@ -125,6 +125,11 @@ Rectangle {
                     width: parent.width
                     placeholder: "Select Episode"
                     onSelectionChangedIndex: function(value) {
+                        sourceDropdown.visible = false
+                        videoSourceDropdown.visible = false
+                        qualityDropdown.visible = false
+                        urlsContainer.visible = false
+
                         var split = anime.episode_ids.split(";")
                         animeBackend.select_episode(split[value])
                     }
@@ -136,8 +141,12 @@ Rectangle {
                     width: parent.width
                     placeholder: "Select Source"
                     onSelectionChangedIndex: function(value) {
+                        videoSourceDropdown.visible = false
+                        qualityDropdown.visible = false
+                        urlsContainer.visible = false
+
                         var item = translations[value]
-                        animeBackend.get_streams(item.id)
+                        animeBackend.get_streams(item.id, false)
                     }
                 }
 
@@ -147,6 +156,11 @@ Rectangle {
                     width: parent.width
                     placeholder: "Select Different Video Source"
                     onSelectionChanged: function(value) {
+                        qualityDropdown.visible = false
+                        urlsContainer.visible = false
+
+                        var item = translations[value - 1]
+                        animeBackend.get_streams(item.id, true)
                     }
                 }
 
@@ -157,12 +171,20 @@ Rectangle {
                     placeholder: "Select Quality"
                     onSelectionChangedIndex: function(value) {
                         urlsContainer.visible = true
+
                         if (videoStreams !== undefined) {
                             videoUrlField.text = videoStreams[value].url
                         } else {
                             videoUrlField.text = streams[value].url
                         }
-                        subsUrlField.text = streams[0].subs_url
+                        var subs = streams[0].subs_url
+                        if (subs !== undefined) {
+                            subsRow.visible = true
+                            subsUrlField.text = streams[0].subs_url
+                        } else {
+                            subsRow.visible = false
+                            subsUrlField.text = ""
+                        }
                     }
                 }
 
@@ -219,11 +241,18 @@ Rectangle {
                                 width: 80
                                 height: parent.height
                                 text: "UGet"
+                                onClicked: {
+                                    var url = videoUrlField.text
+                                    var title = anime.title + " — " + episodeDropdown.selectedValue
+                                    var episodesTotal = episodeDropdown.model.length
+                                    animeBackend.launch_uget(url, title, episodesTotal, false)
+                                }
                             }
                         }
 
                         // Subtitles URL row
                         Row {
+                            id: subsRow
                             width: parent.width
                             height: 36
                             spacing: 8
@@ -256,6 +285,12 @@ Rectangle {
                                 width: 80
                                 height: parent.height
                                 text: "UGet"
+                                onClicked: {
+                                    var url = subsUrlField.text
+                                    var title = anime.title + " — " + episodeDropdown.selectedValue
+                                    var episodesTotal = episodeDropdown.model.length
+                                    animeBackend.launch_uget(url, title, episodesTotal, true)
+                                }
                             }
                         }
 
@@ -267,6 +302,12 @@ Rectangle {
                                 width: 80
                                 height: parent.height
                                 text: "mpv"
+                                onClicked: {
+                                    var url = videoUrlField.text
+                                    var subs = subsUrlField.text
+                                    var title = anime.title + " — " + episodeDropdown.selectedValue
+                                    animeBackend.launch_mpv(url, subs, title)
+                                }
                             }
 
                             CustomButton {
