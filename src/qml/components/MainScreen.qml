@@ -174,6 +174,7 @@ Rectangle {
                         width: 100
                         height: parent.height
                         text: "Remove"
+                        textColor: Themes.currentTheme.colorfulText
                         baseColor: Themes.currentTheme.dangerBase
                         hoverColor: Themes.currentTheme.dangerHover
                         pressColor: Themes.currentTheme.dangerPress

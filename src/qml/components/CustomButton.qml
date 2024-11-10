@@ -5,6 +5,7 @@ import Themes
 Button {
     id: customButton
 
+    property color textColor: Themes.currentTheme.text
     property color baseColor: Themes.currentTheme.elementBase
     property color hoverColor: Themes.currentTheme.elementHover
     property color pressColor: Themes.currentTheme.elementPress
@@ -16,7 +17,7 @@ Button {
 
     contentItem: Text {
         text: parent.text
-        color: Themes.currentTheme.text
+        color: textColor
         horizontalAlignment: Text.AlignHCenter
         verticalAlignment: Text.AlignVCenter
         font.pixelSize: 14

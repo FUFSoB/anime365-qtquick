@@ -168,6 +168,9 @@ Rectangle {
                     height: parent.height
                     source: anime.image_url
                     fillMode: Image.PreserveAspectFit
+
+                    cache: true
+                    asynchronous: true
                 }
 
                 ScrollView {

@@ -149,6 +149,9 @@ Rectangle {
                                     height: 120
                                     source: model.image_url
                                     fillMode: Image.PreserveAspectFit
+
+                                    cache: true
+                                    asynchronous: true
                                 }
 
                                 Column {

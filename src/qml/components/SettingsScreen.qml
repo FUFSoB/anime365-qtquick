@@ -53,6 +53,7 @@ Rectangle {
                         width: 100
                         height: 36
                         text: "← Back"
+                        textColor: Themes.currentTheme.colorfulText
                         baseColor: Themes.currentTheme.dangerBase
                         hoverColor: Themes.currentTheme.dangerHover
                         pressColor: Themes.currentTheme.dangerPress
@@ -80,6 +81,7 @@ Rectangle {
                         width: 100
                         height: 36
                         text: "Save"
+                        textColor: Themes.currentTheme.colorfulText
                         baseColor: Themes.currentTheme.saveBase
                         hoverColor: Themes.currentTheme.saveHover
                         pressColor: Themes.currentTheme.savePress

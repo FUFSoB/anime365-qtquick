@@ -1,42 +1,45 @@
 pragma Singleton
+import QtCore
 import QtQuick 2.15
+import QtQuick.Controls 2.15
 
 QtObject {
     // Theme definitions
     readonly property var light: {
         return {
             // Base colors
-            background: "#F0F0F0",
-            secondaryBackground: "#E0E0E0",
-            thirdBackground: "#D0D0D0",
+            background: "#FFFFFF",
+            secondaryBackground: "#F5F5F5",
+            thirdBackground: "#EEEEEE",
 
             // Buttons and other elements
-            elementBase: "#E0E0E0",
-            elementHover: "#D0D0D0",
-            elementPress: "#C0C0C0",
+            elementBase: "#E8E8E8",
+            elementHover: "#D8D8D8",
+            elementPress: "#C8C8C8",
 
             // Text
-            text: "black",
-            secondaryText: "#333",
-            placeholderText: "#888",
-            link: "blue",
+            text: "#202020",
+            secondaryText: "#505050",
+            placeholderText: "#757575",
+            link: "#0066CC",
 
             // Text input
-            inputBackground: "#E0E0E0",
-            inputFieldBackground: "#D0D0D0",
+            inputBackground: "#E8E8E8",
+            inputFieldBackground: "#F8F8F8",
 
             // DropDown
-            dropdownElementHover: "#E0E0E0",
+            dropdownElementHover: "#E8E8E8",
 
             // Colorful
-            fail: "#CC3333",
-            dangerBase: "#CC3333",
-            dangerHover: "#CC4444",
-            dangerPress: "#CC5555",
-            success: "#33CC33",
-            saveBase: "#33CC33",
-            saveHover: "#44CC44",
-            savePress: "#55CC55",
+            colorfulText: "#FFFFFF",
+            fail: "#EF5350",
+            dangerBase: "#EF5350",
+            dangerHover: "#E57373",
+            dangerPress: "#EF9A9A",
+            success: "#66BB6A",
+            saveBase: "#66BB6A",
+            saveHover: "#81C784",
+            savePress: "#A5D6A7",
 
             // Additional theme-specific properties
             isDark: false
@@ -46,44 +49,44 @@ QtObject {
     readonly property var dark: {
         return {
             // Base colors
-            background: "#1E1E1E",
-            secondaryBackground: "#2A2A2A",
-            thirdBackground: "#333333",
+            background: "#121212",
+            secondaryBackground: "#1E1E1E",
+            thirdBackground: "#252525",
 
             // Buttons and other elements
-            elementBase: "#333333",
-            elementHover: "#383838",
-            elementPress: "#404040",
+            elementBase: "#2C2C2C",
+            elementHover: "#353535",
+            elementPress: "#3E3E3E",
 
             // Text
-            text: "white",
-            secondaryText: "#CCC",
-            placeholderText: "#888",
-            link: "cyan",
+            text: "#FFFFFF",
+            secondaryText: "#E0E0E0",
+            placeholderText: "#9E9E9E",
+            link: "#64B5F6",
 
             // Text input
-            inputBackground: "#333333",
-            inputFieldBackground: "#404040",
+            inputBackground: "#2C2C2C",
+            inputFieldBackground: "#353535",
 
             // DropDown
-            dropdownElementHover: "#333333",
+            dropdownElementHover: "#353535",
 
             // Colorful
-            fail: "#993333",
-            dangerBase: "#993333",
-            dangerHover: "#994444",
-            dangerPress: "#995555",
-            success: "#339933",
-            saveBase: "#339933",
-            saveHover: "#449944",
-            savePress: "#559955",
+            colorfulText: "#FFFFFF",
+            fail: "#D32F2F",
+            dangerBase: "#D32F2F",
+            dangerHover: "#E53935",
+            dangerPress: "#F44336",
+            success: "#2E7D32",
+            saveBase: "#2E7D32",
+            saveHover: "#388E3C",
+            savePress: "#43A047",
 
-            // Additional theme-specific properties
             isDark: true
         }
     }
 
-    property var currentTheme: light
+    property var currentTheme: Application.styleHints.colorScheme === Qt.ColorScheme.Dark ? dark : light
 
     function setLightTheme() {
         currentTheme = light
