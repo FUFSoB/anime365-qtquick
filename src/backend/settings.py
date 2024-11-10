@@ -13,6 +13,7 @@ class Backend(QObject):
     EmptyValue = object()
 
     token_checked = Signal(bool)
+    shiki_token_checked = Signal(bool)
 
     def __init__(self):
         super().__init__()
@@ -33,7 +34,10 @@ class Backend(QObject):
 
         try:
             with SETTINGS_FILE.open() as file:
-                self._settings = json.load(file)
+                loaded = json.load(file)
+            self._settings = self.get_defaults() | loaded
+            if loaded != self._settings:
+                self.save_settings(self._settings)
         except FileNotFoundError:
             self._settings = {}
 
@@ -45,6 +49,12 @@ class Backend(QObject):
             "mpv_path": shutil.which("mpv") or "",
             "uget_path": shutil.which("uget-gtk") or shutil.which("uget") or "",
             "anime365_token": "",
+            "shikimori_token": "",
+            # not in UI
+            "proxy": "",
+            "anime365_domain": "anime365.ru",
+            "hentai365_domain": "",  # "hentai365.ru",
+            "shikimori_domain": "shikimori.one",
         }
 
     @Slot(dict)
@@ -65,8 +75,11 @@ class Backend(QObject):
     @Slot(str)
     def is_valid_token(self, token):
         self.worker = AsyncFunctionWorker(self.api.check_token, token)
-        self.worker.result_bool.connect(self.handle_token_checked)
+        self.worker.result_bool.connect(self.token_checked.emit)
         self.worker.start()
 
-    def handle_token_checked(self, result):
-        self.token_checked.emit(result)
+    @Slot(str)
+    def is_valid_shiki_token(self, token):
+        self.worker = AsyncFunctionWorker(self.api.shiki_check_token, token)
+        self.worker.result_bool.connect(self.shiki_token_checked.emit)
+        self.worker.start()

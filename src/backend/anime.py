@@ -4,7 +4,6 @@ from PySide6.QtCore import QObject, Slot, Signal
 
 from constants import DOWNLOADS_DIR
 from .utils import AsyncFunctionWorker
-from .net import BASE_URL
 
 from typing import TYPE_CHECKING
 
@@ -80,11 +79,10 @@ class StreamsWorker(AsyncFunctionWorker):
         self.translation_id = translation_id
         self.api = settings.api
 
-    @staticmethod
-    def _create_stream_result(item: dict, subs_url: str | None) -> dict:
+    def _create_stream_result(self, item: dict, subs_url: str | None) -> dict:
         if subs_url:
             if subs_url.startswith("/"):
-                subs_url = BASE_URL + subs_url
+                subs_url = self.api.anime365_url + subs_url
             subs_url = subs_url.removesuffix("?willcache")
         return dict(
             url=item["urls"][0],
