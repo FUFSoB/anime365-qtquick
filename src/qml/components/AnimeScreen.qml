@@ -17,6 +17,11 @@ Rectangle {
 
     property var qualitySelected: ""
 
+    property string animeStatus: "Not in List"
+    property int episodesWatched: 0
+    property int animeScore: 0
+    property int rewatchCount: 0
+
     Component.onCompleted: {
         episodeDropdown.model = anime.episode_list.split(";")
         translations = undefined
@@ -173,30 +178,146 @@ Rectangle {
                     asynchronous: true
                 }
 
-                ScrollView {
-                    width: parent.width - coverImage.width - parent.spacing
+                Column {
+                    width: parent.width - coverImage.width
                     height: parent.height
-                    clip: true
+                    spacing: 12
 
-                    Column {
-                        width: parent.width
-                        height: parent.height
-                        spacing: 8
+                    ScrollView {
+                        width: parent.width - parent.spacing
+                        height: parent.height - trackingControls.height - parent.spacing
+                        clip: true
 
-                        Text {
-                            text: anime.title
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 24
-                            font.bold: true
+                        Column {
                             width: parent.width
+                            height: parent.height
+                            spacing: 8
+
+                            Text {
+                                text: anime.title
+                                color: Themes.currentTheme.text
+                                font.pixelSize: 24
+                                font.bold: true
+                                width: parent.width
+                            }
+
+                            Text {
+                                text: anime.description
+                                color: Themes.currentTheme.secondaryText
+                                font.pixelSize: 14
+                                wrapMode: Text.WordWrap
+                                width: parent.width
+                            }
                         }
+                    }
 
-                        Text {
-                            text: anime.description
-                            color: Themes.currentTheme.secondaryText
-                            font.pixelSize: 14
-                            wrapMode: Text.WordWrap
-                            width: parent.width
+                    Rectangle {
+                        id: trackingControls
+                        width: parent.width
+                        height: 36
+                        color: "transparent"
+
+                        Row {
+                            spacing: 12
+                            height: parent.height
+
+                            // Status dropdown
+                            CustomDropdown {
+                                id: statusDropdown
+                                width: 160
+                                height: parent.height
+                                model: ["Not in List", "Completed", "Watching", "On-Hold", "Dropped", "Plan to Watch"]
+                                placeholder: "Status"
+                                onSelectionChangedIndex: function(value) {
+                                    animeStatus = statusDropdown.selectedValue
+                                }
+                            }
+
+                            // Episodes count
+                            Row {
+                                spacing: 6
+                                height: parent.height
+
+                                Text {
+                                    text: "Episodes"
+                                    color: Themes.currentTheme.text
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                CustomSpinBox {
+                                    id: episodesSpinBox
+                                    value: 0
+                                    from: 0
+                                    to: anime.episodes
+                                    height: parent.height
+                                    width: 80
+                                }
+                            }
+
+                            // Score
+                            Row {
+                                spacing: 6
+                                height: parent.height
+
+                                Text {
+                                    text: "Score"
+                                    color: Themes.currentTheme.text
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                CustomSpinBox {
+                                    id: scoreSpinBox
+                                    value: 0
+                                    from: 0
+                                    to: 10
+                                    height: parent.height
+                                    width: 60
+                                }
+                            }
+
+                            // Rewatches
+                            Row {
+                                spacing: 6
+                                height: parent.height
+
+                                Text {
+                                    text: "Rewatches"
+                                    color: Themes.currentTheme.text
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
+
+                                CustomSpinBox {
+                                    id: rewatchesSpinBox
+                                    value: 0
+                                    from: 0
+                                    to: 999
+                                    height: parent.height
+                                    width: 60
+                                }
+                            }
+
+                            // Apply and Cancel buttons
+                            CustomButton {
+                                text: "Apply"
+                                width: 80
+                                height: parent.height
+                                enabled: false
+                                textColor: Themes.currentTheme.colorfulText
+                                baseColor: Themes.currentTheme.applyBase
+                                hoverColor: Themes.currentTheme.applyHover
+                                pressColor: Themes.currentTheme.applyPress
+                            }
+
+                            CustomButton {
+                                text: "Cancel"
+                                width: 80
+                                height: parent.height
+                                enabled: false
+                                textColor: Themes.currentTheme.colorfulText
+                                baseColor: Themes.currentTheme.cancelBase
+                                hoverColor: Themes.currentTheme.cancelHover
+                                pressColor: Themes.currentTheme.cancelPress
+                            }
                         }
                     }
                 }
@@ -275,13 +396,9 @@ Rectangle {
                     onSelectionChangedIndex: function(value) {
                         urlsContainer.visible = true
                         ugetButton.enabled = true
-                        ugetButton.opacity = 1
                         ugetButtonSubs.enabled = true
-                        ugetButtonSubs.opacity = 1
                         mpvButton.enabled = true
-                        mpvButton.opacity = 1
                         vlcButton.enabled = true
-                        vlcButton.opacity = 1
 
                         videoUrlField.text = ""
                         subsUrlField.text = ""
@@ -362,7 +479,6 @@ Rectangle {
                                     var episodesTotal = episodeDropdown.model.length
                                     animeBackend.launch_uget(url, title, episodesTotal, false)
                                     ugetButton.enabled = false
-                                    ugetButton.opacity = 0.5
                                 }
                             }
                         }
@@ -408,7 +524,6 @@ Rectangle {
                                     var episodesTotal = episodeDropdown.model.length
                                     animeBackend.launch_uget(url, title, episodesTotal, true)
                                     ugetButtonSubs.enabled = false
-                                    ugetButtonSubs.opacity = 0.5
                                 }
                             }
                         }
@@ -428,7 +543,6 @@ Rectangle {
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
                                     animeBackend.launch_mpv(url, subs, title)
                                     mpvButton.enabled = false
-                                    mpvButton.opacity = 0.5
                                 }
                             }
 
@@ -449,7 +563,6 @@ Rectangle {
                                     ugetButton.clicked()
                                     ugetButtonSubs.clicked()
                                     ugetAllButton.enabled = false
-                                    ugetAllButton.opacity = 0.5
                                 }
                             }
                         }

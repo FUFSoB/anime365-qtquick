@@ -12,6 +12,7 @@ QtObject {
             secondaryBackground: "#F5F5F5",
             thirdBackground: "#EEEEEE",
             border: "#E0E0E0",
+            accent: "#2196F3",
 
             // Buttons and other elements
             elementBase: "#E8E8E8",
@@ -34,13 +35,13 @@ QtObject {
             // Colorful
             colorfulText: "#FFFFFF",
             fail: "#EF5350",
-            dangerBase: "#EF5350",
-            dangerHover: "#E57373",
-            dangerPress: "#EF9A9A",
+            cancelBase: "#EF5350",
+            cancelHover: "#E57373",
+            cancelPress: "#EF9A9A",
             success: "#66BB6A",
-            saveBase: "#66BB6A",
-            saveHover: "#81C784",
-            savePress: "#A5D6A7",
+            applyBase: "#66BB6A",
+            applyHover: "#81C784",
+            applyPress: "#A5D6A7",
 
             // Additional theme-specific properties
             isDark: false
@@ -54,6 +55,7 @@ QtObject {
             secondaryBackground: "#1E1E1E",
             thirdBackground: "#252525",
             border: "#2C2C2C",
+            accent: "#64B5F6",
 
             // Buttons and other elements
             elementBase: "#2C2C2C",
@@ -76,13 +78,13 @@ QtObject {
             // Colorful
             colorfulText: "#FFFFFF",
             fail: "#D32F2F",
-            dangerBase: "#D32F2F",
-            dangerHover: "#E53935",
-            dangerPress: "#F44336",
+            cancelBase: "#D32F2F",
+            cancelHover: "#E53935",
+            cancelPress: "#F44336",
             success: "#2E7D32",
-            saveBase: "#2E7D32",
-            saveHover: "#388E3C",
-            savePress: "#43A047",
+            applyBase: "#2E7D32",
+            applyHover: "#388E3C",
+            applyPress: "#43A047",
 
             isDark: true
         }

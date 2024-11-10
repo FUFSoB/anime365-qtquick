@@ -54,9 +54,9 @@ Rectangle {
                         height: 36
                         text: "← Back"
                         textColor: Themes.currentTheme.colorfulText
-                        baseColor: Themes.currentTheme.dangerBase
-                        hoverColor: Themes.currentTheme.dangerHover
-                        pressColor: Themes.currentTheme.dangerPress
+                        baseColor: Themes.currentTheme.cancelBase
+                        hoverColor: Themes.currentTheme.cancelHover
+                        pressColor: Themes.currentTheme.cancelPress
                         onClicked: stackView.pop()
                     }
 
@@ -82,9 +82,9 @@ Rectangle {
                         height: 36
                         text: "Save"
                         textColor: Themes.currentTheme.colorfulText
-                        baseColor: Themes.currentTheme.saveBase
-                        hoverColor: Themes.currentTheme.saveHover
-                        pressColor: Themes.currentTheme.savePress
+                        baseColor: Themes.currentTheme.applyBase
+                        hoverColor: Themes.currentTheme.applyHover
+                        pressColor: Themes.currentTheme.applyPress
 
                         enabled: {
                             var settingsChanged = mpvPathField.text !== settings.mpv_path
@@ -93,7 +93,6 @@ Rectangle {
 
                             return settingsChanged && mpvPathField.isValidPath && ugetPathField.isValidPath && anime365TokenField.isValidToken
                         }
-                        opacity: enabled ? 1.0 : 0.5
 
                         onClicked: {
                             settingsBackend.save_settings({

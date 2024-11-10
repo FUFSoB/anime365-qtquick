@@ -10,6 +10,8 @@ Button {
     property color hoverColor: Themes.currentTheme.elementHover
     property color pressColor: Themes.currentTheme.elementPress
 
+    opacity: enabled ? 1.0 : 0.5
+
     background: Rectangle {
         color: mouseArea.pressed ? pressColor : (mouseArea.containsMouse ? hoverColor : baseColor)
         radius: 4
