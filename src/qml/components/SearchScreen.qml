@@ -5,6 +5,10 @@ Rectangle {
     property string searchQuery: ""
     color: "#1E1E1E"
 
+    Component.onCompleted: {
+        busyIndicator.running = true
+    }
+
     Connections {
         target: searchBackend
 
@@ -13,11 +17,13 @@ Rectangle {
             for (var i = 0; i < results.length; i++) {
                 searchResultsModel.append(results[i])
             }
+            busyIndicator.running = false
         }
 
         function onSearch_error(errorMessage) {
             // Show error message
             console.error("Search error:", errorMessage)
+            busyIndicator.running = false
         }
     }
 
@@ -64,6 +70,7 @@ Rectangle {
                             if (text.trim() !== "") {
                                 searchBackend.perform_search(searchField.text.trim())
                                 searchQuery = text
+                                busyIndicator.running = true
                             }
                         }
                     }
@@ -77,6 +84,7 @@ Rectangle {
                             if (searchField.text.trim() !== "") {
                                 searchBackend.perform_search(searchField.text.trim())
                                 searchQuery = searchField.text
+                                busyIndicator.running = true
                             }
                         }
                     }
@@ -205,6 +213,15 @@ Rectangle {
                         text: "Sort"
                         onClicked: console.log("Sort clicked")
                     }
+                }
+
+                BusyIndicator {
+                    id: busyIndicator
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    running: true
+                    width: 30
+                    height: 30
                 }
             }
         }

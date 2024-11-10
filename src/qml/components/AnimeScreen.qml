@@ -26,6 +26,18 @@ Rectangle {
         qualitySelected = ""
     }
 
+    function populateQualityDropdown() {
+        var current = videoStreams !== undefined ? videoStreams : streams
+        var data = []
+        for (var i = 0; i < current.length; i++) {
+            var item = current[i]
+            var title = item.height + "p"
+            data.push(title)
+        }
+        qualityDropdown.model = data
+        qualityDropdown.visible = true
+    }
+
     Connections {
         target: animeBackend
 
@@ -46,7 +58,10 @@ Rectangle {
                         break
                     }
                 }
+                return
             }
+
+            busyIndicator.running = false
         }
 
         function onStreams_got(results, isForOtherVideo) {
@@ -56,14 +71,7 @@ Rectangle {
                 videoStreams = results
             }
 
-            var data = []
-            for (var i = 0; i < results.length; i++) {
-                var item = results[i]
-                var title = item.height + "p"
-                data.push(title)
-            }
-            qualityDropdown.model = data
-            qualityDropdown.visible = true
+            populateQualityDropdown()
 
             if (!isForOtherVideo) {
                 var data = ["Default"]
@@ -81,6 +89,7 @@ Rectangle {
                             break
                         }
                     }
+                    return
                 }
 
                 if (videoStreamSelected === "" && qualitySelected !== "") {
@@ -103,6 +112,8 @@ Rectangle {
                     }
                 }
             }
+
+            busyIndicator.running = false
         }
     }
 
@@ -132,6 +143,15 @@ Rectangle {
                         text: "← Back"
                         onClicked: stackView.pop()
                     }
+                }
+
+                BusyIndicator {
+                    id: busyIndicator
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    running: false
+                    width: 30
+                    height: 30
                 }
             }
 
@@ -193,6 +213,8 @@ Rectangle {
                         qualityDropdown.visible = false
                         urlsContainer.visible = false
 
+                        busyIndicator.running = true
+
                         var split = anime.episode_ids.split(";")
                         animeBackend.select_episode(split[value])
                     }
@@ -207,6 +229,8 @@ Rectangle {
                         videoSourceDropdown.visible = false
                         qualityDropdown.visible = false
                         urlsContainer.visible = false
+
+                        busyIndicator.running = true
 
                         var item = translations[value]
                         animeBackend.get_streams(item.id, false)
@@ -223,9 +247,19 @@ Rectangle {
                         qualityDropdown.visible = false
                         urlsContainer.visible = false
 
+                        if (value === 0) {
+                            videoStreams = streams
+                            videoStreamSelected = ""
+                            populateQualityDropdown()
+                            return
+                        } else {
+                            videoStreamSelected = videoSourceDropdown.selectedValue
+                        }
+
+                        busyIndicator.running = true
+
                         var item = translations[value - 1]
                         animeBackend.get_streams(item.id, true)
-                        videoStreamSelected = videoSourceDropdown.selectedValue
                     }
                 }
 
@@ -245,6 +279,9 @@ Rectangle {
                         vlcButton.enabled = true
                         vlcButton.opacity = 1
 
+                        videoUrlField.text = ""
+                        subsUrlField.text = ""
+
                         if (videoStreams !== undefined) {
                             videoUrlField.text = videoStreams[value].url
                         } else {
@@ -256,7 +293,6 @@ Rectangle {
                             subsUrlField.text = streams[0].subs_url
                         } else {
                             subsRow.visible = false
-                            subsUrlField.text = ""
                         }
 
                         qualitySelected = qualityDropdown.selectedValue
@@ -397,6 +433,20 @@ Rectangle {
                                 width: 80
                                 height: parent.height
                                 text: "vlc"
+                                visible: false
+                            }
+
+                            CustomButton {
+                                id: ugetAllButton
+                                width: 80
+                                height: parent.height
+                                text: "UGet All"
+                                onClicked: {
+                                    ugetButton.clicked()
+                                    ugetButtonSubs.clicked()
+                                    ugetAllButton.enabled = false
+                                    ugetAllButton.opacity = 0.5
+                                }
                             }
                         }
                     }
