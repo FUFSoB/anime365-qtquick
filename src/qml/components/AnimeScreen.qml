@@ -7,11 +7,23 @@ Rectangle {
 
     property var anime: {}
     property var translations: {}
+
     property var streams: {}
+    property var streamSelected: ""
+
     property var videoStreams: {}
+    property var videoStreamSelected: ""
+
+    property var qualitySelected: ""
 
     Component.onCompleted: {
         episodeDropdown.model = anime.episode_list.split(";")
+        translations = undefined
+        streams = undefined
+        streamSelected = ""
+        videoStreams = undefined
+        videoStreamSelected = ""
+        qualitySelected = ""
     }
 
     Connections {
@@ -21,17 +33,29 @@ Rectangle {
             translations = results
             var data = []
             for (var i = 0; i < results.length; i++) {
-                var item = results[i]
-                var info = item.language + ", " + item.kind + ", " + item.quality_type + ", " + item.height + "p"
-                var title = "[" + info + "] " + item.authors_string
-                data.push(title)
+                data.push(results[i].full_title)
             }
             sourceDropdown.model = data
             sourceDropdown.visible = true
+
+            if (streamSelected !== "") {
+                for (var i = 0; i < translations.length; i++) {
+                    var item = translations[i]
+                    if (item.full_title === streamSelected) {
+                        sourceDropdown.changeSelection(i)
+                        break
+                    }
+                }
+            }
         }
 
-        function onStreams_got(results) {
-            streams = results
+        function onStreams_got(results, isForOtherVideo) {
+            if (!isForOtherVideo) {
+                streams = results
+            } else {
+                videoStreams = results
+            }
+
             var data = []
             for (var i = 0; i < results.length; i++) {
                 var item = results[i]
@@ -40,6 +64,45 @@ Rectangle {
             }
             qualityDropdown.model = data
             qualityDropdown.visible = true
+
+            if (!isForOtherVideo) {
+                var data = ["Default"]
+                for (var i = 0; i < translations.length; i++) {
+                    data.push(translations[i].full_title)
+                }
+                videoSourceDropdown.model = data
+                videoSourceDropdown.visible = true
+
+                if (videoStreamSelected !== "") {
+                    for (var i = 0; i < translations.length; i++) {
+                        var item = translations[i]
+                        if (item.full_title === videoStreamSelected) {
+                            videoSourceDropdown.changeSelection(i + 1)
+                            break
+                        }
+                    }
+                }
+
+                if (videoStreamSelected === "" && qualitySelected !== "") {
+                    for (var i = 0; i < streams.length; i++) {
+                        var item = streams[i]
+                        if (item.height + "p" === qualitySelected) {
+                            qualityDropdown.changeSelection(i)
+                            break
+                        }
+                    }
+                }
+            } else {
+                if (qualitySelected !== "") {
+                    for (var i = 0; i < videoStreams.length; i++) {
+                        var item = videoStreams[i]
+                        if (item.height + "p" === qualitySelected) {
+                            qualityDropdown.changeSelection(i)
+                            break
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -147,6 +210,7 @@ Rectangle {
 
                         var item = translations[value]
                         animeBackend.get_streams(item.id, false)
+                        streamSelected = sourceDropdown.selectedValue
                     }
                 }
 
@@ -155,12 +219,13 @@ Rectangle {
                     visible: false
                     width: parent.width
                     placeholder: "Select Different Video Source"
-                    onSelectionChanged: function(value) {
+                    onSelectionChangedIndex: function(value) {
                         qualityDropdown.visible = false
                         urlsContainer.visible = false
 
                         var item = translations[value - 1]
                         animeBackend.get_streams(item.id, true)
+                        videoStreamSelected = videoSourceDropdown.selectedValue
                     }
                 }
 
@@ -171,6 +236,14 @@ Rectangle {
                     placeholder: "Select Quality"
                     onSelectionChangedIndex: function(value) {
                         urlsContainer.visible = true
+                        ugetButton.enabled = true
+                        ugetButton.opacity = 1
+                        ugetButtonSubs.enabled = true
+                        ugetButtonSubs.opacity = 1
+                        mpvButton.enabled = true
+                        mpvButton.opacity = 1
+                        vlcButton.enabled = true
+                        vlcButton.opacity = 1
 
                         if (videoStreams !== undefined) {
                             videoUrlField.text = videoStreams[value].url
@@ -185,6 +258,8 @@ Rectangle {
                             subsRow.visible = false
                             subsUrlField.text = ""
                         }
+
+                        qualitySelected = qualityDropdown.selectedValue
                     }
                 }
 
@@ -213,7 +288,7 @@ Rectangle {
 
                             TextField {
                                 id: videoUrlField
-                                width: parent.width - copyButton.width - ugetButton.width - parent.spacing
+                                width: parent.width - copyButton.width - ugetButton.width - parent.spacing * 2
                                 height: parent.height
                                 readOnly: true
                                 color: "white"
@@ -246,6 +321,8 @@ Rectangle {
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
                                     var episodesTotal = episodeDropdown.model.length
                                     animeBackend.launch_uget(url, title, episodesTotal, false)
+                                    ugetButton.enabled = false
+                                    ugetButton.opacity = 0.5
                                 }
                             }
                         }
@@ -259,7 +336,7 @@ Rectangle {
 
                             TextField {
                                 id: subsUrlField
-                                width: parent.width - copyButtonSubs.width - ugetButtonSubs.width - parent.spacing
+                                width: parent.width - copyButtonSubs.width - ugetButtonSubs.width - parent.spacing * 2
                                 height: parent.height
                                 readOnly: true
                                 color: "white"
@@ -290,6 +367,8 @@ Rectangle {
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
                                     var episodesTotal = episodeDropdown.model.length
                                     animeBackend.launch_uget(url, title, episodesTotal, true)
+                                    ugetButtonSubs.enabled = false
+                                    ugetButtonSubs.opacity = 0.5
                                 }
                             }
                         }
@@ -299,6 +378,7 @@ Rectangle {
                             height: 36
 
                             CustomButton {
+                                id: mpvButton
                                 width: 80
                                 height: parent.height
                                 text: "mpv"
@@ -307,10 +387,13 @@ Rectangle {
                                     var subs = subsUrlField.text
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
                                     animeBackend.launch_mpv(url, subs, title)
+                                    mpvButton.enabled = false
+                                    mpvButton.opacity = 0.5
                                 }
                             }
 
                             CustomButton {
+                                id: vlcButton
                                 width: 80
                                 height: parent.height
                                 text: "vlc"

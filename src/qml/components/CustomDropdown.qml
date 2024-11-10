@@ -210,20 +210,25 @@ Item {
                     // Scroll up
                     if (selectedIndex > 0) {
                         selectedIndex--
-                        selectedValue = dropdown.model[selectedIndex]
-                        selectionChanged(selectedValue)
-                        selectionChangedIndex(selectedIndex)
+                        changeSelection(selectedIndex)
                     }
                 } else {
                     // Scroll down
                     if (selectedIndex < dropdown.model.length - 1) {
                         selectedIndex++
-                        selectedValue = dropdown.model[selectedIndex]
-                        selectionChanged(selectedValue)
-                        selectionChangedIndex(selectedIndex)
+                        changeSelection(selectedIndex)
                     }
                 }
             }
+        }
+    }
+
+    function changeSelection(index) {
+        if (index >= 0 && index < dropdown.model.length) {
+            selectedIndex = index
+            selectedValue = dropdown.model[index]
+            selectionChanged(selectedValue)
+            selectionChangedIndex(selectedIndex)
         }
     }
 

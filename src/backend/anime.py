@@ -26,14 +26,22 @@ class EpisodeWorker(AsyncFunctionWorker):
         authors: list[str] = item["authorsList"]
         authors_string = ", ".join(authors) or "—"
 
+        language = item["typeLang"]
+        kind = item["typeKind"]
+        quality_type = item["qualityType"]
+        height = item["height"]
+
+        full_title = f"[{language}, {kind}, {quality_type}, {height}p] {authors_string}"
+
         return dict(
             id=item["id"],
             authors=authors,
             authors_string=authors_string,
-            language=item["typeLang"],
-            kind=item["typeKind"],
-            quality_type=item["qualityType"],
-            height=item["height"],
+            language=language,
+            kind=kind,
+            quality_type=quality_type,
+            height=height,
+            full_title=full_title,
         )
 
     @staticmethod
@@ -101,7 +109,7 @@ class StreamsWorker(AsyncFunctionWorker):
 
 class Backend(QObject):
     translations_got = Signal(list)
-    streams_got = Signal(list)
+    streams_got = Signal(list, bool)
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
@@ -119,7 +127,9 @@ class Backend(QObject):
     @Slot(int, bool)
     def get_streams(self, translation_id: int, is_for_other_video: bool):
         self.worker = StreamsWorker(translation_id, self.settings)
-        self.worker.finished.connect(self.streams_got.emit)
+        self.worker.finished.connect(
+            lambda result: self.streams_got.emit(result, is_for_other_video)
+        )
         self.worker.error.connect(self.streams_got.emit)
         self.worker.start()
 
