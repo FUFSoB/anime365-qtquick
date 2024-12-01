@@ -118,34 +118,42 @@ class Backend(QObject):
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
         self.settings = settings
-        self.worker = None
+        self.workers = []
         self.api = settings.api
 
     @Slot(int)
     def get_episodes(self, anime_id: int):
-        self.worker = GetEpisodesWorker(anime_id, self.settings)
-        self.worker.result_dict.connect(self.episodes_got.emit)
-        self.worker.start()
+        worker = GetEpisodesWorker(anime_id, self.settings)
+        self.workers.append(worker)
+        worker.result_dict.connect(self.episodes_got.emit)
+        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.start()
 
     @Slot(int)
     def select_episode(self, episode_id: int):
-        self.worker = EpisodeWorker(episode_id, self.settings)
-        self.worker.result_list.connect(self.translations_got.emit)
-        self.worker.start()
+        worker = EpisodeWorker(episode_id, self.settings)
+        self.workers.append(worker)
+        worker.result_list.connect(self.translations_got.emit)
+        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.start()
 
     @Slot(int, bool)
     def get_streams(self, translation_id: int, is_for_other_video: bool):
-        self.worker = StreamsWorker(translation_id, self.settings)
-        self.worker.result_list.connect(
+        worker = StreamsWorker(translation_id, self.settings)
+        self.workers.append(worker)
+        worker.result_list.connect(
             lambda result: self.streams_got.emit(result, is_for_other_video)
         )
-        self.worker.start()
+        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.start()
 
     @Slot(str)
     def get_subtitle_fonts(self, url: str):
-        self.worker = AsyncFunctionWorker(get_subtitle_fonts, url)
-        self.worker.result_list.connect(self.subtitle_fonts_got)
-        self.worker.start()
+        worker = AsyncFunctionWorker(get_subtitle_fonts, url)
+        self.workers.append(worker)
+        worker.result_list.connect(self.subtitle_fonts_got)
+        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.start()
 
     @Slot(str, str, str)
     def launch_mpv(self, url: str, subs_url: str, title: str):

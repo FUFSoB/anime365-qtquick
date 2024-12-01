@@ -33,6 +33,7 @@ class AsyncFunctionWorker(QThread):
     result_list = Signal(list)
     result_dict = Signal(dict)
 
+    completed = Signal()
     error = Signal(str)
 
     def __init__(self, func, *args, **kwargs):
@@ -47,6 +48,8 @@ class AsyncFunctionWorker(QThread):
         except Exception:
             self.error.emit(traceback.format_exc())
             return
+
+        self.completed.emit()
 
         if isinstance(result, bool):
             self.result_bool.emit(result)
