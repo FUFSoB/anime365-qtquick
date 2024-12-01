@@ -1,4 +1,3 @@
 pyside6
 aiohttp
 aiohttp_socks
-json5

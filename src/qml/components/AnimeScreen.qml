@@ -32,10 +32,10 @@ Rectangle {
         }
         translations = undefined
         streams = undefined
-        streamSelected = anime.translation
+        streamSelected = anime.translation || ""
         videoStreams = undefined
-        videoStreamSelected = anime.alt_video
-        qualitySelected = anime.quality
+        videoStreamSelected = anime.alt_video || ""
+        qualitySelected = anime.quality || ""
         if (anime.episode) {
             for (var i = 0; i < episodeDropdown.model.length; i++) {
                 if (episodeDropdown.model[i] === anime.episode) {
@@ -70,12 +70,12 @@ Rectangle {
                 for (var i = 0; i < episodeDropdown.model.length; i++) {
                     if (episodeDropdown.model[i] === anime.episode) {
                         episodeDropdown.changeSelection(i)
-                        break
+                        return
                     }
                 }
-            } else {
-                busyIndicator.running = false
             }
+
+            busyIndicator.running = false
         }
 
         function onTranslations_got(results) {
@@ -92,10 +92,9 @@ Rectangle {
                     var item = translations[i]
                     if (item.full_title === streamSelected) {
                         sourceDropdown.changeSelection(i)
-                        break
+                        return
                     }
                 }
-                return
             }
 
             busyIndicator.running = false

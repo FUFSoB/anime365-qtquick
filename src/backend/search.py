@@ -67,6 +67,7 @@ class Worker(AsyncFunctionWorker):
             results = [
                 self._create_search_result(item)
                 for item in sorted(raw_results, key=lambda x: x["year"], reverse=True)
+                if item["isActive"] != -1
             ]
             self.finished.emit(results)
         except Exception as e:

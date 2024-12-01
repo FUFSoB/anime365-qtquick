@@ -77,6 +77,7 @@ ListView {
             height: contextMenuListView.contentHeight
             padding: 0
             closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+            focus: true
 
             property var menuForItem: null
 
@@ -150,7 +151,7 @@ ListView {
                         Text {
                             Layout.fillWidth: true
                             text: modelData.title
-                            color: Themes.currentTheme.text
+                            color: modelData.color || Themes.currentTheme.text
                             font.pixelSize: 14
                             verticalAlignment: Text.AlignVCenter
                         }

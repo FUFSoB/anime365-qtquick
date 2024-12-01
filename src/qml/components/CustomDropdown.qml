@@ -11,7 +11,6 @@ Item {
     property string placeholder: "Select option"
     property bool isOpen: false
     property int selectedIndex: -1
-    property string searchText: ""
 
     signal selectionChanged(string value)
     signal selectionChangedIndex(int value)
@@ -36,8 +35,8 @@ Item {
     }
 
     property var filteredModel: {
-        if (searchText === "") return model;
-        return model.filter(item => fuzzyMatch(searchText, item));
+        if (searchInput.text === "") return model;
+        return model.filter(item => fuzzyMatch(searchInput.text, item));
     }
 
     Rectangle {
@@ -77,7 +76,6 @@ Item {
         MouseArea {
             anchors.fill: parent
             onClicked: {
-                searchText = ""
                 dropdownPopup.open()
                 if (selectedIndex >= 0) {
                     listView.positionViewAtIndex(selectedIndex, ListView.Center)
@@ -106,7 +104,6 @@ Item {
         onClosed: {
             dropdown.isOpen = false
             searchInput.text = ""
-            searchText = ""
         }
 
         Column {
@@ -131,20 +128,17 @@ Item {
                         color: Themes.currentTheme.inputFieldBackground
                         radius: 2
                     }
-                    onTextChanged: {
-                        searchText = text
-                    }
 
                     Keys.onPressed: function(event) {
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-                            if (filteredModel.length > 0) {
+                            if (filteredModel.length > 0 && searchInput.text !== "") {
                                 const matchedItem = filteredModel[0]
                                 dropdown.selectedValue = matchedItem
                                 dropdown.selectedIndex = dropdown.model.indexOf(matchedItem)
                                 dropdown.selectionChanged(matchedItem)
                                 dropdown.selectionChangedIndex(dropdown.selectedIndex)
-                                dropdownPopup.close()
                             }
+                            dropdownPopup.close()
                             event.accepted = true
                         }
                     }

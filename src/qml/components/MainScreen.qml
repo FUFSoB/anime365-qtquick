@@ -15,6 +15,13 @@ Rectangle {
     }
 
     Component.onCompleted: {
+        historyList.addContextMenuItem({
+            title: "Remove Item",
+            action: "delete",
+            group: "dangerous",
+            color: Themes.currentTheme.cancelBase
+        })
+
         updateHistory()
     }
 
@@ -122,7 +129,17 @@ Rectangle {
                     id: historyModel
                 }
                 onItemClicked: (item) => {
-                    stackView.push(animeScreen, { anime: item })
+                    stackView.push(animeScreen, { anime: Object.assign({}, item) })
+                }
+                onContextMenuAction: function(action, item) {
+                    switch(action) {
+                        case "goto_details":
+                            searchResultsList.onItemClicked(item)
+                            break
+                        case "delete":
+                            databaseBackend.delete(item.id)
+                            break
+                    }
                 }
             }
         }
