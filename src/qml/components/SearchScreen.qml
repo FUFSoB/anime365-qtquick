@@ -23,7 +23,6 @@ Rectangle {
         }
 
         function onSearch_error(errorMessage) {
-            // Show error message
             console.error("Search error:", errorMessage)
             busyIndicator.running = false
         }
@@ -38,7 +37,6 @@ Rectangle {
             anchors.fill: parent
             spacing: 12
 
-            // Header with back button and search query
             Rectangle {
                 width: parent.width
                 height: 36
@@ -94,13 +92,11 @@ Rectangle {
                 }
             }
 
-            // Search results list
             Row {
                 width: parent.width
-                height: parent.height - 96  // Account for header and bottom controls
+                height: parent.height - 96
                 spacing: 12
 
-                // Search results list
                 Rectangle {
                     width: parent.width
                     height: parent.height
@@ -128,7 +124,6 @@ Rectangle {
                 }
             }
 
-            // Bottom controls
             Rectangle {
                 width: parent.width
                 height: 36

@@ -35,13 +35,11 @@ Item {
         return searchIndex === search.length;
     }
 
-    // Filtered model for search
     property var filteredModel: {
         if (searchText === "") return model;
         return model.filter(item => fuzzyMatch(searchText, item));
     }
 
-    // Main button
     Rectangle {
         id: header
         width: parent.width
@@ -88,7 +86,6 @@ Item {
         }
     }
 
-    // Popup for dropdown items
     Popup {
         id: dropdownPopup
         width: parent.width
@@ -116,7 +113,6 @@ Item {
             anchors.fill: parent
             spacing: 0
 
-            // Search input
             Rectangle {
                 id: searchRow
                 width: parent.width
@@ -139,11 +135,9 @@ Item {
                         searchText = text
                     }
 
-                    // Handle Enter key
                     Keys.onPressed: function(event) {
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
                             if (filteredModel.length > 0) {
-                                // Select first matching item
                                 const matchedItem = filteredModel[0]
                                 dropdown.selectedValue = matchedItem
                                 dropdown.selectedIndex = dropdown.model.indexOf(matchedItem)
@@ -158,7 +152,6 @@ Item {
 
             }
 
-            // Scrollable dropdown list
             ListView {
                 id: listView
                 width: parent.width
@@ -199,7 +192,6 @@ Item {
         }
     }
 
-    // Handle wheel events for changing selection
     MouseArea {
         anchors.fill: parent
         acceptedButtons: Qt.NoButton
@@ -232,7 +224,6 @@ Item {
         }
     }
 
-    // Update when model changes
     onModelChanged: {
         selectedValue = null
         selectedIndex = -1

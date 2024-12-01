@@ -12,7 +12,6 @@ Rectangle {
         anchors.margins: 12
         color: "transparent"
 
-        // Top controls column
         Column {
             id: topControls
             anchors.top: parent.top

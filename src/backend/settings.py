@@ -27,6 +27,10 @@ class Backend(QObject):
             raise AttributeError(f"Attribute {item} not found")
         return value
 
+    @Slot(str, result=str)
+    def get(self, key: str) -> str:
+        return self.get_settings().get(key, "")
+
     @Slot(result=dict)
     def get_settings(self):
         if self._settings is not None:
@@ -52,9 +56,9 @@ class Backend(QObject):
             "shikimori_token": "",
             # not in UI
             "proxy": "",
-            "anime365_domain": "anime365.ru",
-            "hentai365_domain": "",  # "hentai365.ru",
-            "shikimori_domain": "shikimori.one",
+            "anime365_site": "https://anime365.ru",
+            "hentai365_site": "https://hentai365.ru",
+            "shikimori_site": "https://shikimori.one",
         }
 
     @Slot(dict)

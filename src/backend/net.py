@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 class Api:
     def __init__(self, settings: "SettingsBackend"):
         self.settings = settings
-        self.anime365_url = f"https://{self.settings.anime365_domain}"
-        self.hentai365_url = f"https://{self.settings.hentai365_domain}"
-        self.shikimori_url = f"https://{self.settings.shikimori_domain}"
+        self.anime365_url = self.settings.anime365_site
+        self.hentai365_url = self.settings.hentai365_site
+        self.shikimori_url = self.settings.shikimori_site
 
     async def _get_connector(self):
         if self.settings.proxy:
@@ -34,7 +34,7 @@ class Api:
 
     async def find_anime(self, query: str) -> list[dict]:
         params = [(f"{self.anime365_url}/api/series", query, False)]
-        if self.settings.hentai365_domain:
+        if self.settings.hentai365_site:
             params.append((f"{self.hentai365_url}/api/series", query, True))
         tasks = []
         async with asyncio.TaskGroup() as tg:
@@ -91,6 +91,18 @@ class Api:
                 return (await response.json())["data"]
 
     # Shikimori API
+
+    async def shiki_refresh_token(self, code: str) -> str:
+        pass
+
+    async def shiki_auth(self, token: str) -> bool:
+        url = f"{self.shikimori_url}/api/users/whoami"
+        headers = {"Authorization": f"Bearer {token}"}
+        async with aiohttp.ClientSession(
+            connector=await self._get_connector()
+        ) as session:
+            async with session.get(url, headers=headers) as response:
+                return response.status == 200
 
     async def shiki_check_token(self, token: str) -> bool:
         pass

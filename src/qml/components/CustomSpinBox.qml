@@ -4,15 +4,13 @@ import Themes
 
 SpinBox {
     id: control
-    editable: true // Makes it keyboard editable
+    editable: true
 
-    // Style the SpinBox
     background: Rectangle {
         color: Themes.currentTheme.inputBackground
         radius: 4
     }
 
-    // Style the input field
     contentItem: TextInput {
         z: 2
         text: control.textFromValue(control.value, control.locale)
@@ -27,7 +25,6 @@ SpinBox {
         validator: control.validator
         inputMethodHints: Qt.ImhFormattedNumbersOnly
 
-        // Optional: Select all text when focused
         onFocusChanged: {
             if (focus) {
                 selectAll()
@@ -35,7 +32,6 @@ SpinBox {
         }
     }
 
-    // Style up/down buttons
     up.indicator: Rectangle {
         x: parent.width - width
         height: parent.height/2
@@ -69,7 +65,6 @@ SpinBox {
         }
     }
 
-    // Handle wheel events for scrolling
     MouseArea {
         anchors.fill: parent
         onWheel: (wheel) => {
@@ -83,20 +78,17 @@ SpinBox {
                 }
             }
         }
-        // Pass through other mouse events
         propagateComposedEvents: true
         onPressed: (mouse) => mouse.accepted = false
         onReleased: (mouse) => mouse.accepted = false
         onClicked: (mouse) => mouse.accepted = false
     }
 
-    // Optional: Wrap value within bounds when editing
     validator: IntValidator {
         bottom: control.from
         top: control.to
     }
 
-    // Optional: Ensure value stays within bounds when editing
     onValueModified: {
         if (value > to) value = to
         if (value < from) value = from

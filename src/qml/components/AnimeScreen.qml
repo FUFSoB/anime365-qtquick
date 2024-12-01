@@ -132,7 +132,6 @@ Rectangle {
             anchors.fill: parent
             spacing: 12
 
-            // Header
             Rectangle {
                 width: parent.width
                 height: 36
@@ -161,7 +160,6 @@ Rectangle {
                 }
             }
 
-            // Image and title section
             Row {
                 width: parent.width
                 height: 200
@@ -221,7 +219,6 @@ Rectangle {
                             spacing: 12
                             height: parent.height
 
-                            // Status dropdown
                             CustomDropdown {
                                 id: statusDropdown
                                 width: 160
@@ -233,7 +230,6 @@ Rectangle {
                                 }
                             }
 
-                            // Episodes count
                             Row {
                                 spacing: 6
                                 height: parent.height
@@ -254,7 +250,6 @@ Rectangle {
                                 }
                             }
 
-                            // Score
                             Row {
                                 spacing: 6
                                 height: parent.height
@@ -275,7 +270,6 @@ Rectangle {
                                 }
                             }
 
-                            // Rewatches
                             Row {
                                 spacing: 6
                                 height: parent.height
@@ -296,7 +290,6 @@ Rectangle {
                                 }
                             }
 
-                            // Apply and Cancel buttons
                             CustomButton {
                                 text: "Apply"
                                 width: 80
@@ -323,7 +316,6 @@ Rectangle {
                 }
             }
 
-            // Controls section
             Column {
                 width: parent.width
                 spacing: 12
@@ -397,6 +389,7 @@ Rectangle {
                         urlsContainer.visible = true
                         ugetButton.enabled = true
                         ugetButtonSubs.enabled = true
+                        ugetAllButton.enabled = true
                         mpvButton.enabled = true
                         vlcButton.enabled = true
 
@@ -420,7 +413,6 @@ Rectangle {
                     }
                 }
 
-                // Video URLs section
                 Rectangle {
                     id: urlsContainer
                     visible: false
@@ -437,7 +429,6 @@ Rectangle {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: 8
 
-                        // Video URL row
                         Row {
                             width: parent.width
                             height: 36
@@ -483,7 +474,6 @@ Rectangle {
                             }
                         }
 
-                        // Subtitles URL row
                         Row {
                             id: subsRow
                             width: parent.width
@@ -537,12 +527,19 @@ Rectangle {
                                 width: 80
                                 height: parent.height
                                 text: "mpv"
+                                Timer {
+                                    id: mpvTimer
+                                    interval: 5000
+                                    repeat: false
+                                    onTriggered: mpvButton.enabled = true
+                                }
                                 onClicked: {
                                     var url = videoUrlField.text
                                     var subs = subsUrlField.text
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
                                     animeBackend.launch_mpv(url, subs, title)
                                     mpvButton.enabled = false
+                                    mpvTimer.start()
                                 }
                             }
 
@@ -556,9 +553,9 @@ Rectangle {
 
                             CustomButton {
                                 id: ugetAllButton
-                                width: 80
+                                width: 120
                                 height: parent.height
-                                text: "UGet All"
+                                text: "UGet Episode"
                                 onClicked: {
                                     ugetButton.clicked()
                                     ugetButtonSubs.clicked()

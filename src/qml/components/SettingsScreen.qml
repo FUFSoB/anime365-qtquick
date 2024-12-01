@@ -9,7 +9,6 @@ Rectangle {
     property var defaults: {}
 
     Component.onCompleted: {
-        // Load settings when component is created
         settings = settingsBackend.get_settings()
         defaults = settingsBackend.get_defaults()
         mpvPathField.text = settings.mpv_path || defaults.mpv_path
@@ -38,7 +37,6 @@ Rectangle {
             anchors.fill: parent
             spacing: 12
 
-            // Header with back button
             Rectangle {
                 width: parent.width
                 height: 36
@@ -106,7 +104,6 @@ Rectangle {
                 }
             }
 
-            // MPV path setting
             Column {
                 width: parent.width
                 spacing: 8
@@ -152,7 +149,6 @@ Rectangle {
                 }
             }
 
-            // UGet path setting
             Column {
                 width: parent.width
                 spacing: 8
@@ -198,13 +194,12 @@ Rectangle {
                 }
             }
 
-            // Anime365 Token setting
             Column {
                 width: parent.width
                 spacing: 8
 
                 Text {
-                    text: "Anime365 token (<a href='https://anime365.ru/api/accessToken?app=pvb'>Get token</a>)"
+                    text: `Anime365 token (<a href='${settingsBackend.get("anime365_site")}/api/accessToken?app=pvb'>Get token</a>)`
                     color: Themes.currentTheme.text
                     font.pixelSize: 14
                     textFormat: Text.RichText
