@@ -6,6 +6,26 @@ import Themes
 Rectangle {
     color: Themes.currentTheme.background
 
+    function updateHistory() {
+        var history = databaseBackend.get_list()
+        historyModel.clear()
+        for (var i = 0; i < history.length; i++) {
+            historyModel.append(history[i])
+        }
+    }
+
+    Component.onCompleted: {
+        updateHistory()
+    }
+
+    Connections {
+        target: databaseBackend
+
+        function onList_updated() {
+            updateHistory()
+        }
+    }
+
     Rectangle {
         id: mainContent
         anchors.fill: parent

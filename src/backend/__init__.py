@@ -1,8 +1,9 @@
 import subprocess
 from PySide6.QtCore import QObject, Slot
 
-from .search import Backend as SearchBackend
 from .settings import Backend as SettingsBackend
+from .database import Backend as DatabaseBackend
+from .search import Backend as SearchBackend
 from .anime import Backend as AnimeBackend
 
 
@@ -21,6 +22,7 @@ class Backend(QObject):
 
 backends = {
     "settingsBackend": settings,
+    "databaseBackend": DatabaseBackend(),
     "searchBackend": SearchBackend(settings),
     "animeBackend": AnimeBackend(settings),
     "backend": Backend(settings),

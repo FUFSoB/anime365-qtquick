@@ -23,13 +23,27 @@ Rectangle {
     property int rewatchCount: 0
 
     Component.onCompleted: {
-        episodeDropdown.model = anime.episode_list.split(";")
+        if (anime.episode_list === undefined) {
+            busyIndicator.running = true
+            episodeDropdown.visible = false
+            animeBackend.get_episodes(anime.id)
+        } else {
+            episodeDropdown.model = anime.episode_list.split(";")
+        }
         translations = undefined
         streams = undefined
-        streamSelected = ""
+        streamSelected = anime.translation
         videoStreams = undefined
-        videoStreamSelected = ""
-        qualitySelected = ""
+        videoStreamSelected = anime.alt_video
+        qualitySelected = anime.quality
+        if (anime.episode) {
+            for (var i = 0; i < episodeDropdown.model.length; i++) {
+                if (episodeDropdown.model[i] === anime.episode) {
+                    episodeDropdown.changeSelection(i)
+                    break
+                }
+            }
+        }
     }
 
     function populateQualityDropdown() {
@@ -46,6 +60,23 @@ Rectangle {
 
     Connections {
         target: animeBackend
+
+        function onEpisodes_got(result) {
+            anime.episode_list = result.episode_list
+            anime.episode_ids = result.episode_ids
+            episodeDropdown.model = result.episode_list.split(";")
+            episodeDropdown.visible = true
+            if (anime.episode) {
+                for (var i = 0; i < episodeDropdown.model.length; i++) {
+                    if (episodeDropdown.model[i] === anime.episode) {
+                        episodeDropdown.changeSelection(i)
+                        break
+                    }
+                }
+            } else {
+                busyIndicator.running = false
+            }
+        }
 
         function onTranslations_got(results) {
             translations = results
@@ -244,7 +275,7 @@ Rectangle {
                                     id: episodesSpinBox
                                     value: 0
                                     from: 0
-                                    to: anime.episodes
+                                    to: anime.total_episodes
                                     height: parent.height
                                     width: 80
                                 }
@@ -410,6 +441,13 @@ Rectangle {
                         }
 
                         qualitySelected = qualityDropdown.selectedValue
+
+                        databaseBackend.update(anime.id, {
+                            episode: episodeDropdown.selectedValue,
+                            translation: streamSelected,
+                            alt_video: videoStreamSelected,
+                            quality: qualitySelected
+                        })
                     }
                 }
 

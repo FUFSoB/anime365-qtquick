@@ -166,3 +166,4 @@ cython_debug/
 *.old
 logs/
 settings.json
+database.json

@@ -200,7 +200,7 @@ ListView {
                 }
 
                 Text {
-                    text: `Episodes: ${model.episodes}`
+                    text: `Episodes: ${model.total_episodes}`
                     color: Themes.currentTheme.text
                     font.pixelSize: 14
                 }

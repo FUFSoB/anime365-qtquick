@@ -11,6 +11,28 @@ if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
 
 
+class GetEpisodesWorker(AsyncFunctionWorker):
+    finished = Signal(dict)
+    error = Signal(str)
+
+    def __init__(self, anime_id: int, settings: "SettingsBackend"):
+        super().__init__(self.perform_get_episodes_operation)
+        self.anime_id = anime_id
+        self.api = settings.api
+
+    async def perform_get_episodes_operation(self):
+        try:
+            result = await self.api.get_episodes(self.anime_id)
+            self.finished.emit(
+                dict(
+                    episode_list=";".join(i["episodeFull"] for i in result),
+                    episode_ids=";".join(str(i["id"]) for i in result),
+                )
+            )
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class EpisodeWorker(AsyncFunctionWorker):
     finished = Signal(list)
     error = Signal(str)
@@ -107,6 +129,7 @@ class StreamsWorker(AsyncFunctionWorker):
 
 
 class Backend(QObject):
+    episodes_got = Signal(dict)
     translations_got = Signal(list)
     streams_got = Signal(list, bool)
 
@@ -115,6 +138,13 @@ class Backend(QObject):
         self.settings = settings
         self.worker = None
         self.api = settings.api
+
+    @Slot(int)
+    def get_episodes(self, anime_id: int):
+        self.worker = GetEpisodesWorker(anime_id, self.settings)
+        self.worker.finished.connect(self.episodes_got.emit)
+        self.worker.error.connect(self.episodes_got.emit)
+        self.worker.start()
 
     @Slot(int)
     def select_episode(self, episode_id: int):

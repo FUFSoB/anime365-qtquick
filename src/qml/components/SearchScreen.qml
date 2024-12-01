@@ -111,12 +111,18 @@ Rectangle {
                             id: searchResultsModel
                         }
                         onItemClicked: (item) => {
+                            if (!databaseBackend.put(item.id, item)) {
+                                var _item = item
+                                item = databaseBackend.get(item.id)
+                                item.episode_list = _item.episode_list
+                                item.episode_ids = _item.episode_ids
+                            }
                             stackView.push(animeScreen, { anime: item })
                         }
                         onContextMenuAction: function(action, item) {
                             switch(action) {
                                 case "goto_details":
-                                    stackView.push(animeScreen, { anime: item })
+                                    searchResultsList.onItemClicked(item)
                                     break
                             }
                         }

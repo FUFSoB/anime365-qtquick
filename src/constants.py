@@ -6,6 +6,7 @@ QML_DIR = SRC_DIR / "qml"
 LOG_DIR = SRC_DIR.parent / "logs"
 DOWNLOADS_DIR = SRC_DIR.parent / "downloads"
 SETTINGS_FILE = SRC_DIR.parent / "settings.json"
+DATABASE_FILE = SRC_DIR.parent / "database.json"
 
 
 def create_dirs():

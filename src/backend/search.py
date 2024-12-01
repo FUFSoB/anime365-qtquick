@@ -47,7 +47,8 @@ class Worker(AsyncFunctionWorker):
         return dict(
             id=item["id"],
             title=title,
-            episodes=item["numberOfEpisodes"],
+            titles=item["titles"],
+            total_episodes=item["numberOfEpisodes"],
             episode_list=episode_list,
             episode_ids=episode_ids,
             image_url=item["posterUrl"],
