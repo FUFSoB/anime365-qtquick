@@ -119,6 +119,13 @@ Rectangle {
                             }
                             stackView.push(animeScreen, { anime: item })
                         }
+                        Component.onCompleted: {
+                            searchResultsList.addContextMenuItem({
+                                title: "Open Details",
+                                action: "goto_details",
+                                group: "main"
+                            })
+                        }
                         onContextMenuAction: function(action, item) {
                             switch(action) {
                                 case "goto_details":

@@ -154,7 +154,7 @@ Rectangle {
                 spacing: 8
 
                 Text {
-                    text: "Path to UGet binary"
+                    text: "Path to uGet binary"
                     color: Themes.currentTheme.text
                     font.pixelSize: 14
                 }
@@ -168,7 +168,7 @@ Rectangle {
                         id: ugetPathField
                         width: parent.width
                         height: parent.height
-                        placeholderText: "Enter UGet binary path"
+                        placeholderText: "Enter uGet binary path"
                         color: Themes.currentTheme.text
                         placeholderTextColor: Themes.currentTheme.placeholderText
 

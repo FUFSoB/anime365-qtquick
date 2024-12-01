@@ -14,14 +14,7 @@ ListView {
         console.log("Context Menu Action: " + action)
     }
 
-    property var contextMenuModel: [
-        {
-            title: "Go To Details",
-            action: "goto_details",
-            // icon: "qrc:/icons/details.svg"
-            group: "main"
-        },
-    ]
+    property var contextMenuModel: []
 
     function setContextMenu(menuModel) {
         contextMenuModel = menuModel

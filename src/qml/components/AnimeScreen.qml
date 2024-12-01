@@ -39,7 +39,11 @@ Rectangle {
         if (anime.episode) {
             for (var i = 0; i < episodeDropdown.model.length; i++) {
                 if (episodeDropdown.model[i] === anime.episode) {
-                    episodeDropdown.changeSelection(i)
+                    if (anime.next_episode && i < episodeDropdown.model.length - 1) {
+                        episodeDropdown.changeSelection(i + 1)
+                    } else {
+                        episodeDropdown.changeSelection(i)
+                    }
                     break
                 }
             }
@@ -69,7 +73,11 @@ Rectangle {
             if (anime.episode) {
                 for (var i = 0; i < episodeDropdown.model.length; i++) {
                     if (episodeDropdown.model[i] === anime.episode) {
-                        episodeDropdown.changeSelection(i)
+                        if (anime.next_episode && i < episodeDropdown.model.length - 1) {
+                            episodeDropdown.changeSelection(i + 1)
+                        } else {
+                            episodeDropdown.changeSelection(i)
+                        }
                         return
                     }
                 }
@@ -153,7 +161,7 @@ Rectangle {
         }
 
         function onSubtitle_fonts_got(results) {
-            var formatted = results.map(fontName => {
+            var formatted = "Fonts availability (during application startup): <br><br>" + results.map(fontName => {
                 var isAvailable = Qt.fontFamilies().includes(fontName)
 
                 return isAvailable ?
@@ -514,7 +522,7 @@ Rectangle {
                                 id: ugetButton
                                 width: 80
                                 height: parent.height
-                                text: "UGet"
+                                text: "uGet"
                                 onClicked: {
                                     var url = videoUrlField.text
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
@@ -569,7 +577,7 @@ Rectangle {
                                 id: ugetButtonSubs
                                 width: 80
                                 height: parent.height
-                                text: "UGet"
+                                text: "uGet"
                                 onClicked: {
                                     var url = subsUrlField.text
                                     var title = anime.title + " — " + episodeDropdown.selectedValue
@@ -617,7 +625,7 @@ Rectangle {
                                 id: ugetAllButton
                                 width: 120
                                 height: parent.height
-                                text: "UGet Episode"
+                                text: "uGet Episode"
                                 onClicked: {
                                     ugetButton.clicked()
                                     ugetButtonSubs.clicked()

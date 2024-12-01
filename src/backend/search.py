@@ -52,7 +52,7 @@ class Worker(AsyncFunctionWorker):
             type=item["type"],
             score=score,
             year=int(item["year"]),
-            hentai=item["isHentai"],
+            hentai=bool(item["isHentai"]),
             h_type="hentai" if item["isHentai"] else item["type"],
             description=description,
             genres=genres,

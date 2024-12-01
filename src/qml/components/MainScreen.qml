@@ -15,13 +15,6 @@ Rectangle {
     }
 
     Component.onCompleted: {
-        historyList.addContextMenuItem({
-            title: "Remove Item",
-            action: "delete",
-            group: "dangerous",
-            color: Themes.currentTheme.cancelBase
-        })
-
         updateHistory()
     }
 
@@ -100,7 +93,7 @@ Rectangle {
                 CustomButton {
                     width: (parent.width - parent.spacing) / 2
                     height: 36
-                    text: "Open UGet"
+                    text: "Open uGet"
                     onClicked: backend.open_uget()
                 }
 
@@ -131,10 +124,32 @@ Rectangle {
                 onItemClicked: (item) => {
                     stackView.push(animeScreen, { anime: Object.assign({}, item) })
                 }
+                Component.onCompleted: {
+                    historyList.addContextMenuItem({
+                        title: "Open Details",
+                        action: "goto_details",
+                        group: "main"
+                    })
+                    historyList.addContextMenuItem({
+                        title: "Next Episode",
+                        action: "next_episode",
+                        group: "main"
+                    })
+                    historyList.addContextMenuItem({
+                        title: "Remove Item",
+                        action: "delete",
+                        group: "dangerous",
+                        color: Themes.currentTheme.cancelBase
+                    })
+                }
                 onContextMenuAction: function(action, item) {
                     switch(action) {
                         case "goto_details":
-                            searchResultsList.onItemClicked(item)
+                            historyList.onItemClicked(item)
+                            break
+                        case "next_episode":
+                            item.next_episode = true
+                            historyList.onItemClicked(item)
                             break
                         case "delete":
                             databaseBackend.delete(item.id)

@@ -50,8 +50,11 @@ class Backend(QObject):
     @Slot(result=dict)
     def get_defaults(self):
         return {
+            # behavior
+            # binary paths
             "mpv_path": shutil.which("mpv") or "",
             "uget_path": shutil.which("uget-gtk") or shutil.which("uget") or "",
+            # tokens
             "anime365_token": "",
             "shikimori_token": "",
             # not in UI
@@ -72,9 +75,11 @@ class Backend(QObject):
             json.dump(settings, file, indent=4, ensure_ascii=False)
 
     @Slot(str, result=bool)
-    def is_valid_binary(self, path):
-        shutil_path = shutil.which(path) or False
-        return shutil_path and os.access(shutil_path, os.X_OK)
+    def is_valid_binary(self, path: str) -> bool:
+        shutil_path = shutil.which(path)
+        is_executable = shutil_path and os.access(shutil_path, os.X_OK) or False
+
+        return is_executable
 
     @Slot(str)
     def is_valid_token(self, token):
