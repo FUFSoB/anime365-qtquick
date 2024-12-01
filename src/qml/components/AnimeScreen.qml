@@ -151,6 +151,19 @@ Rectangle {
 
             busyIndicator.running = false
         }
+
+        function onSubtitle_fonts_got(results) {
+            var formatted = results.map(fontName => {
+                var isAvailable = Qt.fontFamilies().includes(fontName)
+
+                return isAvailable ?
+                    `\u2714 <b>${fontName}</b>` :
+                    `\u274C ${fontName}`
+            }).join("<br>")
+
+            subsUrlField.ToolTip.text = formatted
+            subsUrlField.ToolTip.textFormat = Text.RichText
+        }
     }
 
     Rectangle {
@@ -434,7 +447,8 @@ Rectangle {
                         var subs = streams[0].subs_url
                         if (subs !== undefined) {
                             subsRow.visible = true
-                            subsUrlField.text = streams[0].subs_url
+                            subsUrlField.text = subs
+                            animeBackend.get_subtitle_fonts(subs)
                         } else {
                             subsRow.visible = false
                         }
@@ -526,6 +540,17 @@ Rectangle {
                                 background: Rectangle {
                                     color: Themes.currentTheme.inputBackground
                                     radius: 4
+                                }
+
+                                ToolTip.visible: subsUrlMouseArea.containsMouse
+                                ToolTip.delay: 1000
+
+                                MouseArea {
+                                    id: subsUrlMouseArea
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    acceptedButtons: Qt.NoButton
+                                    cursorShape: Qt.IBeamCursor
                                 }
                             }
 

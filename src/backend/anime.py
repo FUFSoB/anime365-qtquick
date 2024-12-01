@@ -3,7 +3,7 @@ import re
 from PySide6.QtCore import QObject, Slot, Signal
 
 from constants import DOWNLOADS_DIR
-from .utils import AsyncFunctionWorker
+from .utils import AsyncFunctionWorker, get_subtitle_fonts
 
 from typing import TYPE_CHECKING
 
@@ -12,9 +12,6 @@ if TYPE_CHECKING:
 
 
 class GetEpisodesWorker(AsyncFunctionWorker):
-    finished = Signal(dict)
-    error = Signal(str)
-
     def __init__(self, anime_id: int, settings: "SettingsBackend"):
         super().__init__(self.perform_get_episodes_operation)
         self.anime_id = anime_id
@@ -23,20 +20,15 @@ class GetEpisodesWorker(AsyncFunctionWorker):
     async def perform_get_episodes_operation(self):
         try:
             result = await self.api.get_episodes(self.anime_id)
-            self.finished.emit(
-                dict(
-                    episode_list=";".join(i["episodeFull"] for i in result),
-                    episode_ids=";".join(str(i["id"]) for i in result),
-                )
+            return dict(
+                episode_list=";".join(i["episodeFull"] for i in result),
+                episode_ids=";".join(str(i["id"]) for i in result),
             )
         except Exception as e:
             self.error.emit(str(e))
 
 
 class EpisodeWorker(AsyncFunctionWorker):
-    finished = Signal(list)
-    error = Signal(str)
-
     def __init__(self, episode_id: int, settings: "SettingsBackend"):
         super().__init__(self.perform_get_episode_operation)
         self.episode_id = episode_id
@@ -80,22 +72,15 @@ class EpisodeWorker(AsyncFunctionWorker):
         )
 
     async def perform_get_episode_operation(self):
-        try:
-            result = await self.api.get_translations(self.episode_id)
-            result = sorted(
-                (self._create_episode_result(item) for item in result),
-                key=self._sort_translations,
-                reverse=True,
-            )
-            self.finished.emit(result)
-        except Exception as e:
-            self.error.emit(str(e))
+        result = await self.api.get_translations(self.episode_id)
+        return sorted(
+            (self._create_episode_result(item) for item in result),
+            key=self._sort_translations,
+            reverse=True,
+        )
 
 
 class StreamsWorker(AsyncFunctionWorker):
-    finished = Signal(list)
-    error = Signal(str)
-
     def __init__(self, translation_id: int, settings: "SettingsBackend"):
         super().__init__(self.perform_get_streams_operation)
         self.translation_id = translation_id
@@ -113,25 +98,22 @@ class StreamsWorker(AsyncFunctionWorker):
         )
 
     async def perform_get_streams_operation(self):
-        try:
-            result = await self.api.get_streams(self.translation_id)
-            result = sorted(
-                (
-                    self._create_stream_result(item, result["subtitlesUrl"])
-                    for item in result["stream"]
-                ),
-                key=lambda x: x["height"],
-                reverse=True,
-            )
-            self.finished.emit(result)
-        except Exception as e:
-            self.error.emit(str(e))
+        result = await self.api.get_streams(self.translation_id)
+        return sorted(
+            (
+                self._create_stream_result(item, result["subtitlesUrl"])
+                for item in result["stream"]
+            ),
+            key=lambda x: x["height"],
+            reverse=True,
+        )
 
 
 class Backend(QObject):
     episodes_got = Signal(dict)
     translations_got = Signal(list)
     streams_got = Signal(list, bool)
+    subtitle_fonts_got = Signal(list)
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
@@ -142,24 +124,27 @@ class Backend(QObject):
     @Slot(int)
     def get_episodes(self, anime_id: int):
         self.worker = GetEpisodesWorker(anime_id, self.settings)
-        self.worker.finished.connect(self.episodes_got.emit)
-        self.worker.error.connect(self.episodes_got.emit)
+        self.worker.result_dict.connect(self.episodes_got.emit)
         self.worker.start()
 
     @Slot(int)
     def select_episode(self, episode_id: int):
         self.worker = EpisodeWorker(episode_id, self.settings)
-        self.worker.finished.connect(self.translations_got.emit)
-        self.worker.error.connect(self.translations_got.emit)
+        self.worker.result_list.connect(self.translations_got.emit)
         self.worker.start()
 
     @Slot(int, bool)
     def get_streams(self, translation_id: int, is_for_other_video: bool):
         self.worker = StreamsWorker(translation_id, self.settings)
-        self.worker.finished.connect(
+        self.worker.result_list.connect(
             lambda result: self.streams_got.emit(result, is_for_other_video)
         )
-        self.worker.error.connect(self.streams_got.emit)
+        self.worker.start()
+
+    @Slot(str)
+    def get_subtitle_fonts(self, url: str):
+        self.worker = AsyncFunctionWorker(get_subtitle_fonts, url)
+        self.worker.result_list.connect(self.subtitle_fonts_got)
         self.worker.start()
 
     @Slot(str, str, str)

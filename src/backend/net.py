@@ -47,8 +47,7 @@ class Api:
 
     async def _find_anime(self, url: str, query: str, is_hentai: bool) -> list[dict]:
         async with aiohttp.ClientSession(
-            connector=await self._get_connector(),
-            timeout=aiohttp.ClientTimeout(total=2),
+            connector=await self._get_connector()
         ) as session:
             async with session.get(
                 url,

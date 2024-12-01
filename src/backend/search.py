@@ -11,9 +11,6 @@ if TYPE_CHECKING:
 
 
 class Worker(AsyncFunctionWorker):
-    finished = Signal(list)
-    error = Signal(str)
-
     def __init__(self, query: str, settings: "SettingsBackend"):
         super().__init__(self.perform_search_operation)
         self.query = query
@@ -62,16 +59,12 @@ class Worker(AsyncFunctionWorker):
         )
 
     async def perform_search_operation(self):
-        try:
-            raw_results = await self.api.find_anime(self.query)
-            results = [
-                self._create_search_result(item)
-                for item in sorted(raw_results, key=lambda x: x["year"], reverse=True)
-                if item["isActive"] != -1
-            ]
-            self.finished.emit(results)
-        except Exception as e:
-            self.error.emit(str(e))
+        raw_results = await self.api.find_anime(self.query)
+        return [
+            self._create_search_result(item)
+            for item in sorted(raw_results, key=lambda x: x["year"], reverse=True)
+            if item["isActive"] != -1
+        ]
 
 
 class Backend(QObject):
@@ -88,6 +81,6 @@ class Backend(QObject):
         if self.search_worker and self.search_worker.isRunning():
             self.search_worker.terminate()
         self.search_worker = Worker(query, self.settings)
-        self.search_worker.finished.connect(self.search_completed.emit)
+        self.search_worker.result_list.connect(self.search_completed.emit)
         self.search_worker.error.connect(self.search_error.emit)
         self.search_worker.start()
