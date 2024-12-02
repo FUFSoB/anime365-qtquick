@@ -35,10 +35,6 @@ ListView {
                    (index % 2 == 0 ? "transparent" : Themes.currentTheme.thirdBackground)
         }
 
-        ToolTip.visible: mouseArea.containsMouse && model.description !== ""
-        ToolTip.text: model.description
-        ToolTip.delay: 1000
-
         MouseArea {
             id: mouseArea
             anchors.fill: parent

@@ -18,13 +18,8 @@ Rectangle {
 
     Connections {
         target: settingsBackend
-
         function onToken_checked(result) {
-            if (result) {
-                anime365TokenField.isValidToken = true
-            } else {
-                anime365TokenField.isValidToken = false
-            }
+            anime365TokenField.isValidToken = result
         }
     }
 
@@ -63,7 +58,6 @@ Rectangle {
                         height: parent.height
 
                         Text {
-                            id: titleText
                             anchors.centerIn: parent
                             height: parent.height
                             verticalAlignment: Text.AlignVCenter
@@ -83,15 +77,12 @@ Rectangle {
                         baseColor: Themes.currentTheme.applyBase
                         hoverColor: Themes.currentTheme.applyHover
                         pressColor: Themes.currentTheme.applyPress
-
                         enabled: {
                             var settingsChanged = mpvPathField.text !== settings.mpv_path
                                 || ugetPathField.text !== settings.uget_path
                                 || anime365TokenField.text !== settings.anime365_token
-
                             return settingsChanged && mpvPathField.isValidPath && ugetPathField.isValidPath && anime365TokenField.isValidToken
                         }
-
                         onClicked: {
                             settingsBackend.save_settings({
                                 "mpv_path": mpvPathField.text,
@@ -104,160 +95,133 @@ Rectangle {
                 }
             }
 
-            Column {
+            ScrollView {
                 width: parent.width
-                spacing: 8
+                height: parent.height - 48
+                clip: true
 
-                Text {
-                    text: "Path to MPV binary"
-                    color: Themes.currentTheme.text
-                    font.pixelSize: 14
-                }
-
-                Row {
+                Column {
                     width: parent.width
-                    spacing: 12
-                    height: 36
+                    spacing: 16
 
-                    TextField {
-                        id: mpvPathField
+                    Column {
                         width: parent.width
-                        height: parent.height
-                        placeholderText: "Enter MPV binary path"
-                        color: Themes.currentTheme.text
-                        placeholderTextColor: Themes.currentTheme.placeholderText
+                        spacing: 8
 
-                        property bool isValidPath: true
-
-                        onTextChanged: {
-                            if (mpvPathField.text) {
-                                mpvPathField.isValidPath = settingsBackend.is_valid_binary(mpvPathField.text)
-                            } else {
-                                mpvPathField.isValidPath = false
-                            }
+                        Text {
+                            text: "Path to MPV binary"
+                            color: Themes.currentTheme.text
+                            font.pixelSize: 14
                         }
 
-                        background: Rectangle {
-                            color: Themes.currentTheme.inputBackground
-                            border.color: mpvPathField.isValidPath
-                                ? Themes.currentTheme.success
-                                : (mpvPathField.text ? Themes.currentTheme.fail : "transparent")
-                            border.width: 2
-                            radius: 4
+                        TextField {
+                            id: mpvPathField
+                            width: parent.width
+                            height: 36
+                            placeholderText: "Enter MPV binary path"
+                            color: Themes.currentTheme.text
+                            placeholderTextColor: Themes.currentTheme.placeholderText
+                            property bool isValidPath: true
+                            onTextChanged: {
+                                isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                            }
+                            background: Rectangle {
+                                color: Themes.currentTheme.inputBackground
+                                border.color: mpvPathField.isValidPath
+                                    ? Themes.currentTheme.success
+                                    : (mpvPathField.text ? Themes.currentTheme.fail : "transparent")
+                                border.width: 2
+                                radius: 4
+                            }
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: 8
+
+                        Text {
+                            text: "Path to uGet binary"
+                            color: Themes.currentTheme.text
+                            font.pixelSize: 14
+                        }
+
+                        TextField {
+                            id: ugetPathField
+                            width: parent.width
+                            height: 36
+                            placeholderText: "Enter uGet binary path"
+                            color: Themes.currentTheme.text
+                            placeholderTextColor: Themes.currentTheme.placeholderText
+                            property bool isValidPath: true
+                            onTextChanged: {
+                                isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                            }
+                            background: Rectangle {
+                                color: Themes.currentTheme.inputBackground
+                                border.color: ugetPathField.isValidPath
+                                    ? Themes.currentTheme.success
+                                    : (ugetPathField.text ? Themes.currentTheme.fail : "transparent")
+                                border.width: 2
+                                radius: 4
+                            }
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: 8
+
+                        Text {
+                            text: `Anime365 token (<a href='${settingsBackend.get("anime365_site")}/api/accessToken?app=pvb'>Get token</a>)`
+                            color: Themes.currentTheme.text
+                            font.pixelSize: 14
+                            textFormat: Text.RichText
+                            linkColor: Themes.currentTheme.link
+                            onLinkActivated: (url) => Qt.openUrlExternally(url)
+                        }
+
+                        TextField {
+                            id: anime365TokenField
+                            width: parent.width
+                            height: 36
+                            color: Themes.currentTheme.text
+                            font.pixelSize: 14
+                            property bool isValidToken: false
+                            onTextChanged: {
+                                if (text === settings.anime365_token) {
+                                    isValidToken = true
+                                } else if (text !== "") {
+                                    validateTokenTimer.restart()
+                                } else {
+                                    isValidToken = false
+                                }
+                            }
+                            background: Rectangle {
+                                color: Themes.currentTheme.inputBackground
+                                border.color: anime365TokenField.isValidToken
+                                    ? Themes.currentTheme.success
+                                    : (anime365TokenField.text ? Themes.currentTheme.fail : "transparent")
+                                border.width: 2
+                                radius: 4
+                            }
                         }
                     }
                 }
             }
+        }
+    }
 
-            Column {
-                width: parent.width
-                spacing: 8
-
-                Text {
-                    text: "Path to uGet binary"
-                    color: Themes.currentTheme.text
-                    font.pixelSize: 14
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: 12
-                    height: 36
-
-                    TextField {
-                        id: ugetPathField
-                        width: parent.width
-                        height: parent.height
-                        placeholderText: "Enter uGet binary path"
-                        color: Themes.currentTheme.text
-                        placeholderTextColor: Themes.currentTheme.placeholderText
-
-                        property bool isValidPath: true
-
-                        onTextChanged: {
-                            if (ugetPathField.text) {
-                                ugetPathField.isValidPath = settingsBackend.is_valid_binary(ugetPathField.text)
-                            } else {
-                                ugetPathField.isValidPath = false
-                            }
-                        }
-
-                        background: Rectangle {
-                            color: Themes.currentTheme.inputBackground
-                            border.color: ugetPathField.isValidPath
-                                ? Themes.currentTheme.success
-                                : (ugetPathField.text ? Themes.currentTheme.fail : "transparent")
-                            border.width: 2
-                            radius: 4
-                        }
-                    }
-                }
-            }
-
-            Column {
-                width: parent.width
-                spacing: 8
-
-                Text {
-                    text: `Anime365 token (<a href='${settingsBackend.get("anime365_site")}/api/accessToken?app=pvb'>Get token</a>)`
-                    color: Themes.currentTheme.text
-                    font.pixelSize: 14
-                    textFormat: Text.RichText
-                    linkColor: Themes.currentTheme.link
-                    onLinkActivated: (url) => {
-                        Qt.openUrlExternally(url)
-                    }
-                }
-
-                Row {
-                    width: parent.width
-                    spacing: 12
-                    height: 36
-
-                    TextField {
-                        id: anime365TokenField
-                        width: parent.width
-                        height: parent.height
-                        color: Themes.currentTheme.text
-                        font.pixelSize: 14
-
-                        property bool isValidToken: false
-
-                        onTextChanged: {
-                            if (anime365TokenField.text === settings.anime365_token) {
-                                anime365TokenField.isValidToken = true
-                            } else if (anime365TokenField.text !== "") {
-                                validateTokenTimer.restart()
-                            } else {
-                                anime365TokenField.isValidToken = false
-                            }
-                        }
-
-                        background: Rectangle {
-                            color: Themes.currentTheme.inputBackground
-                            border.color: anime365TokenField.isValidToken
-                                ? Themes.currentTheme.success
-                                : (anime365TokenField.text ? Themes.currentTheme.fail : "transparent")
-                            border.width: 2
-                            radius: 4
-                        }
-                    }
-
-                    Timer {
-                        id: validateTokenTimer
-                        interval: 1000
-                        running: false
-                        repeat: false
-
-                        onTriggered: {
-                            if (anime365TokenField.text) {
-                                settingsBackend.is_valid_token(anime365TokenField.text)
-                            } else {
-                                anime365TokenField.isValidToken = false
-                            }
-                        }
-                    }
-                }
+    Timer {
+        id: validateTokenTimer
+        interval: 1000
+        running: false
+        repeat: false
+        onTriggered: {
+            if (anime365TokenField.text) {
+                settingsBackend.is_valid_token(anime365TokenField.text)
+            } else {
+                anime365TokenField.isValidToken = false
             }
         }
     }
