@@ -167,3 +167,4 @@ cython_debug/
 logs/
 settings.json
 database.json
+cache/

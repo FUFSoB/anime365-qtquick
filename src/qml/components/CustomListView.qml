@@ -177,7 +177,7 @@ ListView {
             Image {
                 width: 120
                 height: 120
-                source: model.image_url
+                source: imageCacheBackend.cache_image(model.image_url)
                 fillMode: Image.PreserveAspectFit
                 cache: true
                 asynchronous: true

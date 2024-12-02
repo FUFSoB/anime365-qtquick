@@ -220,7 +220,7 @@ Rectangle {
                     id: coverImage
                     width: 140
                     height: parent.height
-                    source: anime.image_url
+                    source: imageCacheBackend.cache_image(anime.image_url)
                     fillMode: Image.PreserveAspectFit
 
                     cache: true

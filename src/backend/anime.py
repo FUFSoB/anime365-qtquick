@@ -118,11 +118,17 @@ class Backend(QObject):
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
         self.settings = settings
-        self.workers = []
+        self.workers: list[AsyncFunctionWorker] = []
         self.api = settings.api
+
+    def _clear_workers(self):
+        for worker in self.workers:
+            worker.terminate()
+        self.workers.clear()
 
     @Slot(int)
     def get_episodes(self, anime_id: int):
+        self._clear_workers()
         worker = GetEpisodesWorker(anime_id, self.settings)
         self.workers.append(worker)
         worker.result_dict.connect(self.episodes_got.emit)
@@ -131,6 +137,7 @@ class Backend(QObject):
 
     @Slot(int)
     def select_episode(self, episode_id: int):
+        self._clear_workers()
         worker = EpisodeWorker(episode_id, self.settings)
         self.workers.append(worker)
         worker.result_list.connect(self.translations_got.emit)
@@ -139,6 +146,7 @@ class Backend(QObject):
 
     @Slot(int, bool)
     def get_streams(self, translation_id: int, is_for_other_video: bool):
+        self._clear_workers()
         worker = StreamsWorker(translation_id, self.settings)
         self.workers.append(worker)
         worker.result_list.connect(

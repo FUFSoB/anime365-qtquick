@@ -8,9 +8,11 @@ DOWNLOADS_DIR = SRC_DIR.parent / "downloads"
 SETTINGS_FILE = SRC_DIR.parent / "settings.json"
 DATABASE_FILE = SRC_DIR.parent / "database.json"
 
+IMG_CACHE_DIR = SRC_DIR.parent / "cache" / "images"
+# Path(QStandardPaths.writableLocation(QStandardPaths.CacheLocation)) / "Anime365" / "images"
+
 
 def create_dirs():
-    if not LOG_DIR.exists():
-        LOG_DIR.mkdir()
-    if not DOWNLOADS_DIR.exists():
-        DOWNLOADS_DIR.mkdir()
+    LOG_DIR.mkdir(exist_ok=True)
+    DOWNLOADS_DIR.mkdir(exist_ok=True)
+    IMG_CACHE_DIR.mkdir(parents=True, exist_ok=True)

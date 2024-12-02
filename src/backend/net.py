@@ -15,7 +15,7 @@ class Api:
         self.hentai365_url = self.settings.hentai365_site
         self.shikimori_url = self.settings.shikimori_site
 
-    async def _get_connector(self):
+    async def get_connector(self):
         if self.settings.proxy:
             return ProxyConnector.from_url(self.settings.proxy)
         return None
@@ -26,7 +26,7 @@ class Api:
         url = f"{self.anime365_url}/api/me"
         params = {"access_token": token}
         async with aiohttp.ClientSession(
-            connector=await self._get_connector()
+            connector=await self.get_connector()
         ) as session:
             async with session.get(url, params=params) as response:
                 data = await response.json()
@@ -47,7 +47,7 @@ class Api:
 
     async def _find_anime(self, url: str, query: str, is_hentai: bool) -> list[dict]:
         async with aiohttp.ClientSession(
-            connector=await self._get_connector()
+            connector=await self.get_connector()
         ) as session:
             async with session.get(
                 url,
@@ -62,7 +62,7 @@ class Api:
 
     async def get_episodes(self, anime_id: int) -> list[dict]:
         async with aiohttp.ClientSession(
-            connector=await self._get_connector()
+            connector=await self.get_connector()
         ) as session:
             async with session.get(
                 f"{self.anime365_url}/api/series/{anime_id}",
@@ -72,7 +72,7 @@ class Api:
 
     async def get_translations(self, episode_id: int) -> list[dict]:
         async with aiohttp.ClientSession(
-            connector=await self._get_connector()
+            connector=await self.get_connector()
         ) as session:
             async with session.get(
                 f"{self.anime365_url}/api/episodes/{episode_id}"
@@ -81,7 +81,7 @@ class Api:
 
     async def get_streams(self, translation_id: int) -> list[dict]:
         async with aiohttp.ClientSession(
-            connector=await self._get_connector()
+            connector=await self.get_connector()
         ) as session:
             async with session.get(
                 f"{self.anime365_url}/api/translations/embed/{translation_id}",
@@ -98,7 +98,7 @@ class Api:
         url = f"{self.shikimori_url}/api/users/whoami"
         headers = {"Authorization": f"Bearer {token}"}
         async with aiohttp.ClientSession(
-            connector=await self._get_connector()
+            connector=await self.get_connector()
         ) as session:
             async with session.get(url, headers=headers) as response:
                 return response.status == 200

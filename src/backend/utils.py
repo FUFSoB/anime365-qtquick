@@ -30,6 +30,7 @@ async def get_subtitle_fonts(url: str) -> list[str]:
 
 class AsyncFunctionWorker(QThread):
     result_bool = Signal(bool)
+    result_str = Signal(str)
     result_list = Signal(list)
     result_dict = Signal(dict)
 
@@ -53,6 +54,8 @@ class AsyncFunctionWorker(QThread):
 
         if isinstance(result, bool):
             self.result_bool.emit(result)
+        elif isinstance(result, str):
+            self.result_str.emit(result)
         elif isinstance(result, list):
             self.result_list.emit(result)
         elif isinstance(result, dict):
