@@ -90,7 +90,13 @@ QtObject {
         }
     }
 
-    property var currentTheme: Application.styleHints.colorScheme === Qt.ColorScheme.Dark ? dark : light
+    property var currentTheme: {
+        var settingsDefined = settingsBackend.get("theme")
+        if (settingsDefined && settingsDefined !== "auto") {
+            return settingsDefined === "dark" ? dark : light
+        }
+        return Application.styleHints.colorScheme === Qt.ColorScheme.Dark ? dark : light
+    }
 
     function setLightTheme() {
         currentTheme = light

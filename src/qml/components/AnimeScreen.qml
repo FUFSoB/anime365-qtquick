@@ -201,13 +201,11 @@ Rectangle {
                     }
                 }
 
-                BusyIndicator {
+                CustomBusyIndicator {
                     id: busyIndicator
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     running: false
-                    width: 30
-                    height: 30
                 }
             }
 

@@ -194,8 +194,16 @@ ListView {
                 }
 
                 Text {
+                    text: `Episode "${model.episode}" by "${model.translation}" out of ${model.total_episodes} episodes`
+                    color: Themes.currentTheme.accent
+                    visible: model.episode !== undefined && model.episode !== ""
+                    font.pixelSize: 14
+                }
+
+                Text {
                     text: `Episodes: ${model.total_episodes}`
                     color: Themes.currentTheme.text
+                    visible: model.episode === undefined || model.episode === ""
                     font.pixelSize: 14
                 }
 

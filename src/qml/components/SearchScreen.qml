@@ -162,13 +162,11 @@ Rectangle {
                     }
                 }
 
-                BusyIndicator {
+                CustomBusyIndicator {
                     id: busyIndicator
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     running: true
-                    width: 30
-                    height: 30
                 }
             }
         }

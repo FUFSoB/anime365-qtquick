@@ -58,6 +58,7 @@ class Backend(QObject):
             "anime365_token": "",
             "shikimori_token": "",
             # not in UI
+            "theme": "",
             "proxy": "",
             "anime365_site": "https://anime365.ru",
             "hentai365_site": "https://hentai365.ru",
