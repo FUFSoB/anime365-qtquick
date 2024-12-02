@@ -1,8 +1,9 @@
 import subprocess
 import re
+import aiohttp
 from PySide6.QtCore import QObject, Slot, Signal
 
-from constants import DOWNLOADS_DIR
+from constants import DOWNLOADS_DIR, CACHE_DIR
 from .utils import AsyncFunctionWorker, get_subtitle_fonts, monitor_mpv_status
 
 from typing import TYPE_CHECKING
@@ -120,6 +121,7 @@ class Backend(QObject):
         self.settings = settings
         self.workers: list[AsyncFunctionWorker] = []
         self.mpv_worker = None
+        self.vlc_worker = None
         self.api = settings.api
 
     def _clear_workers(self):
@@ -178,6 +180,43 @@ class Backend(QObject):
             self.mpv_worker.terminate()
         self.mpv_worker = AsyncFunctionWorker(monitor_mpv_status, process)
         self.mpv_worker.start()
+
+    @Slot(str, str, str)
+    def launch_vlc(self, url: str, subs_url: str, title: str):
+        command = [
+            self.settings.vlc_path,
+            url,
+            "--meta-title",
+            title,
+            "--no-video-title-show",
+        ]
+
+        async def _run_vlc():
+            if subs_url:
+                subs_file = CACHE_DIR / ".vlc_subtitles.ass"
+                async with aiohttp.ClientSession(
+                    connector=await self.api.get_connector()
+                ) as session:
+                    async with session.get(subs_url) as response:
+                        if response.status != 200:
+                            raise Exception("Subtitles unavailable")
+
+                        subtitle_bytes = await response.read()
+                        with subs_file.open("wb") as file:
+                            file.write(subtitle_bytes)
+
+                command.extend(["--sub-file", str(subs_file)])
+
+            subprocess.Popen(
+                command,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+        if self.vlc_worker:
+            self.vlc_worker.terminate()
+        self.vlc_worker = AsyncFunctionWorker(_run_vlc)
+        self.vlc_worker.start()
 
     @staticmethod
     def _title_to_filename(title: str, episodes_total: int, ext: str) -> str:

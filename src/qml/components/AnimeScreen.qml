@@ -625,7 +625,20 @@ Rectangle {
                                         width: 80
                                         height: parent.height
                                         text: "vlc"
-                                        visible: false
+                                        Timer {
+                                            id: vlcTimer
+                                            interval: 5000
+                                            repeat: false
+                                            onTriggered: vlcButton.enabled = true
+                                        }
+                                        onClicked: {
+                                            var url = videoUrlField.text
+                                            var subs = subsUrlField.text
+                                            var title = anime.title + " — " + episodeDropdown.selectedValue
+                                            animeBackend.launch_vlc(url, subs, title)
+                                            vlcButton.enabled = false
+                                            vlcTimer.start()
+                                        }
                                     }
 
                                     CustomButton {

@@ -12,6 +12,7 @@ Rectangle {
         settings = settingsBackend.get_settings()
         defaults = settingsBackend.get_defaults()
         mpvPathField.text = settings.mpv_path || defaults.mpv_path
+        vlcPathField.text = settings.vlc_path || defaults.vlc_path
         ugetPathField.text = settings.uget_path || defaults.uget_path
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
     }
@@ -79,6 +80,7 @@ Rectangle {
                         pressColor: Themes.currentTheme.applyPress
                         enabled: {
                             var settingsChanged = mpvPathField.text !== settings.mpv_path
+                                || vlcPathField.text !== settings.vlc_path
                                 || ugetPathField.text !== settings.uget_path
                                 || anime365TokenField.text !== settings.anime365_token
                             return settingsChanged && mpvPathField.isValidPath && ugetPathField.isValidPath && anime365TokenField.isValidToken
@@ -86,6 +88,7 @@ Rectangle {
                         onClicked: {
                             settingsBackend.save_settings({
                                 "mpv_path": mpvPathField.text,
+                                "vlc_path": vlcPathField.text,
                                 "uget_path": ugetPathField.text,
                                 "anime365_token": anime365TokenField.text
                             })
@@ -101,7 +104,7 @@ Rectangle {
                 clip: true
 
                 Column {
-                    width: parent.width
+                    width: parent.parent.width
                     spacing: 16
 
                     Column {
@@ -130,6 +133,38 @@ Rectangle {
                                 border.color: mpvPathField.isValidPath
                                     ? Themes.currentTheme.success
                                     : (mpvPathField.text ? Themes.currentTheme.fail : "transparent")
+                                border.width: 2
+                                radius: 4
+                            }
+                        }
+                    }
+
+                    Column {
+                        width: parent.width
+                        spacing: 8
+
+                        Text {
+                            text: "Path to VLC binary"
+                            color: Themes.currentTheme.text
+                            font.pixelSize: 14
+                        }
+
+                        TextField {
+                            id: vlcPathField
+                            width: parent.width
+                            height: 36
+                            placeholderText: "Enter VLC binary path"
+                            color: Themes.currentTheme.text
+                            placeholderTextColor: Themes.currentTheme.placeholderText
+                            property bool isValidPath: true
+                            onTextChanged: {
+                                isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                            }
+                            background: Rectangle {
+                                color: Themes.currentTheme.inputBackground
+                                border.color: vlcPathField.isValidPath
+                                    ? Themes.currentTheme.success
+                                    : (vlcPathField.text ? Themes.currentTheme.fail : "transparent")
                                 border.width: 2
                                 radius: 4
                             }
