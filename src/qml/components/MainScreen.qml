@@ -94,7 +94,7 @@ Rectangle {
                     width: (parent.width - parent.spacing) / 2
                     height: 36
                     text: "Open uGet"
-                    onClicked: backend.open_uget()
+                    onClicked: animeBackend.open_uget()
                 }
 
                 CustomButton {

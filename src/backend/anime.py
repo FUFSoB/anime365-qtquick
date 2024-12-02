@@ -3,7 +3,7 @@ import re
 from PySide6.QtCore import QObject, Slot, Signal
 
 from constants import DOWNLOADS_DIR
-from .utils import AsyncFunctionWorker, get_subtitle_fonts
+from .utils import AsyncFunctionWorker, get_subtitle_fonts, monitor_mpv_status
 
 from typing import TYPE_CHECKING
 
@@ -119,6 +119,7 @@ class Backend(QObject):
         super().__init__()
         self.settings = settings
         self.workers: list[AsyncFunctionWorker] = []
+        self.mpv_worker = None
         self.api = settings.api
 
     def _clear_workers(self):
@@ -170,7 +171,13 @@ class Backend(QObject):
         if subs_url:
             command.extend(["-sub-file", subs_url])
 
-        subprocess.Popen(command)
+        process = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        if self.mpv_worker:
+            self.mpv_worker.terminate()
+        self.mpv_worker = AsyncFunctionWorker(monitor_mpv_status, process)
+        self.mpv_worker.start()
 
     @staticmethod
     def _title_to_filename(title: str, episodes_total: int, ext: str) -> str:
@@ -200,3 +207,7 @@ class Backend(QObject):
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+    @Slot()
+    def open_uget(self):
+        subprocess.Popen([self.settings.uget_path])

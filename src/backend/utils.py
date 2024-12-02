@@ -1,10 +1,17 @@
 import traceback
+import subprocess
 
 import asyncio
 import aiohttp
 from PySide6.QtCore import QThread, Signal
 
 import ass
+
+
+async def monitor_mpv_status(process: subprocess.Popen[bytes]):
+    # TODO: discord rpc for playing status
+    pass
+    # for line in iter(process.stdout.readline, b""):
 
 
 async def get_subtitle_fonts(url: str) -> list[str]:
