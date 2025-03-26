@@ -173,9 +173,7 @@ class Backend(QObject):
         if subs_url:
             command.extend(["-sub-file", subs_url])
 
-        process = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+        process = subprocess.Popen(command)
         if self.mpv_worker:
             self.mpv_worker.terminate()
         self.mpv_worker = AsyncFunctionWorker(monitor_mpv_status, process)
@@ -207,11 +205,7 @@ class Backend(QObject):
 
                 command.extend(["--sub-file", str(subs_file)])
 
-            subprocess.Popen(
-                command,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            subprocess.Popen(command)
 
         if self.vlc_worker:
             self.vlc_worker.terminate()
