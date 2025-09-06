@@ -533,11 +533,6 @@ Rectangle {
                                         onClicked: {
                                             var url = videoUrlField.text
                                             var title = anime.title + " — " + episodeDropdown.selectedValue
-                                            if (videoStreamSelected !== "") {
-                                                title += " [" + streamSelected + " + " + videoStreamSelected + "]"
-                                            } else {
-                                                title += " [" + streamSelected + "]"
-                                            }
                                             var episodesTotal = episodeDropdown.model.length
                                             animeBackend.launch_uget(url, title, episodesTotal, false)
                                             ugetButton.enabled = false
@@ -593,11 +588,6 @@ Rectangle {
                                         onClicked: {
                                             var url = subsUrlField.text
                                             var title = anime.title + " — " + episodeDropdown.selectedValue
-                                            if (videoStreamSelected !== "") {
-                                                title += " [" + streamSelected + " + " + videoStreamSelected + "]"
-                                            } else {
-                                                title += " [" + streamSelected + "]"
-                                            }
                                             var episodesTotal = episodeDropdown.model.length
                                             animeBackend.launch_uget(url, title, episodesTotal, true)
                                             ugetButtonSubs.enabled = false

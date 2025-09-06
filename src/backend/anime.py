@@ -215,14 +215,12 @@ class Backend(QObject):
     @staticmethod
     def _title_to_filename(title: str, episodes_total: int, ext: str) -> str:
         title, episode = title.split(" — ")
-        episode, translators = episode.split(" ", 1)
-        translators = translators.split("]", 1)[1].strip("[]").strip()
 
-        title = re.sub(r"[^\w\d_]", "_", title).strip("_")
-        episode = episode.rjust(len(str(episodes_total)), "0")
-        translators = re.sub(r"[^\w\d_\+]", "_", translators).strip("_")
+        title = re.sub(r"[^\w\d\-_]", "_", title).strip("_")
 
-        return f"{title}-{episode}-by-{translators}.{ext}"
+        episode = episode.split(" ")[0].rjust(len(str(episodes_total)), "0")
+
+        return f"{title}-{episode}.{ext}"
 
     @Slot(str, str, int, bool)
     def launch_uget(self, url: str, title: str, episodes_total: int, is_subs: bool):
