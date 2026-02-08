@@ -43,7 +43,7 @@ class Backend(QObject):
             if loaded != self._settings:
                 self.save_settings(self._settings)
         except FileNotFoundError:
-            self._settings = {}
+            self._settings = self.get_defaults()
 
         return self._settings
 
@@ -70,8 +70,9 @@ class Backend(QObject):
     def save_settings(self, settings: dict[str, str]):
         self._settings = settings
 
-        settings["mpv_path"] = shutil.which(settings["mpv_path"])
-        settings["uget_path"] = shutil.which(settings["uget_path"])
+        settings["mpv_path"] = shutil.which(settings["mpv_path"]) or ""
+        settings["vlc_path"] = shutil.which(settings["vlc_path"]) or ""
+        settings["uget_path"] = shutil.which(settings["uget_path"]) or ""
 
         with SETTINGS_FILE.open("w") as file:
             json.dump(settings, file, indent=4, ensure_ascii=False)
