@@ -59,6 +59,8 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/checkout@v6
+
       - uses: actions/download-artifact@v8
         with:
           path: artifacts
@@ -70,6 +72,8 @@ jobs:
           mv artifacts/Anime365-Windows/Anime365.exe   artifacts/Anime365-windows.exe
           mv artifacts/Anime365-macOS/Anime365         artifacts/Anime365-macos
 
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/Anime365-*
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${{ github.ref_name }}" artifacts/Anime365-* --generate-notes
+
