@@ -36,8 +36,7 @@ class DownloadImageWorker(AsyncFunctionWorker):
 
 
 class Backend(QObject):
-    # TODO: Signal is not used
-    image_downloaded = Signal(str)
+    image_downloaded = Signal(str, str)  # (original_url, local_url)
 
     def __init__(self, settings):
         super().__init__()
@@ -46,6 +45,8 @@ class Backend(QObject):
 
     @Slot(str, result=str)
     def cache_image(self, url: str) -> str:
+        if not url:
+            return ""
         filename = url.split("/")[-1]
         save_path = IMG_CACHE_DIR / filename
         if save_path.exists():
@@ -54,7 +55,9 @@ class Backend(QObject):
         worker = DownloadImageWorker(url, save_path, self.settings)
         self.workers.append(worker)
         worker.start()
-        worker.result_str.connect(self.image_downloaded.emit)
+        worker.result_str.connect(
+            lambda local_url, orig=url: self.image_downloaded.emit(orig, local_url)
+        )
         worker.completed.connect(lambda *_: self.workers.remove(worker))
 
-        return url
+        return ""

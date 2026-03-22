@@ -1,10 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import Themes
 
-Rectangle {
-    color: Themes.currentTheme.background
+Pane {
+    padding: 12
 
     function updateHistory() {
         var history = databaseBackend.get_list()
@@ -26,93 +25,66 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        id: mainContent
+    ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        color: "transparent"
+        spacing: 12
 
-        Column {
-            id: topControls
-            anchors.top: parent.top
-            anchors.left: parent.left
-            anchors.right: parent.right
+        RowLayout {
+            Layout.fillWidth: true
             spacing: 12
 
-            Row {
-                width: parent.width
-                height: 36
-                spacing: 12
-
-                TextField {
-                    id: searchField
-                    width: parent.width - searchButton.width - parent.spacing
-                    height: parent.height
-                    placeholderText: "Search anime"
-                    background: Rectangle {
-                        color: Themes.currentTheme.inputBackground
-                        radius: 4
-                    }
-                    placeholderTextColor: Themes.currentTheme.placeholderText
-                    color: Themes.currentTheme.text
-                    font.pixelSize: 14
-                    onAccepted: {
-                        if (text.trim() !== "") {
-                            searchBackend.perform_search(searchField.text.trim())
-                            stackView.push(searchScreen, { searchQuery: text })
-                        }
-                    }
-                }
-
-                CustomButton {
-                    id: searchButton
-                    width: 100
-                    height: parent.height
-                    text: "Search"
-                    onClicked: {
-                        if (searchField.text.trim() !== "") {
-                            searchBackend.perform_search(searchField.text.trim())
-                            stackView.push(searchScreen, { searchQuery: searchField.text })
-                        }
+            StyledTextField {
+                id: searchField
+                Layout.fillWidth: true
+                placeholderText: "Search anime"
+                onAccepted: {
+                    if (text.trim() !== "") {
+                        searchBackend.perform_search(searchField.text.trim())
+                        stackView.push(searchScreen, { searchQuery: text })
                     }
                 }
             }
 
-            CustomButton {
-                width: parent.width
-                height: 36
-                text: "Tracker List"
-                onClicked: console.log("Tracker List clicked")
-            }
-
-            Row {
-                width: parent.width
-                height: 36
-                spacing: 12
-
-                CustomButton {
-                    width: (parent.width - parent.spacing) / 2
-                    height: 36
-                    text: "Open uGet"
-                    onClicked: animeBackend.open_uget()
-                }
-
-                CustomButton {
-                    width: (parent.width - parent.spacing) / 2
-                    height: 36
-                    text: "Settings"
-                    onClicked: stackView.push(settingsScreen)
+            StyledButton {
+                text: "Search"
+                onClicked: {
+                    if (searchField.text.trim() !== "") {
+                        searchBackend.perform_search(searchField.text.trim())
+                        stackView.push(searchScreen, { searchQuery: searchField.text })
+                    }
                 }
             }
         }
 
+        StyledButton {
+            Layout.fillWidth: true
+            text: "Tracker List"
+            onClicked: console.log("Tracker List clicked")
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 12
+
+            StyledButton {
+                Layout.fillWidth: true
+                text: "Open uGet"
+                visible: !isAndroid
+                enabled: settingsBackend.is_valid_binary(settingsBackend.get("uget_path"))
+                onClicked: animeBackend.open_uget()
+            }
+
+            StyledButton {
+                Layout.fillWidth: true
+                text: "Settings"
+                onClicked: stackView.push(settingsScreen)
+            }
+        }
+
         Rectangle {
-            anchors.top: topControls.bottom
-            anchors.bottom: parent.bottom
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.topMargin: 12
-            color: Themes.currentTheme.secondaryBackground
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            color: palette.base
             radius: 4
 
             CustomListView {
@@ -139,7 +111,7 @@ Rectangle {
                         title: "Remove Item",
                         action: "delete",
                         group: "dangerous",
-                        color: Themes.currentTheme.cancelBase
+                        color: "#EF5350"
                     })
                 }
                 onContextMenuAction: function(action, item) {

@@ -3,16 +3,22 @@ import sys
 import signal
 from pathlib import Path
 from PySide6.QtCore import QUrl, QTimer
-from PySide6.QtQml import QQmlApplicationEngine, qmlRegisterSingletonType
+from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication
 
+from constants import create_dirs, IS_ANDROID
+
+create_dirs()
+
 from backend import backends
-from constants import create_dirs
 
 
 class Anime365:
     def __init__(self):
         signal.signal(signal.SIGINT, lambda *args: self.handle_sigint())
+
+        QQuickStyle.setStyle("Fusion")
 
         self.app = QApplication(sys.argv)
         self.engine = QQmlApplicationEngine()
@@ -22,13 +28,11 @@ class Anime365:
         for name, backend in backends.items():
             self.engine.rootContext().setContextProperty(name, backend)
 
+        self.engine.rootContext().setContextProperty("isAndroid", IS_ANDROID)
+
         qml_dir = Path(__file__).parent / "qml"
         main_qml = qml_dir / "main.qml"
-        themes_qml = qml_dir / "theme" / "Themes.qml"
 
-        qmlRegisterSingletonType(
-            QUrl.fromLocalFile(str(themes_qml)), "Themes", 1, 0, "Themes"
-        )
         self.engine.load(QUrl.fromLocalFile(str(main_qml)))
 
         if not self.engine.rootObjects():
@@ -47,6 +51,5 @@ class Anime365:
 
 
 if __name__ == "__main__":
-    create_dirs()
     app = Anime365()
     sys.exit(app.run())

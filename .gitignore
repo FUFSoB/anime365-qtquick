@@ -168,3 +168,7 @@ logs/
 settings.json
 database.json
 cache/
+
+# Build artifacts
+*.spec
+pysidedeploy.spec

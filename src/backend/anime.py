@@ -1,7 +1,9 @@
 import subprocess
+import sys
 import re
 import aiohttp
-from PySide6.QtCore import QObject, Slot, Signal
+from PySide6.QtCore import QObject, Slot, Signal, QUrl
+from PySide6.QtGui import QDesktopServices
 
 from constants import DOWNLOADS_DIR, CACHE_DIR
 from .utils import AsyncFunctionWorker, get_subtitle_fonts, monitor_mpv_status
@@ -10,6 +12,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
+
+IS_ANDROID = hasattr(sys, "getandroidapilevel")
 
 
 class GetEpisodesWorker(AsyncFunctionWorker):
@@ -168,6 +172,10 @@ class Backend(QObject):
 
     @Slot(str, str, str)
     def launch_mpv(self, url: str, subs_url: str, title: str):
+        if IS_ANDROID:
+            self._launch_android_player(url, subs_url, title, "is.xyz.mpv")
+            return
+
         command = [self.settings.mpv_path, url, "-title", title]
 
         if subs_url:
@@ -181,6 +189,10 @@ class Backend(QObject):
 
     @Slot(str, str, str)
     def launch_vlc(self, url: str, subs_url: str, title: str):
+        if IS_ANDROID:
+            self._launch_android_player(url, subs_url, title, "org.videolan.vlc")
+            return
+
         command = [
             self.settings.vlc_path,
             url,
@@ -213,6 +225,39 @@ class Backend(QObject):
         self.vlc_worker.start()
 
     @staticmethod
+    def _launch_android_player(
+        url: str, subs_url: str, title: str, package: str
+    ):
+        """Launch video in an Android player app via intent URI.
+
+        mpv-android supports:
+          - subs       (S.subs)
+          - subs.name  (S.subs.name)
+          - title      (S.title)
+        VLC for Android supports:
+          - subtitles_location (S.subtitles_location)
+          - title              (S.title)
+        """
+        extras = f";S.title={title}"
+
+        if subs_url:
+            if package == "is.xyz.mpv":
+                extras += f";S.subs={subs_url};S.subs.enable={subs_url}"
+            else:
+                # VLC and generic players
+                extras += f";S.subtitles_location={subs_url}"
+
+        intent_url = (
+            f"intent:{url}"
+            f"#Intent;action=android.intent.action.VIEW"
+            f";type=video/*"
+            f"{extras}"
+            f";package={package}"
+            f";end"
+        )
+        QDesktopServices.openUrl(QUrl(intent_url))
+
+    @staticmethod
     def _title_to_filename(title: str, episodes_total: int, ext: str) -> str:
         title, episode = title.split(" — ")
 
@@ -224,6 +269,10 @@ class Backend(QObject):
 
     @Slot(str, str, int, bool)
     def launch_uget(self, url: str, title: str, episodes_total: int, is_subs: bool):
+        if IS_ANDROID:
+            self._android_download(url, title, episodes_total, is_subs)
+            return
+
         name = self._title_to_filename(
             title, episodes_total, "ass" if is_subs else "mp4"
         )
@@ -243,4 +292,13 @@ class Backend(QObject):
 
     @Slot()
     def open_uget(self):
+        if IS_ANDROID:
+            return
         subprocess.Popen([self.settings.uget_path])
+
+    @staticmethod
+    def _android_download(
+        url: str, title: str, episodes_total: int, is_subs: bool
+    ):
+        """Open a download URL in the Android browser / download manager."""
+        QDesktopServices.openUrl(QUrl(url))

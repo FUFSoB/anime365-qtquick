@@ -1,12 +1,12 @@
 import QtQuick
 import QtQuick.Controls
-import Themes
+import QtQuick.Layouts
 
-Rectangle {
-    color: Themes.currentTheme.background
+Pane {
+    padding: 12
 
-    property var settings: {}
-    property var defaults: {}
+    property var settings: ({})
+    property var defaults: ({})
 
     Component.onCompleted: {
         settings = settingsBackend.get_settings()
@@ -15,6 +15,9 @@ Rectangle {
         vlcPathField.text = settings.vlc_path || defaults.vlc_path
         ugetPathField.text = settings.uget_path || defaults.uget_path
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
+        shikiClientIdField.text = settings.shikimori_client_id || ""
+        shikiClientSecretField.text = settings.shikimori_client_secret || ""
+        proxyField.text = settings.proxy || ""
     }
 
     Connections {
@@ -22,225 +25,308 @@ Rectangle {
         function onToken_checked(result) {
             anime365TokenField.isValidToken = result
         }
+        function onShiki_token_checked(result) {
+            shikiStatus.text = result ? "Connected" : "Invalid token"
+            shikiStatus.color = result ? "#4CAF50" : "#EF5350"
+        }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 12
-        color: "transparent"
+    Connections {
+        target: shikimoriBackend
+        function onAuth_completed(success, message) {
+            shikiStatus.text = message
+            shikiStatus.color = success ? "#4CAF50" : "#EF5350"
+            if (success) {
+                shikiAuthCodeField.text = ""
+                settings = settingsBackend.get_settings()
+            }
+        }
+    }
 
-        Column {
-            anchors.fill: parent
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 12
+
+        RowLayout {
+            Layout.fillWidth: true
             spacing: 12
 
-            Rectangle {
-                width: parent.width
-                height: 36
-                color: "transparent"
+            StyledButton {
+                text: "\u2190 Back"
+                palette.button: "#EF5350"
+                palette.buttonText: "#FFFFFF"
+                onClicked: stackView.pop()
+            }
 
-                Row {
-                    anchors.fill: parent
-                    spacing: 12
+            Item { Layout.fillWidth: true }
 
-                    CustomButton {
-                        id: backButton
-                        width: 100
-                        height: 36
-                        text: "← Back"
-                        textColor: Themes.currentTheme.colorfulText
-                        baseColor: Themes.currentTheme.cancelBase
-                        hoverColor: Themes.currentTheme.cancelHover
-                        pressColor: Themes.currentTheme.cancelPress
-                        onClicked: stackView.pop()
-                    }
+            Label {
+                text: "Settings"
+                font.pixelSize: 18
+                font.bold: true
+            }
 
-                    Item {
-                        width: parent.width - backButton.width - saveButton.width - parent.spacing * 2
-                        height: parent.height
+            Item { Layout.fillWidth: true }
 
-                        Text {
-                            anchors.centerIn: parent
-                            height: parent.height
-                            verticalAlignment: Text.AlignVCenter
-                            text: "Settings"
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 18
-                            font.bold: true
+            StyledButton {
+                id: saveButton
+                text: "Save"
+                palette.button: "#4CAF50"
+                palette.buttonText: "#FFFFFF"
+                enabled: mpvPathField.text !== (settings.mpv_path ?? "")
+                    || vlcPathField.text !== (settings.vlc_path ?? "")
+                    || ugetPathField.text !== (settings.uget_path ?? "")
+                    || anime365TokenField.text !== (settings.anime365_token ?? "")
+                    || shikiClientIdField.text !== (settings.shikimori_client_id ?? "")
+                    || shikiClientSecretField.text !== (settings.shikimori_client_secret ?? "")
+                    || proxyField.text !== (settings.proxy ?? "")
+                onClicked: {
+                    settingsBackend.save_settings({
+                        "mpv_path": mpvPathField.text,
+                        "vlc_path": vlcPathField.text,
+                        "uget_path": ugetPathField.text,
+                        "anime365_token": anime365TokenField.text,
+                        "shikimori_client_id": shikiClientIdField.text,
+                        "shikimori_client_secret": shikiClientSecretField.text,
+                        "proxy": proxyField.text,
+                    })
+                    stackView.pop()
+                }
+            }
+        }
+
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+
+            ColumnLayout {
+                width: parent.parent.width
+                spacing: 16
+
+                // --- Player Paths (desktop only) ---
+
+                Label {
+                    text: "Player Paths"
+                    font.pixelSize: 16
+                    font.bold: true
+                    visible: !isAndroid
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
+
+                    Label { text: "Path to MPV binary" }
+
+                    StyledTextField {
+                        id: mpvPathField
+                        Layout.fillWidth: true
+                        placeholderText: "Enter MPV binary path"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
                         }
-                    }
-
-                    CustomButton {
-                        id: saveButton
-                        width: 100
-                        height: 36
-                        text: "Save"
-                        textColor: Themes.currentTheme.colorfulText
-                        baseColor: Themes.currentTheme.applyBase
-                        hoverColor: Themes.currentTheme.applyHover
-                        pressColor: Themes.currentTheme.applyPress
-                        enabled: {
-                            var settingsChanged = mpvPathField.text !== settings.mpv_path
-                                || vlcPathField.text !== settings.vlc_path
-                                || ugetPathField.text !== settings.uget_path
-                                || anime365TokenField.text !== settings.anime365_token
-                            return settingsChanged && mpvPathField.isValidPath && ugetPathField.isValidPath && anime365TokenField.isValidToken
-                        }
-                        onClicked: {
-                            settingsBackend.save_settings({
-                                "mpv_path": mpvPathField.text,
-                                "vlc_path": vlcPathField.text,
-                                "uget_path": ugetPathField.text,
-                                "anime365_token": anime365TokenField.text
-                            })
-                            stackView.pop()
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: mpvPathField.isValidPath
+                                ? "#4CAF50"
+                                : (mpvPathField.text ? "#EF5350" : palette.mid)
+                            border.width: mpvPathField.isValidPath || mpvPathField.text ? 2 : 1
+                            radius: 4
                         }
                     }
                 }
-            }
 
-            ScrollView {
-                width: parent.width
-                height: parent.height - 48
-                clip: true
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
 
-                Column {
-                    width: parent.parent.width
-                    spacing: 16
+                    Label { text: "Path to VLC binary" }
 
-                    Column {
-                        width: parent.width
-                        spacing: 8
-
-                        Text {
-                            text: "Path to MPV binary"
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 14
+                    StyledTextField {
+                        id: vlcPathField
+                        Layout.fillWidth: true
+                        placeholderText: "Enter VLC binary path"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
                         }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: vlcPathField.isValidPath
+                                ? "#4CAF50"
+                                : (vlcPathField.text ? "#EF5350" : palette.mid)
+                            border.width: vlcPathField.isValidPath || vlcPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+                }
 
-                        TextField {
-                            id: mpvPathField
-                            width: parent.width
-                            height: 36
-                            placeholderText: "Enter MPV binary path"
-                            color: Themes.currentTheme.text
-                            placeholderTextColor: Themes.currentTheme.placeholderText
-                            property bool isValidPath: true
-                            onTextChanged: {
-                                isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
+
+                    Label { text: "Path to uGet binary" }
+
+                    StyledTextField {
+                        id: ugetPathField
+                        Layout.fillWidth: true
+                        placeholderText: "Enter uGet binary path"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: ugetPathField.isValidPath
+                                ? "#4CAF50"
+                                : (ugetPathField.text ? "#EF5350" : palette.mid)
+                            border.width: ugetPathField.isValidPath || ugetPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+                }
+
+                // --- Network ---
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
+
+                Label {
+                    text: "Network"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label { text: "SOCKS proxy (optional)" }
+
+                    StyledTextField {
+                        id: proxyField
+                        Layout.fillWidth: true
+                        placeholderText: "socks5://host:port"
+                    }
+                }
+
+                // --- Anime365 ---
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
+
+                Label {
+                    text: "Anime365"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label {
+                        text: `Token (<a href='${settingsBackend.get("anime365_site")}/api/accessToken?app=pvb'>Get token</a>)`
+                        textFormat: Text.RichText
+                        onLinkActivated: (url) => Qt.openUrlExternally(url)
+                    }
+
+                    StyledTextField {
+                        id: anime365TokenField
+                        Layout.fillWidth: true
+                        property bool isValidToken: false
+                        onTextChanged: {
+                            if (text === settings.anime365_token) {
+                                isValidToken = true
+                            } else if (text !== "") {
+                                validateTokenTimer.restart()
+                            } else {
+                                isValidToken = false
                             }
-                            background: Rectangle {
-                                color: Themes.currentTheme.inputBackground
-                                border.color: mpvPathField.isValidPath
-                                    ? Themes.currentTheme.success
-                                    : (mpvPathField.text ? Themes.currentTheme.fail : "transparent")
-                                border.width: 2
-                                radius: 4
-                            }
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: anime365TokenField.isValidToken
+                                ? "#4CAF50"
+                                : (anime365TokenField.text ? "#EF5350" : palette.mid)
+                            border.width: anime365TokenField.isValidToken || anime365TokenField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+                }
+
+                // --- Shikimori ---
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
+
+                Label {
+                    text: "Shikimori"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label { text: "OAuth Client ID" }
+                    StyledTextField {
+                        id: shikiClientIdField
+                        Layout.fillWidth: true
+                        placeholderText: "Register app at shikimori.one/oauth/applications"
+                    }
+
+                    Label { text: "OAuth Client Secret" }
+                    StyledTextField {
+                        id: shikiClientSecretField
+                        Layout.fillWidth: true
+                        echoMode: TextInput.Password
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
+
+                    StyledButton {
+                        text: "Authorize"
+                        enabled: shikiClientIdField.text !== "" && shikiClientSecretField.text !== ""
+                        onClicked: {
+                            var url = settingsBackend.get("shikimori_site")
+                                + "/oauth/authorize"
+                                + "?client_id=" + shikiClientIdField.text
+                                + "&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
+                                + "&response_type=code"
+                                + "&scope=user_rates"
+                            Qt.openUrlExternally(url)
                         }
                     }
 
-                    Column {
-                        width: parent.width
-                        spacing: 8
+                    StyledTextField {
+                        id: shikiAuthCodeField
+                        Layout.fillWidth: true
+                        placeholderText: "Paste authorization code here"
+                    }
 
-                        Text {
-                            text: "Path to VLC binary"
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 14
-                        }
-
-                        TextField {
-                            id: vlcPathField
-                            width: parent.width
-                            height: 36
-                            placeholderText: "Enter VLC binary path"
-                            color: Themes.currentTheme.text
-                            placeholderTextColor: Themes.currentTheme.placeholderText
-                            property bool isValidPath: true
-                            onTextChanged: {
-                                isValidPath = text ? settingsBackend.is_valid_binary(text) : false
-                            }
-                            background: Rectangle {
-                                color: Themes.currentTheme.inputBackground
-                                border.color: vlcPathField.isValidPath
-                                    ? Themes.currentTheme.success
-                                    : (vlcPathField.text ? Themes.currentTheme.fail : "transparent")
-                                border.width: 2
-                                radius: 4
-                            }
+                    StyledButton {
+                        text: "Submit Code"
+                        enabled: shikiAuthCodeField.text !== "" && shikiClientIdField.text !== "" && shikiClientSecretField.text !== ""
+                        onClicked: {
+                            shikimoriBackend.authorize(
+                                shikiAuthCodeField.text,
+                                shikiClientIdField.text,
+                                shikiClientSecretField.text
+                            )
                         }
                     }
 
-                    Column {
-                        width: parent.width
-                        spacing: 8
-
-                        Text {
-                            text: "Path to uGet binary"
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 14
-                        }
-
-                        TextField {
-                            id: ugetPathField
-                            width: parent.width
-                            height: 36
-                            placeholderText: "Enter uGet binary path"
-                            color: Themes.currentTheme.text
-                            placeholderTextColor: Themes.currentTheme.placeholderText
-                            property bool isValidPath: true
-                            onTextChanged: {
-                                isValidPath = text ? settingsBackend.is_valid_binary(text) : false
-                            }
-                            background: Rectangle {
-                                color: Themes.currentTheme.inputBackground
-                                border.color: ugetPathField.isValidPath
-                                    ? Themes.currentTheme.success
-                                    : (ugetPathField.text ? Themes.currentTheme.fail : "transparent")
-                                border.width: 2
-                                radius: 4
-                            }
-                        }
-                    }
-
-                    Column {
-                        width: parent.width
-                        spacing: 8
-
-                        Text {
-                            text: `Anime365 token (<a href='${settingsBackend.get("anime365_site")}/api/accessToken?app=pvb'>Get token</a>)`
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 14
-                            textFormat: Text.RichText
-                            linkColor: Themes.currentTheme.link
-                            onLinkActivated: (url) => Qt.openUrlExternally(url)
-                        }
-
-                        TextField {
-                            id: anime365TokenField
-                            width: parent.width
-                            height: 36
-                            color: Themes.currentTheme.text
-                            font.pixelSize: 14
-                            property bool isValidToken: false
-                            onTextChanged: {
-                                if (text === settings.anime365_token) {
-                                    isValidToken = true
-                                } else if (text !== "") {
-                                    validateTokenTimer.restart()
-                                } else {
-                                    isValidToken = false
-                                }
-                            }
-                            background: Rectangle {
-                                color: Themes.currentTheme.inputBackground
-                                border.color: anime365TokenField.isValidToken
-                                    ? Themes.currentTheme.success
-                                    : (anime365TokenField.text ? Themes.currentTheme.fail : "transparent")
-                                border.width: 2
-                                radius: 4
-                            }
-                        }
+                    Label {
+                        id: shikiStatus
+                        text: settings.shikimori_access_token ? "Connected" : "Not connected"
+                        color: settings.shikimori_access_token ? "#4CAF50" : palette.placeholderText
                     }
                 }
             }

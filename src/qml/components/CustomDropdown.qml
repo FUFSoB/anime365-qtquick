@@ -1,10 +1,15 @@
 import QtQuick
 import QtQuick.Controls
-import Themes
 
 Item {
     id: dropdown
     height: 36
+
+    SystemPalette {
+        id: pal
+        colorGroup: Qt.application.state === Qt.ApplicationActive
+            ? SystemPalette.Active : SystemPalette.Inactive
+    }
 
     property var model: []
     property string selectedValue: ""
@@ -43,7 +48,7 @@ Item {
         id: header
         width: parent.width
         height: parent.height
-        color: Themes.currentTheme.elementBase
+        color: pal.button
         radius: 4
 
         Row {
@@ -56,7 +61,7 @@ Item {
                 width: parent.width - arrow.width - parent.spacing
                 height: parent.height
                 text: selectedValue || placeholder
-                color: Themes.currentTheme.text
+                color: pal.buttonText
                 font.pixelSize: 14
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
@@ -66,8 +71,8 @@ Item {
                 id: arrow
                 width: 12
                 height: parent.height
-                text: dropdown.isOpen ? "▲" : "▼"
-                color: Themes.currentTheme.text
+                text: dropdown.isOpen ? "\u25B2" : "\u25BC"
+                color: pal.buttonText
                 font.pixelSize: 12
                 verticalAlignment: Text.AlignVCenter
             }
@@ -92,8 +97,10 @@ Item {
         padding: 0
         closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
         background: Rectangle {
-            color: Themes.currentTheme.secondaryBackground
+            color: pal.base
             radius: 4
+            border.color: pal.mid
+            border.width: 1
         }
 
         onOpened: {
@@ -114,20 +121,14 @@ Item {
                 id: searchRow
                 width: parent.width
                 height: 36
-                color: Themes.currentTheme.inputBackground
+                color: pal.base
 
-                TextField {
+                StyledTextField {
                     id: searchInput
                     anchors.fill: parent
                     anchors.margins: 4
-                    color: Themes.currentTheme.text
                     placeholderText: "Search..."
-                    placeholderTextColor: Themes.currentTheme.placeholderText
                     font.pixelSize: 14
-                    background: Rectangle {
-                        color: Themes.currentTheme.inputFieldBackground
-                        radius: 2
-                    }
 
                     Keys.onPressed: function(event) {
                         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
@@ -155,13 +156,14 @@ Item {
                 delegate: Rectangle {
                     width: dropdown.width
                     height: 36
-                    color: mouseArea.containsMouse ? Themes.currentTheme.elementHover : (modelData === dropdown.selectedValue ? Themes.currentTheme.elementPress : "transparent")
+                    color: mouseArea.containsMouse ? pal.highlight
+                         : (modelData === dropdown.selectedValue ? pal.mid : "transparent")
 
                     Text {
                         anchors.fill: parent
                         anchors.margins: 8
                         text: modelData
-                        color: Themes.currentTheme.text
+                        color: mouseArea.containsMouse ? pal.highlightedText : pal.text
                         font.pixelSize: 14
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
@@ -193,13 +195,11 @@ Item {
         onWheel: function(event) {
             if (!dropdown.isOpen && dropdown.model.length > 0) {
                 if (event.angleDelta.y > 0) {
-                    // Scroll up
                     if (selectedIndex > 0) {
                         selectedIndex--
                         changeSelection(selectedIndex)
                     }
                 } else {
-                    // Scroll down
                     if (selectedIndex < dropdown.model.length - 1) {
                         selectedIndex++
                         changeSelection(selectedIndex)

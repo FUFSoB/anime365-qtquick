@@ -1,12 +1,11 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Effects
-import QtQuick.Window
-import Themes
 
 ListView {
     id: root
+
+    SystemPalette { id: pal }
 
     property var onItemClicked: function(item) {}
 
@@ -30,10 +29,8 @@ ListView {
         id: delegateRoot
         width: ListView.view.width
         height: 140
-        color: {
-            return mouseArea.containsMouse ? Themes.currentTheme.elementHover :
-                   (index % 2 == 0 ? "transparent" : Themes.currentTheme.thirdBackground)
-        }
+        color: mouseArea.containsMouse ? pal.highlight
+             : (index % 2 == 0 ? "transparent" : pal.alternateBase)
 
         MouseArea {
             id: mouseArea
@@ -47,18 +44,13 @@ ListView {
                     root.onItemClicked(model)
                 } else if (mouse.button === Qt.RightButton) {
                     var windowPos = delegateRoot.mapToItem(null, mouse.x, mouse.y)
-
                     contextMenu.x = windowPos.x
                     contextMenu.y = windowPos.y
-
                     contextMenu.menuForItem = model
-
                     contextMenu.open()
                 }
             }
-
         }
-
 
         Popup {
             id: contextMenu
@@ -78,36 +70,19 @@ ListView {
                 var availableWidth = parent ? parent.width : 0
                 var availableHeight = parent ? parent.height : 0
 
-                if (x + width > availableWidth) {
+                if (x + width > availableWidth)
                     x = availableWidth - width
-                }
-                if (y + height > availableHeight) {
+                if (y + height > availableHeight)
                     y = availableHeight - height
-                }
                 if (x < 0) x = 0
                 if (y < 0) y = 0
             }
 
-
-            background: Item {
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.topMargin: 1
-                    anchors.bottomMargin: -3
-                    anchors.leftMargin: 1
-                    anchors.rightMargin: -3
-                    color: Qt.rgba(0, 0, 0, 0.2)
-                    radius: parent.radius + 2
-                    z: -1
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    color: Themes.currentTheme.secondaryBackground
-                    radius: 4
-                    border.color: Themes.currentTheme.border
-                    border.width: 1
-                }
+            background: Rectangle {
+                color: pal.base
+                radius: 4
+                border.color: pal.mid
+                border.width: 1
             }
 
             ListView {
@@ -121,8 +96,7 @@ ListView {
                     width: contextMenu.width
                     height: 36
                     color: delegateMouseArea.containsMouse
-                           ? Themes.currentTheme.elementHover
-                           : "transparent"
+                           ? pal.highlight : "transparent"
 
                     RowLayout {
                         anchors.fill: parent
@@ -140,7 +114,9 @@ ListView {
                         Text {
                             Layout.fillWidth: true
                             text: modelData.title
-                            color: modelData.color || Themes.currentTheme.text
+                            color: delegateMouseArea.containsMouse
+                                   ? pal.highlightedText
+                                   : (modelData.color || pal.text)
                             font.pixelSize: 14
                             verticalAlignment: Text.AlignVCenter
                         }
@@ -161,7 +137,7 @@ ListView {
                 section.delegate: Rectangle {
                     width: contextMenu.width
                     height: 1
-                    color: Themes.currentTheme.border
+                    color: pal.mid
                 }
             }
         }
@@ -171,12 +147,20 @@ ListView {
             padding: 10
 
             Image {
+                id: listItemImage
                 width: 120
                 height: 120
                 source: imageCacheBackend.cache_image(model.image_url)
                 fillMode: Image.PreserveAspectFit
                 cache: true
                 asynchronous: true
+                Connections {
+                    target: imageCacheBackend
+                    function onImage_downloaded(origUrl, localUrl) {
+                        if (origUrl === model.image_url)
+                            listItemImage.source = localUrl
+                    }
+                }
             }
 
             Column {
@@ -184,40 +168,40 @@ ListView {
 
                 Text {
                     text: model.title
-                    color: Themes.currentTheme.text
+                    color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.bold: true
                     font.pixelSize: 16
                 }
 
                 Text {
                     text: `Episode "${model.episode}" by "${model.translation}" out of ${model.total_episodes} episodes`
-                    color: Themes.currentTheme.accent
+                    color: mouseArea.containsMouse ? pal.highlightedText : pal.highlight
                     visible: model.episode !== undefined && model.episode !== ""
                     font.pixelSize: 14
                 }
 
                 Text {
                     text: `Episodes: ${model.total_episodes}`
-                    color: Themes.currentTheme.text
+                    color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     visible: model.episode === undefined || model.episode === ""
                     font.pixelSize: 14
                 }
 
                 Text {
                     text: `Genres: ${model.genres}`
-                    color: Themes.currentTheme.text
+                    color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }
 
                 Text {
                     text: `Type: ${model.h_type} | Year: ${model.year}`
-                    color: Themes.currentTheme.text
+                    color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }
 
                 Text {
                     text: `Score: ${model.score}`
-                    color: Themes.currentTheme.text
+                    color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }
             }

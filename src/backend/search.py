@@ -1,7 +1,6 @@
 import json
 from PySide6.QtCore import QObject, Slot, Signal
 
-from constants import LOG_DIR
 from .utils import AsyncFunctionWorker
 
 from typing import TYPE_CHECKING

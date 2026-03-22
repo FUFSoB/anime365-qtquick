@@ -1,18 +1,18 @@
 import QtQuick
 import QtQuick.Controls
-import Themes
+import QtQuick.Layouts
 
-Rectangle {
+Pane {
     id: root
-    color: Themes.currentTheme.background
+    padding: 12
 
-    property var anime: {}
-    property var translations: {}
+    property var anime: ({})
+    property var translations: ({})
 
-    property var streams: {}
+    property var streams: ({})
     property var streamSelected: ""
 
-    property var videoStreams: {}
+    property var videoStreams: ({})
     property var videoStreamSelected: ""
 
     property var qualitySelected: ""
@@ -21,6 +21,11 @@ Rectangle {
     property int episodesWatched: 0
     property int animeScore: 0
     property int rewatchCount: 0
+
+    readonly property bool mpvAvailable: isAndroid || settingsBackend.is_valid_binary(settingsBackend.get("mpv_path"))
+    readonly property bool vlcAvailable: isAndroid || settingsBackend.is_valid_binary(settingsBackend.get("vlc_path"))
+    readonly property bool ugetAvailable: isAndroid || settingsBackend.is_valid_binary(settingsBackend.get("uget_path"))
+    readonly property bool hasToken: settingsBackend.get("anime365_token") !== ""
 
     Component.onCompleted: {
         if (anime.episode_list === undefined) {
@@ -174,483 +179,446 @@ Rectangle {
         }
     }
 
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 12
-        color: "transparent"
+    Connections {
+        target: shikimoriBackend
+        function onRate_updated(success) {
+            if (success) {
+                trackingApplyButton.text = "Applied!"
+                trackingResetTimer.start()
+            }
+        }
+    }
 
-        Column {
-            anchors.fill: parent
+    Timer {
+        id: trackingResetTimer
+        interval: 2000
+        onTriggered: trackingApplyButton.text = "Apply"
+    }
+
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 12
+
+        RowLayout {
+            Layout.fillWidth: true
             spacing: 12
 
-            Rectangle {
-                width: parent.width
-                height: 36
-                color: "transparent"
-
-                Row {
-                    width: parent.width
-                    spacing: 12
-
-                    CustomButton {
-                        id: backButton
-                        width: 100
-                        height: 36
-                        text: "← Back"
-                        onClicked: stackView.pop()
-                    }
-                }
-
-                CustomBusyIndicator {
-                    id: busyIndicator
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    running: false
-                }
+            StyledButton {
+                text: "\u2190 Back"
+                onClicked: stackView.pop()
             }
 
-            ScrollView {
-                width: parent.width
-                height: parent.height - 48
-                clip: true
+            Item { Layout.fillWidth: true }
 
-                Column {
-                    width: parent.parent.width
+            BusyIndicator {
+                id: busyIndicator
+                running: false
+                Layout.preferredWidth: 32
+                Layout.preferredHeight: 32
+            }
+        }
+
+        ScrollView {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+
+            ColumnLayout {
+                width: parent.parent.width
+                spacing: 12
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 200
                     spacing: 12
 
-                    Row {
-                        width: parent.width
-                        height: 200
-                        spacing: 12
-
-                        Image {
-                            id: coverImage
-                            width: 140
-                            height: parent.height
-                            source: imageCacheBackend.cache_image(anime.image_url)
-                            fillMode: Image.PreserveAspectFit
-                            cache: true
-                            asynchronous: true
-                        }
-
-                        Column {
-                            width: parent.width - coverImage.width
-                            height: parent.height
-                            spacing: 12
-
-                            ScrollView {
-                                width: parent.width - parent.spacing
-                                height: parent.height - trackingControls.height - parent.spacing
-                                clip: true
-
-                                Column {
-                                    width: parent.width
-                                    spacing: 8
-
-                                    Text {
-                                        text: anime.title
-                                        color: Themes.currentTheme.text
-                                        font.pixelSize: 24
-                                        font.bold: true
-                                        width: parent.width
-                                        wrapMode: Text.WordWrap
-                                    }
-
-                                    Text {
-                                        text: anime.description
-                                        color: Themes.currentTheme.secondaryText
-                                        font.pixelSize: 14
-                                        wrapMode: Text.WordWrap
-                                        width: parent.width
-                                    }
-                                }
-                            }
-
-                            Rectangle {
-                                id: trackingControls
-                                width: parent.width
-                                height: 36
-                                color: "transparent"
-
-
-                                Row {
-                                    spacing: 12
-                                    height: parent.height
-
-                                    CustomDropdown {
-                                        id: statusDropdown
-                                        width: 160
-                                        height: parent.height
-                                        model: ["Not in List", "Completed", "Watching", "On-Hold", "Dropped", "Plan to Watch"]
-                                        placeholder: "Status"
-                                        onSelectionChangedIndex: function(value) {
-                                            animeStatus = statusDropdown.selectedValue
-                                        }
-                                    }
-
-                                    Row {
-                                        spacing: 6
-                                        height: parent.height
-
-                                        Text {
-                                            text: "Episodes"
-                                            color: Themes.currentTheme.text
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-
-                                        CustomSpinBox {
-                                            id: episodesSpinBox
-                                            value: 0
-                                            from: 0
-                                            to: anime.total_episodes
-                                            height: parent.height
-                                            width: 80
-                                        }
-                                    }
-
-                                    Row {
-                                        spacing: 6
-                                        height: parent.height
-
-                                        Text {
-                                            text: "Score"
-                                            color: Themes.currentTheme.text
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-
-                                        CustomSpinBox {
-                                            id: scoreSpinBox
-                                            value: 0
-                                            from: 0
-                                            to: 10
-                                            height: parent.height
-                                            width: 60
-                                        }
-                                    }
-
-                                    Row {
-                                        spacing: 6
-                                        height: parent.height
-
-                                        Text {
-                                            text: "Rewatches"
-                                            color: Themes.currentTheme.text
-                                            anchors.verticalCenter: parent.verticalCenter
-                                        }
-
-                                        CustomSpinBox {
-                                            id: rewatchesSpinBox
-                                            value: 0
-                                            from: 0
-                                            to: 999
-                                            height: parent.height
-                                            width: 60
-                                        }
-                                    }
-
-                                    CustomButton {
-                                        text: "Apply"
-                                        width: 80
-                                        height: parent.height
-                                        enabled: false
-                                        textColor: Themes.currentTheme.colorfulText
-                                        baseColor: Themes.currentTheme.applyBase
-                                        hoverColor: Themes.currentTheme.applyHover
-                                        pressColor: Themes.currentTheme.applyPress
-                                    }
-
-                                    CustomButton {
-                                        text: "Cancel"
-                                        width: 80
-                                        height: parent.height
-                                        enabled: false
-                                        textColor: Themes.currentTheme.colorfulText
-                                        baseColor: Themes.currentTheme.cancelBase
-                                        hoverColor: Themes.currentTheme.cancelHover
-                                        pressColor: Themes.currentTheme.cancelPress
-                                    }
-                                }
+                    Image {
+                        id: coverImage
+                        Layout.preferredWidth: 140
+                        Layout.fillHeight: true
+                        source: imageCacheBackend.cache_image(anime.image_url)
+                        fillMode: Image.PreserveAspectFit
+                        cache: true
+                        asynchronous: true
+                        Connections {
+                            target: imageCacheBackend
+                            function onImage_downloaded(origUrl, localUrl) {
+                                if (origUrl === anime.image_url)
+                                    coverImage.source = localUrl
                             }
                         }
                     }
 
-                    Column {
-                        width: parent.width
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
                         spacing: 12
 
-                        CustomDropdown {
-                            id: episodeDropdown
-                            width: parent.width
-                            placeholder: "Select Episode"
-                            onSelectionChangedIndex: function(value) {
-                                sourceDropdown.visible = false
-                                videoSourceDropdown.visible = false
-                                qualityDropdown.visible = false
-                                urlsContainer.visible = false
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
 
-                                busyIndicator.running = true
-
-                                var split = anime.episode_ids.split(";")
-                                animeBackend.select_episode(split[value])
-                            }
-                        }
-
-                        CustomDropdown {
-                            id: sourceDropdown
-                            visible: false
-                            width: parent.width
-                            placeholder: "Select Source"
-                            onSelectionChangedIndex: function(value) {
-                                videoSourceDropdown.visible = false
-                                qualityDropdown.visible = false
-                                urlsContainer.visible = false
-
-                                busyIndicator.running = true
-
-                                var item = translations[value]
-                                animeBackend.get_streams(item.id, false)
-                                streamSelected = sourceDropdown.selectedValue
-                            }
-                        }
-
-                        CustomDropdown {
-                            id: videoSourceDropdown
-                            visible: false
-                            width: parent.width
-                            placeholder: "Select Different Video Source"
-                            onSelectionChangedIndex: function(value) {
-                                qualityDropdown.visible = false
-                                urlsContainer.visible = false
-
-                                if (value === 0) {
-                                    videoStreams = streams
-                                    videoStreamSelected = ""
-                                    populateQualityDropdown()
-                                    return
-                                } else {
-                                    videoStreamSelected = videoSourceDropdown.selectedValue
-                                }
-
-                                busyIndicator.running = true
-
-                                var item = translations[value - 1]
-                                animeBackend.get_streams(item.id, true)
-                            }
-                        }
-
-                        CustomDropdown {
-                            id: qualityDropdown
-                            visible: false
-                            width: parent.width
-                            placeholder: "Select Quality"
-                            onSelectionChangedIndex: function(value) {
-                                urlsContainer.visible = true
-                                ugetButton.enabled = true
-                                ugetButtonSubs.enabled = true
-                                ugetAllButton.enabled = true
-                                mpvButton.enabled = true
-                                vlcButton.enabled = true
-
-                                videoUrlField.text = ""
-                                subsUrlField.text = ""
-
-                                if (videoStreams !== undefined) {
-                                    videoUrlField.text = videoStreams[value].url
-                                } else {
-                                    videoUrlField.text = streams[value].url
-                                }
-                                var subs = streams[0].subs_url
-                                if (subs !== undefined) {
-                                    subsRow.visible = true
-                                    subsUrlField.text = subs
-                                    animeBackend.get_subtitle_fonts(subs)
-                                } else {
-                                    subsRow.visible = false
-                                }
-
-                                qualitySelected = qualityDropdown.selectedValue
-
-                                databaseBackend.update(anime.id, {
-                                    episode: episodeDropdown.selectedValue,
-                                    translation: streamSelected,
-                                    alt_video: videoStreamSelected,
-                                    quality: qualitySelected
-                                })
-                            }
-                        }
-
-                        Rectangle {
-                            id: urlsContainer
-                            visible: false
-                            width: parent.width
-                            height: urlsColumn.height + 16
-                            color: Themes.currentTheme.secondaryBackground
-                            radius: 4
-
-                            Column {
-                                id: urlsColumn
-                                anchors.margins: 8
-                                anchors.left: parent.left
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
+                            ColumnLayout {
+                                width: parent.width
                                 spacing: 8
 
-                                Row {
-                                    width: parent.width
-                                    height: 36
-                                    spacing: 8
+                                Label {
+                                    text: anime.title
+                                    font.pixelSize: 24
+                                    font.bold: true
+                                    Layout.fillWidth: true
+                                    wrapMode: Text.WordWrap
+                                }
 
-                                    TextField {
-                                        id: videoUrlField
-                                        width: parent.width - copyButton.width - ugetButton.width - parent.spacing * 2
-                                        height: parent.height
-                                        readOnly: true
-                                        color: Themes.currentTheme.text
-                                        Component.onCompleted: cursorPosition = 0
-                                        onTextChanged: cursorPosition = 0
-                                        background: Rectangle {
-                                            color: Themes.currentTheme.inputBackground
-                                            radius: 4
-                                        }
+                                Label {
+                                    text: anime.description
+                                    font.pixelSize: 14
+                                    wrapMode: Text.WordWrap
+                                    Layout.fillWidth: true
+                                    opacity: 0.7
+                                }
+                            }
+                        }
+
+                        // Tracking controls
+                        RowLayout {
+                            id: trackingControls
+                            spacing: 12
+
+                            CustomDropdown {
+                                id: statusDropdown
+                                width: 160
+                                height: 36
+                                model: ["Not in List", "Completed", "Watching", "On-Hold", "Dropped", "Plan to Watch"]
+                                placeholder: "Status"
+                                onSelectionChangedIndex: function(value) {
+                                    animeStatus = statusDropdown.selectedValue
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: 6
+                                Label { text: "Episodes" }
+                                CustomSpinBox {
+                                    id: episodesSpinBox
+                                    value: 0
+                                    from: 0
+                                    to: anime.total_episodes || 9999
+                                    implicitHeight: 36
+                                    implicitWidth: 80
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: 6
+                                Label { text: "Score" }
+                                CustomSpinBox {
+                                    id: scoreSpinBox
+                                    value: 0
+                                    from: 0
+                                    to: 10
+                                    implicitHeight: 36
+                                    implicitWidth: 60
+                                }
+                            }
+
+                            RowLayout {
+                                spacing: 6
+                                Label { text: "Rewatches" }
+                                CustomSpinBox {
+                                    id: rewatchesSpinBox
+                                    value: 0
+                                    from: 0
+                                    to: 999
+                                    implicitHeight: 36
+                                    implicitWidth: 60
+                                }
+                            }
+
+                            StyledButton {
+                                id: trackingApplyButton
+                                text: "Apply"
+                                palette.button: "#4CAF50"
+                                palette.buttonText: "#FFFFFF"
+                                onClicked: {
+                                    var statusMap = {
+                                        "Not in List": "",
+                                        "Completed": "completed",
+                                        "Watching": "watching",
+                                        "On-Hold": "on_hold",
+                                        "Dropped": "dropped",
+                                        "Plan to Watch": "planned"
                                     }
+                                    shikimoriBackend.update_rate(
+                                        anime.id,
+                                        statusMap[animeStatus] || "",
+                                        episodesSpinBox.value,
+                                        scoreSpinBox.value,
+                                        rewatchesSpinBox.value
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
 
-                                    CustomButton {
-                                        id: copyButton
-                                        width: 80
-                                        height: parent.height
-                                        text: "Copy"
-                                        onClicked: {
-                                            videoUrlField.selectAll()
-                                            videoUrlField.copy()
-                                        }
-                                    }
+                // Episode & source selection
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
 
-                                    CustomButton {
-                                        id: ugetButton
-                                        width: 80
-                                        height: parent.height
-                                        text: "uGet"
-                                        onClicked: {
-                                            var url = videoUrlField.text
-                                            var title = anime.title + " — " + episodeDropdown.selectedValue
-                                            var episodesTotal = episodeDropdown.model.length
-                                            animeBackend.launch_uget(url, title, episodesTotal, false)
-                                            ugetButton.enabled = false
-                                        }
+                    Label {
+                        visible: !hasToken
+                        text: "\u26A0 No API token set \u2014 configure in Settings"
+                        color: "#EF5350"
+                    }
+
+                    CustomDropdown {
+                        id: episodeDropdown
+                        Layout.fillWidth: true
+                        placeholder: "Select Episode"
+                        onSelectionChangedIndex: function(value) {
+                            sourceDropdown.visible = false
+                            videoSourceDropdown.visible = false
+                            qualityDropdown.visible = false
+                            urlsContainer.visible = false
+
+                            busyIndicator.running = true
+
+                            var split = anime.episode_ids.split(";")
+                            animeBackend.select_episode(split[value])
+                        }
+                    }
+
+                    CustomDropdown {
+                        id: sourceDropdown
+                        visible: false
+                        Layout.fillWidth: true
+                        placeholder: "Select Source"
+                        onSelectionChangedIndex: function(value) {
+                            videoSourceDropdown.visible = false
+                            qualityDropdown.visible = false
+                            urlsContainer.visible = false
+
+                            busyIndicator.running = true
+
+                            var item = translations[value]
+                            animeBackend.get_streams(item.id, false)
+                            streamSelected = sourceDropdown.selectedValue
+                        }
+                    }
+
+                    CustomDropdown {
+                        id: videoSourceDropdown
+                        visible: false
+                        Layout.fillWidth: true
+                        placeholder: "Select Different Video Source"
+                        onSelectionChangedIndex: function(value) {
+                            qualityDropdown.visible = false
+                            urlsContainer.visible = false
+
+                            if (value === 0) {
+                                videoStreams = streams
+                                videoStreamSelected = ""
+                                populateQualityDropdown()
+                                return
+                            } else {
+                                videoStreamSelected = videoSourceDropdown.selectedValue
+                            }
+
+                            busyIndicator.running = true
+
+                            var item = translations[value - 1]
+                            animeBackend.get_streams(item.id, true)
+                        }
+                    }
+
+                    CustomDropdown {
+                        id: qualityDropdown
+                        visible: false
+                        Layout.fillWidth: true
+                        placeholder: "Select Quality"
+                        onSelectionChangedIndex: function(value) {
+                            urlsContainer.visible = true
+                            ugetButton.enabled = ugetAvailable
+                            ugetButtonSubs.enabled = ugetAvailable
+                            ugetAllButton.enabled = ugetAvailable
+                            mpvButton.enabled = mpvAvailable
+                            vlcButton.enabled = vlcAvailable
+
+                            videoUrlField.text = ""
+                            subsUrlField.text = ""
+
+                            if (videoStreams !== undefined) {
+                                videoUrlField.text = videoStreams[value].url
+                            } else {
+                                videoUrlField.text = streams[value].url
+                            }
+                            var subs = streams[0].subs_url
+                            if (subs !== undefined) {
+                                subsRow.visible = true
+                                subsUrlField.text = subs
+                                animeBackend.get_subtitle_fonts(subs)
+                            } else {
+                                subsRow.visible = false
+                            }
+
+                            qualitySelected = qualityDropdown.selectedValue
+
+                            databaseBackend.update(anime.id, {
+                                episode: episodeDropdown.selectedValue,
+                                translation: streamSelected,
+                                alt_video: videoStreamSelected,
+                                quality: qualitySelected
+                            })
+                        }
+                    }
+
+                    // URLs and player controls
+                    Pane {
+                        id: urlsContainer
+                        visible: false
+                        Layout.fillWidth: true
+                        padding: 8
+
+                        background: Rectangle {
+                            color: palette.base
+                            radius: 4
+                        }
+
+                        ColumnLayout {
+                            anchors.fill: parent
+                            spacing: 8
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+
+                                StyledTextField {
+                                    id: videoUrlField
+                                    Layout.fillWidth: true
+                                    readOnly: true
+                                    Component.onCompleted: cursorPosition = 0
+                                    onTextChanged: cursorPosition = 0
+                                }
+
+                                StyledButton {
+                                    id: copyButton
+                                    text: "Copy"
+                                    visible: !isAndroid
+                                    onClicked: {
+                                        videoUrlField.selectAll()
+                                        videoUrlField.copy()
                                     }
                                 }
 
-                                Row {
-                                    id: subsRow
-                                    width: parent.width
-                                    height: 36
-                                    spacing: 8
-
-                                    TextField {
-                                        id: subsUrlField
-                                        width: parent.width - copyButtonSubs.width - ugetButtonSubs.width - parent.spacing * 2
-                                        height: parent.height
-                                        readOnly: true
-                                        color: Themes.currentTheme.text
-                                        background: Rectangle {
-                                            color: Themes.currentTheme.inputBackground
-                                            radius: 4
-                                        }
-
-                                        ToolTip.visible: subsUrlMouseArea.containsMouse
-                                        ToolTip.delay: 1000
-
-                                        MouseArea {
-                                            id: subsUrlMouseArea
-                                            anchors.fill: parent
-                                            hoverEnabled: true
-                                            acceptedButtons: Qt.NoButton
-                                            cursorShape: Qt.IBeamCursor
-                                        }
+                                StyledButton {
+                                    id: ugetButton
+                                    text: isAndroid ? "Download" : "uGet"
+                                    onClicked: {
+                                        var url = videoUrlField.text
+                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        var episodesTotal = episodeDropdown.model.length
+                                        animeBackend.launch_uget(url, title, episodesTotal, false)
+                                        ugetButton.enabled = false
                                     }
+                                }
+                            }
 
-                                    CustomButton {
-                                        id: copyButtonSubs
-                                        width: 80
-                                        height: parent.height
-                                        text: "Copy"
-                                        onClicked: {
-                                            subsUrlField.selectAll()
-                                            subsUrlField.copy()
-                                        }
-                                    }
+                            RowLayout {
+                                id: subsRow
+                                Layout.fillWidth: true
+                                spacing: 8
 
-                                    CustomButton {
-                                        id: ugetButtonSubs
-                                        width: 80
-                                        height: parent.height
-                                        text: "uGet"
-                                        onClicked: {
-                                            var url = subsUrlField.text
-                                            var title = anime.title + " — " + episodeDropdown.selectedValue
-                                            var episodesTotal = episodeDropdown.model.length
-                                            animeBackend.launch_uget(url, title, episodesTotal, true)
-                                            ugetButtonSubs.enabled = false
-                                        }
+                                StyledTextField {
+                                    id: subsUrlField
+                                    Layout.fillWidth: true
+                                    readOnly: true
+
+                                    ToolTip.visible: subsUrlMouseArea.containsMouse
+                                    ToolTip.delay: 1000
+
+                                    MouseArea {
+                                        id: subsUrlMouseArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        acceptedButtons: Qt.NoButton
+                                        cursorShape: Qt.IBeamCursor
                                     }
                                 }
 
-                                Row {
-                                    spacing: 8
-                                    height: 36
-
-                                    CustomButton {
-                                        id: mpvButton
-                                        width: 80
-                                        height: parent.height
-                                        text: "mpv"
-                                        Timer {
-                                            id: mpvTimer
-                                            interval: 5000
-                                            repeat: false
-                                            onTriggered: mpvButton.enabled = true
-                                        }
-                                        onClicked: {
-                                            var url = videoUrlField.text
-                                            var subs = subsUrlField.text
-                                            var title = anime.title + " — " + episodeDropdown.selectedValue
-                                            animeBackend.launch_mpv(url, subs, title)
-                                            mpvButton.enabled = false
-                                            mpvTimer.start()
-                                        }
+                                StyledButton {
+                                    id: copyButtonSubs
+                                    text: "Copy"
+                                    visible: !isAndroid
+                                    onClicked: {
+                                        subsUrlField.selectAll()
+                                        subsUrlField.copy()
                                     }
+                                }
 
-                                    CustomButton {
-                                        id: vlcButton
-                                        width: 80
-                                        height: parent.height
-                                        text: "vlc"
-                                        Timer {
-                                            id: vlcTimer
-                                            interval: 5000
-                                            repeat: false
-                                            onTriggered: vlcButton.enabled = true
-                                        }
-                                        onClicked: {
-                                            var url = videoUrlField.text
-                                            var subs = subsUrlField.text
-                                            var title = anime.title + " — " + episodeDropdown.selectedValue
-                                            animeBackend.launch_vlc(url, subs, title)
-                                            vlcButton.enabled = false
-                                            vlcTimer.start()
-                                        }
+                                StyledButton {
+                                    id: ugetButtonSubs
+                                    text: isAndroid ? "Download" : "uGet"
+                                    onClicked: {
+                                        var url = subsUrlField.text
+                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        var episodesTotal = episodeDropdown.model.length
+                                        animeBackend.launch_uget(url, title, episodesTotal, true)
+                                        ugetButtonSubs.enabled = false
                                     }
+                                }
+                            }
 
-                                    CustomButton {
-                                        id: ugetAllButton
-                                        width: 120
-                                        height: parent.height
-                                        text: "uGet Episode"
-                                        onClicked: {
-                                            ugetButton.clicked()
-                                            ugetButtonSubs.clicked()
-                                            ugetAllButton.enabled = false
-                                        }
+                            RowLayout {
+                                spacing: 8
+
+                                StyledButton {
+                                    id: mpvButton
+                                    text: "mpv"
+                                    Timer {
+                                        id: mpvTimer
+                                        interval: 5000
+                                        repeat: false
+                                        onTriggered: mpvButton.enabled = mpvAvailable
+                                    }
+                                    onClicked: {
+                                        var url = videoUrlField.text
+                                        var subs = subsUrlField.text
+                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        animeBackend.launch_mpv(url, subs, title)
+                                        mpvButton.enabled = false
+                                        mpvTimer.start()
+                                    }
+                                }
+
+                                StyledButton {
+                                    id: vlcButton
+                                    text: "VLC"
+                                    Timer {
+                                        id: vlcTimer
+                                        interval: 5000
+                                        repeat: false
+                                        onTriggered: vlcButton.enabled = vlcAvailable
+                                    }
+                                    onClicked: {
+                                        var url = videoUrlField.text
+                                        var subs = subsUrlField.text
+                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        animeBackend.launch_vlc(url, subs, title)
+                                        vlcButton.enabled = false
+                                        vlcTimer.start()
+                                    }
+                                }
+
+                                StyledButton {
+                                    id: ugetAllButton
+                                    text: isAndroid ? "Download All" : "uGet Episode"
+                                    onClicked: {
+                                        ugetButton.clicked()
+                                        ugetButtonSubs.clicked()
+                                        ugetAllButton.enabled = false
                                     }
                                 }
                             }

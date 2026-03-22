@@ -1,4 +1,0 @@
-pyside6
-aiohttp
-aiohttp_socks
-ass

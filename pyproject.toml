@@ -1,0 +1,15 @@
+[project]
+name = "anime365-qtquick"
+version = "0.1.0"
+description = "Qt Quick client for Anime365"
+requires-python = ">=3.12"
+dependencies = [
+    "pyside6",
+    "aiohttp",
+    "certifi",
+    "aiohttp-socks",
+    "ass",
+]
+
+[dependency-groups]
+build = ["pyinstaller"]
