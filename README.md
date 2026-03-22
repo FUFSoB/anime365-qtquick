@@ -75,17 +75,17 @@ uv run --group build python build.py desktop --clean
 
 ### Android APK
 
-Requires Android SDK and NDK. Set environment variables first:
+Requires Android SDK, NDK, and pre-built Android aarch64 wheels for PySide6 and
+shiboken6 (PyPI does not publish Android wheels — build from Qt sources or obtain
+from Qt's CI).
 
 ```sh
 export ANDROID_SDK_ROOT=$HOME/Android/Sdk
 export ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/<version>
-```
 
-Then:
-
-```sh
-uv run python build.py android
+uv run --group android python build.py android \
+    --wheel-pyside /path/to/PySide6-...-android_aarch64.whl \
+    --wheel-shiboken /path/to/shiboken6-...-android_aarch64.whl
 ```
 
 A `pysidedeploy.spec` config file will be created on first run; edit it if needed.

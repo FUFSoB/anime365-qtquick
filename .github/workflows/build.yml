@@ -1,0 +1,75 @@
+name: Build
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-desktop:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: Anime365
+          - os: windows-latest
+            artifact: Anime365.exe
+          - os: macos-latest
+            artifact: Anime365
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install objdump (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y binutils
+
+      - name: Install Qt dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get install -y \
+            libglib2.0-0 libfontconfig1 libfreetype6 libgl1 \
+            libxkbcommon0 libdbus-1-3 libxcb1 libx11-6 \
+            libxcb-cursor0 libxcb-keysyms1 libxcb-image0 \
+            libxcb-render-util0 libxcb-shape0 libegl1
+
+      - name: Build
+        run: uv run --group build python build.py desktop --onefile --clean
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Anime365-${{ runner.os }}
+          path: dist/${{ matrix.artifact }}
+
+  # Android CI is disabled: PySide6 does not publish prebuilt Android wheels
+  # on PyPI. Building from source requires the full Qt for Android SDK and
+  # cross-compilation, which is impractical in CI. Re-enable when upstream
+  # starts shipping android_aarch64 wheels.
+
+  release:
+    needs: [build-desktop]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+          merge-multiple: false
+
+      - name: Rename artifacts
+        run: |
+          mv artifacts/Anime365-Linux/Anime365         artifacts/Anime365-linux
+          mv artifacts/Anime365-Windows/Anime365.exe   artifacts/Anime365-windows.exe
+          mv artifacts/Anime365-macOS/Anime365         artifacts/Anime365-macos
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/Anime365-*

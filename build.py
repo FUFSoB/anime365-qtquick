@@ -5,8 +5,10 @@ Build standalone Anime365 applications.
 Desktop (Windows / Linux / macOS):
     uv run --group build python build.py desktop
 
-Android:
-    uv run python build.py android
+Android (requires pre-built wheels — PyPI does not publish Android wheels):
+    uv run --group android python build.py android \\
+        --wheel-pyside /path/to/PySide6-...-android_aarch64.whl \\
+        --wheel-shiboken /path/to/shiboken6-...-android_aarch64.whl
 
 Options:
     --onefile   Pack everything into a single executable (slower startup)
@@ -92,8 +94,13 @@ def build_desktop(onefile: bool = False):
     print(f"\nBuild complete: {out}")
 
 
-def build_android():
-    """Build Android APK using pyside6-android-deploy."""
+def build_android(wheel_pyside: str, wheel_shiboken: str):
+    """Build Android APK using pyside6-android-deploy.
+
+    Requires pre-downloaded Android aarch64 wheels for PySide6 and shiboken6,
+    since PyPI does not publish them. Build wheels from Qt sources or obtain
+    them from Qt's CI artifacts.
+    """
 
     # Check environment
     sdk = os.environ.get("ANDROID_SDK_ROOT") or os.environ.get("ANDROID_HOME")
@@ -126,10 +133,18 @@ def build_android():
         _write_android_spec(deploy_spec, sdk, ndk)
         print(f"Created {deploy_spec}")
 
-    cmd = [tool, "--input-file", str(SRC / "main.py"), "--verbose"]
+    cmd = [
+        tool,
+        "--input-file", str(SRC / "main.py"),
+        "--wheel-pyside", wheel_pyside,
+        "--wheel-shiboken", wheel_shiboken,
+        "--verbose",
+    ]
     print(f"Building {APP_NAME} for Android...")
     print(f"  SDK: {sdk}")
     print(f"  NDK: {ndk}")
+    print(f"  PySide6 wheel: {wheel_pyside}")
+    print(f"  shiboken6 wheel: {wheel_shiboken}")
     subprocess.run(cmd, check=True)
 
     # Look for APK output
@@ -185,6 +200,14 @@ def main():
         action="store_true",
         help="Remove build/ and dist/ before building",
     )
+    parser.add_argument(
+        "--wheel-pyside",
+        help="Android: path to PySide6 android_aarch64 wheel",
+    )
+    parser.add_argument(
+        "--wheel-shiboken",
+        help="Android: path to shiboken6 android_aarch64 wheel",
+    )
     args = parser.parse_args()
 
     if args.clean:
@@ -193,7 +216,13 @@ def main():
     if args.target == "desktop":
         build_desktop(onefile=args.onefile)
     elif args.target == "android":
-        build_android()
+        if not args.wheel_pyside or not args.wheel_shiboken:
+            parser.error(
+                "Android builds require --wheel-pyside and --wheel-shiboken.\n"
+                "PyPI does not publish Android wheels — build them from Qt sources\n"
+                "or obtain them from Qt's CI artifacts."
+            )
+        build_android(args.wheel_pyside, args.wheel_shiboken)
 
 
 if __name__ == "__main__":
