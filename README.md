@@ -4,22 +4,50 @@ A QtQuick frontend for [Anime365](https://smotret-anime.org/) using Python as th
 
 ![Screenshot](docs/screenshots/main_page.png)
 
-## Requirements
+## Install (NixOS / Nix)
 
-- [uv](https://docs.astral.sh/uv/) — Python package manager
-- Python 3.12+
-- On NixOS: enter the dev shell first (`nix-shell`)
+### One-off
+
+```sh
+nix profile install github:fufsob/anime365-qtquick
+nix run github:fufsob/anime365-qtquick
+```
+
+### home-manager (flakes) — recommended
+
+Add the overlay to your nixpkgs, then use `pkgs.anime365` anywhere:
+
+```nix
+# flake.nix
+inputs = {
+  anime365.url = "github:fufsob/anime365-qtquick";
+  anime365.inputs.nixpkgs.follows = "nixpkgs"; # avoids duplicate nixpkgs
+};
+
+outputs = { nixpkgs, home-manager, anime365, ... }: {
+  homeConfigurations."youruser" = home-manager.lib.homeManagerConfiguration {
+    pkgs = import nixpkgs {
+      system = "x86_64-linux";
+      overlays = [ anime365.overlays.default ];
+    };
+    modules = [ ./home.nix ];
+  };
+};
+```
+
+```nix
+# home.nix
+{ pkgs, ... }:
+{
+  home.packages = [ pkgs.anime365 ];
+}
+```
 
 ## Running from source
 
 ```sh
-./start.sh
-```
-
-On NixOS:
-
-```sh
-nix-shell
+nix develop   # enter dev shell (sets up LD_LIBRARY_PATH, SSL certs, uv)
+uv sync
 ./start.sh
 ```
 

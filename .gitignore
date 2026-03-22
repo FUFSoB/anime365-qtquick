@@ -172,3 +172,5 @@ cache/
 # Build artifacts
 *.spec
 pysidedeploy.spec
+result
+result-*

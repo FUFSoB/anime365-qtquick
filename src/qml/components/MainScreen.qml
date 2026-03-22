@@ -70,7 +70,7 @@ Pane {
                 Layout.fillWidth: true
                 text: "Open uGet"
                 visible: !isAndroid
-                enabled: settingsBackend.is_valid_binary(settingsBackend.get("uget_path"))
+                enabled: settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("uget_path"))
                 onClicked: animeBackend.open_uget()
             }
 

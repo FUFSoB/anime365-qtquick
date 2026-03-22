@@ -22,10 +22,10 @@ Pane {
     property int animeScore: 0
     property int rewatchCount: 0
 
-    readonly property bool mpvAvailable: isAndroid || settingsBackend.is_valid_binary(settingsBackend.get("mpv_path"))
-    readonly property bool vlcAvailable: isAndroid || settingsBackend.is_valid_binary(settingsBackend.get("vlc_path"))
-    readonly property bool ugetAvailable: isAndroid || settingsBackend.is_valid_binary(settingsBackend.get("uget_path"))
-    readonly property bool hasToken: settingsBackend.get("anime365_token") !== ""
+    readonly property bool mpvAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpv_path")))
+    readonly property bool vlcAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path")))
+    readonly property bool ugetAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("uget_path")))
+    readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
     Component.onCompleted: {
         if (anime.episode_list === undefined) {
