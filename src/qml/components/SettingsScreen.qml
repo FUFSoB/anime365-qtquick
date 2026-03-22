@@ -18,6 +18,8 @@ Pane {
         shikiClientIdField.text = settings.shikimori_client_id || ""
         shikiClientSecretField.text = settings.shikimori_client_secret || ""
         proxyField.text = settings.proxy || ""
+        var themeIdx = ["auto", "light", "dark"].indexOf(settings.theme || "auto")
+        themeDropdown.changeSelection(themeIdx < 0 ? 0 : themeIdx)
     }
 
     Connections {
@@ -80,6 +82,7 @@ Pane {
                     || shikiClientIdField.text !== (settings.shikimori_client_id ?? "")
                     || shikiClientSecretField.text !== (settings.shikimori_client_secret ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
+                    || themeDropdown.selectedValue !== (settings.theme || "auto")
                 onClicked: {
                     settingsBackend.save_settings({
                         "mpv_path": mpvPathField.text,
@@ -89,6 +92,7 @@ Pane {
                         "shikimori_client_id": shikiClientIdField.text,
                         "shikimori_client_secret": shikiClientSecretField.text,
                         "proxy": proxyField.text,
+                        "theme": themeDropdown.selectedValue,
                     })
                     stackView.pop()
                 }
@@ -103,6 +107,32 @@ Pane {
             ColumnLayout {
                 width: parent.parent.width
                 spacing: 16
+
+                // --- Appearance ---
+
+                Label {
+                    text: "Appearance"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label { text: "Theme" }
+
+                    CustomDropdown {
+                        id: themeDropdown
+                        Layout.fillWidth: true
+                        model: ["auto", "light", "dark"]
+                        onSelectionChanged: function(value) {
+                            settingsBackend.apply_theme(value)
+                        }
+                    }
+                }
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
 
                 // --- Player Paths (desktop only) ---
 
@@ -237,6 +267,7 @@ Pane {
                     StyledTextField {
                         id: anime365TokenField
                         Layout.fillWidth: true
+                        echoMode: TextInput.Password
                         property bool isValidToken: false
                         onTextChanged: {
                             if (text === settings.anime365_token) {

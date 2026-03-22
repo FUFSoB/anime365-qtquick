@@ -26,6 +26,8 @@ class Anime365:
         self.app.setApplicationName("Anime365")
         self.app.setDesktopFileName("anime365")  # must match the .desktop filename for Wayland app-id
 
+        backends["settingsBackend"].apply_theme(backends["settingsBackend"].get("theme"))
+
         for name, backend in backends.items():
             self.engine.rootContext().setContextProperty(name, backend)
 

@@ -110,6 +110,7 @@
           buildInputs = with pkgs; [
             uv
             cacert
+            binutils
           ];
 
           SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";

@@ -2,6 +2,60 @@ import json
 import os
 import shutil
 from PySide6.QtCore import QObject, Slot, Signal
+from PySide6.QtGui import QColor, QPalette
+from PySide6.QtWidgets import QApplication
+
+
+def _dark_palette() -> QPalette:
+    p = QPalette()
+    p.setColor(QPalette.ColorRole.Window,          QColor(45,  45,  45))
+    p.setColor(QPalette.ColorRole.WindowText,      QColor(220, 220, 220))
+    p.setColor(QPalette.ColorRole.Base,            QColor(30,  30,  30))
+    p.setColor(QPalette.ColorRole.AlternateBase,   QColor(45,  45,  45))
+    p.setColor(QPalette.ColorRole.Text,            QColor(220, 220, 220))
+    p.setColor(QPalette.ColorRole.Button,          QColor(53,  53,  53))
+    p.setColor(QPalette.ColorRole.ButtonText,      QColor(220, 220, 220))
+    p.setColor(QPalette.ColorRole.BrightText,      QColor(255, 100, 100))
+    p.setColor(QPalette.ColorRole.Highlight,       QColor(42,  130, 218))
+    p.setColor(QPalette.ColorRole.HighlightedText, QColor(0,   0,   0))
+    p.setColor(QPalette.ColorRole.Link,            QColor(42,  130, 218))
+    p.setColor(QPalette.ColorRole.ToolTipBase,     QColor(30,  30,  30))
+    p.setColor(QPalette.ColorRole.ToolTipText,     QColor(220, 220, 220))
+    p.setColor(QPalette.ColorRole.PlaceholderText, QColor(127, 127, 127))
+    p.setColor(QPalette.ColorRole.Mid,             QColor(80,  80,  80))
+    p.setColor(QPalette.ColorRole.Midlight,        QColor(90,  90,  90))
+    p.setColor(QPalette.ColorRole.Dark,            QColor(35,  35,  35))
+    p.setColor(QPalette.ColorRole.Shadow,          QColor(20,  20,  20))
+    for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text,
+                 QPalette.ColorRole.ButtonText):
+        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(127, 127, 127))
+    return p
+
+
+def _light_palette() -> QPalette:
+    p = QPalette()
+    p.setColor(QPalette.ColorRole.Window,          QColor(240, 240, 240))
+    p.setColor(QPalette.ColorRole.WindowText,      QColor(0,   0,   0))
+    p.setColor(QPalette.ColorRole.Base,            QColor(255, 255, 255))
+    p.setColor(QPalette.ColorRole.AlternateBase,   QColor(233, 231, 227))
+    p.setColor(QPalette.ColorRole.Text,            QColor(0,   0,   0))
+    p.setColor(QPalette.ColorRole.Button,          QColor(240, 240, 240))
+    p.setColor(QPalette.ColorRole.ButtonText,      QColor(0,   0,   0))
+    p.setColor(QPalette.ColorRole.BrightText,      QColor(255, 0,   0))
+    p.setColor(QPalette.ColorRole.Highlight,       QColor(0,   120, 215))
+    p.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
+    p.setColor(QPalette.ColorRole.Link,            QColor(0,   0,   255))
+    p.setColor(QPalette.ColorRole.ToolTipBase,     QColor(255, 255, 220))
+    p.setColor(QPalette.ColorRole.ToolTipText,     QColor(0,   0,   0))
+    p.setColor(QPalette.ColorRole.PlaceholderText, QColor(160, 160, 160))
+    p.setColor(QPalette.ColorRole.Mid,             QColor(160, 160, 160))
+    p.setColor(QPalette.ColorRole.Midlight,        QColor(200, 200, 200))
+    p.setColor(QPalette.ColorRole.Dark,            QColor(160, 160, 160))
+    p.setColor(QPalette.ColorRole.Shadow,          QColor(105, 105, 105))
+    for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text,
+                 QPalette.ColorRole.ButtonText):
+        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(120, 120, 120))
+    return p
 
 from constants import SETTINGS_FILE, LEGACY_SETTINGS_FILE, IS_ANDROID
 
@@ -109,6 +163,16 @@ class Backend(QObject):
         self.worker = AsyncFunctionWorker(self.api.check_token, token)
         self.worker.result_bool.connect(self.token_checked.emit)
         self.worker.start()
+
+    @Slot(str)
+    def apply_theme(self, theme: str):
+        if theme == "dark":
+            QApplication.setPalette(_dark_palette())
+        elif theme == "light":
+            QApplication.setPalette(_light_palette())
+        else:
+            # "auto" — restore the default palette derived from the system/style
+            QApplication.setPalette(QApplication.style().standardPalette())
 
     @Slot(str)
     def is_valid_shiki_token(self, token):
