@@ -75,5 +75,5 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${{ github.ref_name }}" artifacts/Anime365-* --generate-notes
+        run: gh release create "${{ github.ref_name }}" artifacts/Anime365-linux artifacts/Anime365-windows.exe artifacts/Anime365-macos --generate-notes
 
