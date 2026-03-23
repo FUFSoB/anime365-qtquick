@@ -67,7 +67,6 @@ class Backend(QObject):
     EmptyValue = object()
 
     token_checked = Signal(bool)
-    shiki_token_checked = Signal(bool)
     proxy_checked = Signal(bool)
 
     def __init__(self):
@@ -113,18 +112,11 @@ class Backend(QObject):
             "uget_path": shutil.which("uget-gtk") or shutil.which("uget") or "",
             # tokens
             "anime365_token": "",
-            # shikimori oauth
-            "shikimori_client_id": "",
-            "shikimori_client_secret": "",
-            "shikimori_access_token": "",
-            "shikimori_refresh_token": "",
-            "shikimori_user_id": 0,
             # not in UI
             "theme": "",
             "proxy": "",
             "anime365_site": "https://smotret-anime.org",
             "hentai365_site": "https://h365-art.org",
-            "shikimori_site": "https://shikimori.one",
         }
 
     def _migrate_legacy_settings(self):
@@ -186,8 +178,3 @@ class Backend(QObject):
             # "auto" — restore the default palette derived from the system/style
             QApplication.setPalette(QApplication.style().standardPalette())
 
-    @Slot(str)
-    def is_valid_shiki_token(self, token):
-        worker = AsyncFunctionWorker(self.api.shiki_check_token, token)
-        worker.result_bool.connect(self.shiki_token_checked.emit)
-        self._run_worker(worker)

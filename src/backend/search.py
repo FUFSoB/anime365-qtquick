@@ -55,6 +55,11 @@ class Worker(AsyncFunctionWorker):
             h_type="hentai" if item["isHentai"] else item["type"],
             description=description,
             genres=genres,
+            mal_id=item.get("myAnimeListId", 0) or 0,
+            world_art_id=item.get("worldArtId", 0) or 0,
+            anidb_id=item.get("aniDbId", 0) or 0,
+            ann_id=item.get("animeNewsNetworkId", 0) or 0,
+            anime365_url=item.get("url", ""),
         )
 
     async def perform_search_operation(self):

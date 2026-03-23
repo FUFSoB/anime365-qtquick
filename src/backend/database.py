@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS anime (
     h_type          TEXT,
     description     TEXT,
     genres          TEXT,
+    mal_id          INTEGER DEFAULT 0,
+    world_art_id    INTEGER DEFAULT 0,
+    anidb_id        INTEGER DEFAULT 0,
+    ann_id          INTEGER DEFAULT 0,
+    anime365_url    TEXT    DEFAULT '',
     episode         TEXT    DEFAULT '',
     translation     TEXT    DEFAULT '',
     alt_video       TEXT    DEFAULT '',
@@ -62,8 +67,25 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute(_CREATE_TABLE)
+        self._add_columns_if_missing()
         self.conn.commit()
         self._migrate_legacy()
+
+    def _add_columns_if_missing(self):
+        existing = {
+            row[1]
+            for row in self.conn.execute("PRAGMA table_info(anime)").fetchall()
+        }
+        new_cols = {
+            "mal_id": "INTEGER DEFAULT 0",
+            "world_art_id": "INTEGER DEFAULT 0",
+            "anidb_id": "INTEGER DEFAULT 0",
+            "ann_id": "INTEGER DEFAULT 0",
+            "anime365_url": "TEXT DEFAULT ''",
+        }
+        for col, typedef in new_cols.items():
+            if col not in existing:
+                self.conn.execute(f"ALTER TABLE anime ADD COLUMN {col} {typedef}")
 
     def _migrate_legacy(self):
         if not LEGACY_DATABASE_FILE.exists():
@@ -82,10 +104,12 @@ class Database:
         self.conn.execute(
             """INSERT OR IGNORE INTO anime
                (id, title, titles, total_episodes, image_url, type, score, year,
-                hentai, h_type, description, genres, episode, translation, alt_video,
-                quality, last_viewed)
+                hentai, h_type, description, genres,
+                mal_id, world_art_id, anidb_id, ann_id, anime365_url,
+                episode, translation, alt_video, quality, last_viewed)
                VALUES (:id,:title,:titles,:total_episodes,:image_url,:type,:score,:year,
                        :hentai,:h_type,:description,:genres,
+                       :mal_id,:world_art_id,:anidb_id,:ann_id,:anime365_url,
                        :episode,:translation,:alt_video,:quality,:last_viewed)""",
             {
                 "id": row.get("id", ""),
@@ -100,6 +124,11 @@ class Database:
                 "h_type": row.get("h_type"),
                 "description": row.get("description"),
                 "genres": row.get("genres"),
+                "mal_id": row.get("mal_id", 0),
+                "world_art_id": row.get("world_art_id", 0),
+                "anidb_id": row.get("anidb_id", 0),
+                "ann_id": row.get("ann_id", 0),
+                "anime365_url": row.get("anime365_url", ""),
                 "episode": row.get("episode", ""),
                 "translation": row.get("translation", ""),
                 "alt_video": row.get("alt_video", ""),
@@ -127,7 +156,10 @@ class Database:
                    title=:title, titles=:titles, total_episodes=:total_episodes,
                    image_url=:image_url, type=:type, score=:score, year=:year,
                    hentai=:hentai, h_type=:h_type, description=:description,
-                   genres=:genres, last_viewed=:last_viewed
+                   genres=:genres,
+                   mal_id=:mal_id, world_art_id=:world_art_id,
+                   anidb_id=:anidb_id, ann_id=:ann_id, anime365_url=:anime365_url,
+                   last_viewed=:last_viewed
                    WHERE id=:id""",
                 {
                     "id": key,
@@ -142,6 +174,11 @@ class Database:
                     "h_type": row.get("h_type"),
                     "description": row.get("description"),
                     "genres": row.get("genres"),
+                    "mal_id": row.get("mal_id", 0),
+                    "world_art_id": row.get("world_art_id", 0),
+                    "anidb_id": row.get("anidb_id", 0),
+                    "ann_id": row.get("ann_id", 0),
+                    "anime365_url": row.get("anime365_url", ""),
                     "last_viewed": now,
                 },
             )
@@ -193,6 +230,7 @@ class Backend(QObject):
         keys = (
             "id", "title", "titles", "total_episodes", "image_url",
             "type", "score", "year", "hentai", "h_type", "description", "genres",
+            "mal_id", "world_art_id", "anidb_id", "ann_id", "anime365_url",
         )
         data = {k: value.get(k) for k in keys}
         result = self.db.put(key, data)

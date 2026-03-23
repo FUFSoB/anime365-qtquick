@@ -15,8 +15,6 @@ Pane {
         vlcPathField.text = settings.vlc_path || defaults.vlc_path
         ugetPathField.text = settings.uget_path || defaults.uget_path
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
-        shikiClientIdField.text = settings.shikimori_client_id || ""
-        shikiClientSecretField.text = settings.shikimori_client_secret || ""
         proxyField.text = settings.proxy || ""
         var themeIdx = ["auto", "light", "dark"].indexOf(settings.theme || "auto")
         themeDropdown.changeSelection(themeIdx < 0 ? 0 : themeIdx)
@@ -29,22 +27,6 @@ Pane {
         }
         function onProxy_checked(result) {
             proxyField.isValidProxy = result
-        }
-        function onShiki_token_checked(result) {
-            shikiStatus.text = result ? "Connected" : "Invalid token"
-            shikiStatus.color = result ? "#4CAF50" : "#EF5350"
-        }
-    }
-
-    Connections {
-        target: shikimoriBackend
-        function onAuth_completed(success, message) {
-            shikiStatus.text = message
-            shikiStatus.color = success ? "#4CAF50" : "#EF5350"
-            if (success) {
-                shikiAuthCodeField.text = ""
-                settings = settingsBackend.get_settings()
-            }
         }
     }
 
@@ -82,8 +64,6 @@ Pane {
                     || vlcPathField.text !== (settings.vlc_path ?? "")
                     || ugetPathField.text !== (settings.uget_path ?? "")
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
-                    || shikiClientIdField.text !== (settings.shikimori_client_id ?? "")
-                    || shikiClientSecretField.text !== (settings.shikimori_client_secret ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
                     || themeDropdown.selectedValue !== (settings.theme || "auto")
                 onClicked: {
@@ -92,8 +72,6 @@ Pane {
                         "vlc_path": vlcPathField.text,
                         "uget_path": ugetPathField.text,
                         "anime365_token": anime365TokenField.text,
-                        "shikimori_client_id": shikiClientIdField.text,
-                        "shikimori_client_secret": shikiClientSecretField.text,
                         "proxy": proxyField.text,
                         "theme": themeDropdown.selectedValue,
                     })
@@ -284,6 +262,7 @@ Pane {
                         text: `Token (<a href='${settingsBackend.get("anime365_site")}/api/accessToken?app=pvb'>Get token</a>)`
                         textFormat: Text.RichText
                         onLinkActivated: (url) => Qt.openUrlExternally(url)
+                        HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                     }
 
                     StyledTextField {
@@ -311,77 +290,6 @@ Pane {
                     }
                 }
 
-                // --- Shikimori ---
-
-                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
-
-                Label {
-                    text: "Shikimori"
-                    font.pixelSize: 16
-                    font.bold: true
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-
-                    Label { text: "OAuth Client ID" }
-                    StyledTextField {
-                        id: shikiClientIdField
-                        Layout.fillWidth: true
-                        placeholderText: "Register app at shikimori.one/oauth/applications"
-                    }
-
-                    Label { text: "OAuth Client Secret" }
-                    StyledTextField {
-                        id: shikiClientSecretField
-                        Layout.fillWidth: true
-                        echoMode: TextInput.Password
-                    }
-                }
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 12
-
-                    StyledButton {
-                        text: "Authorize"
-                        enabled: shikiClientIdField.text !== "" && shikiClientSecretField.text !== ""
-                        onClicked: {
-                            var url = settingsBackend.get("shikimori_site")
-                                + "/oauth/authorize"
-                                + "?client_id=" + shikiClientIdField.text
-                                + "&redirect_uri=urn:ietf:wg:oauth:2.0:oob"
-                                + "&response_type=code"
-                                + "&scope=user_rates"
-                            Qt.openUrlExternally(url)
-                        }
-                    }
-
-                    StyledTextField {
-                        id: shikiAuthCodeField
-                        Layout.fillWidth: true
-                        placeholderText: "Paste authorization code here"
-                    }
-
-                    StyledButton {
-                        text: "Submit Code"
-                        enabled: shikiAuthCodeField.text !== "" && shikiClientIdField.text !== "" && shikiClientSecretField.text !== ""
-                        onClicked: {
-                            shikimoriBackend.authorize(
-                                shikiAuthCodeField.text,
-                                shikiClientIdField.text,
-                                shikiClientSecretField.text
-                            )
-                        }
-                    }
-
-                    Label {
-                        id: shikiStatus
-                        text: settings.shikimori_access_token ? "Connected" : "Not connected"
-                        color: settings.shikimori_access_token ? "#4CAF50" : palette.placeholderText
-                    }
-                }
             }
         }
     }

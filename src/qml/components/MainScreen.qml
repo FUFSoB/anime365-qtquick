@@ -56,12 +56,6 @@ Pane {
             }
         }
 
-        StyledButton {
-            Layout.fillWidth: true
-            text: "Tracker List"
-            onClicked: console.log("Tracker List clicked")
-        }
-
         RowLayout {
             Layout.fillWidth: true
             spacing: 12

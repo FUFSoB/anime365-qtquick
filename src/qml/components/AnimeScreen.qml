@@ -17,11 +17,6 @@ Pane {
 
     property var qualitySelected: ""
 
-    property string animeStatus: "Not in List"
-    property int episodesWatched: 0
-    property int animeScore: 0
-    property int rewatchCount: 0
-
     readonly property bool mpvAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpv_path")))
     readonly property bool vlcAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path")))
     readonly property bool ugetAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("uget_path")))
@@ -179,22 +174,6 @@ Pane {
         }
     }
 
-    Connections {
-        target: shikimoriBackend
-        function onRate_updated(success) {
-            if (success) {
-                trackingApplyButton.text = "Applied!"
-                trackingResetTimer.start()
-            }
-        }
-    }
-
-    Timer {
-        id: trackingResetTimer
-        interval: 2000
-        onTriggered: trackingApplyButton.text = "Apply"
-    }
-
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
@@ -281,83 +260,57 @@ Pane {
                             }
                         }
 
-                        // Tracking controls
-                        RowLayout {
-                            id: trackingControls
-                            spacing: 12
+                        // External site links
+                        Flow {
+                            Layout.fillWidth: true
+                            spacing: 8
 
-                            CustomDropdown {
-                                id: statusDropdown
-                                width: 160
-                                height: 36
-                                model: ["Not in List", "Completed", "Watching", "On-Hold", "Dropped", "Plan to Watch"]
-                                placeholder: "Status"
-                                onSelectionChangedIndex: function(value) {
-                                    animeStatus = statusDropdown.selectedValue
-                                }
+                            Label {
+                                text: `<a href='${anime.anime365_url || ""}'>anime365</a>`
+                                visible: (anime.anime365_url || "") !== ""
+                                textFormat: Text.RichText
+                                onLinkActivated: (url) => Qt.openUrlExternally(url)
+                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             }
 
-                            RowLayout {
-                                spacing: 6
-                                Label { text: "Episodes" }
-                                CustomSpinBox {
-                                    id: episodesSpinBox
-                                    value: 0
-                                    from: 0
-                                    to: anime.total_episodes || 9999
-                                    implicitHeight: 36
-                                    implicitWidth: 80
-                                }
+                            Label {
+                                text: `<a href='https://shikimori.io/animes/${anime.mal_id}'>Shikimori</a>`
+                                visible: (anime.mal_id || 0) > 0
+                                textFormat: Text.RichText
+                                onLinkActivated: (url) => Qt.openUrlExternally(url)
+                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             }
 
-                            RowLayout {
-                                spacing: 6
-                                Label { text: "Score" }
-                                CustomSpinBox {
-                                    id: scoreSpinBox
-                                    value: 0
-                                    from: 0
-                                    to: 10
-                                    implicitHeight: 36
-                                    implicitWidth: 60
-                                }
+                            Label {
+                                text: `<a href='https://myanimelist.net/anime/${anime.mal_id}'>MAL</a>`
+                                visible: (anime.mal_id || 0) > 0
+                                textFormat: Text.RichText
+                                onLinkActivated: (url) => Qt.openUrlExternally(url)
+                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             }
 
-                            RowLayout {
-                                spacing: 6
-                                Label { text: "Rewatches" }
-                                CustomSpinBox {
-                                    id: rewatchesSpinBox
-                                    value: 0
-                                    from: 0
-                                    to: 999
-                                    implicitHeight: 36
-                                    implicitWidth: 60
-                                }
+                            Label {
+                                text: `<a href='https://anidb.net/anime/${anime.anidb_id}'>AniDB</a>`
+                                visible: (anime.anidb_id || 0) > 0
+                                textFormat: Text.RichText
+                                onLinkActivated: (url) => Qt.openUrlExternally(url)
+                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             }
 
-                            StyledButton {
-                                id: trackingApplyButton
-                                text: "Apply"
-                                palette.button: "#4CAF50"
-                                palette.buttonText: "#FFFFFF"
-                                onClicked: {
-                                    var statusMap = {
-                                        "Not in List": "",
-                                        "Completed": "completed",
-                                        "Watching": "watching",
-                                        "On-Hold": "on_hold",
-                                        "Dropped": "dropped",
-                                        "Plan to Watch": "planned"
-                                    }
-                                    shikimoriBackend.update_rate(
-                                        anime.id,
-                                        statusMap[animeStatus] || "",
-                                        episodesSpinBox.value,
-                                        scoreSpinBox.value,
-                                        rewatchesSpinBox.value
-                                    )
-                                }
+                            Label {
+                                text: `<a href='http://www.world-art.ru/animation/animation.php?id=${anime.world_art_id}'>World Art</a>`
+                                visible: (anime.world_art_id || 0) > 0
+                                textFormat: Text.RichText
+                                onLinkActivated: (url) => Qt.openUrlExternally(url)
+                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                            }
+
+                            Label {
+                                text: `<a href='https://www.animenewsnetwork.com/encyclopedia/anime.php?id=${anime.ann_id}'>ANN</a>`
+                                visible: (anime.ann_id || 0) > 0
+                                textFormat: Text.RichText
+                                onLinkActivated: (url) => Qt.openUrlExternally(url)
+                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                             }
                         }
                     }
