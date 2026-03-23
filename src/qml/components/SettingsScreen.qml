@@ -27,6 +27,9 @@ Pane {
         function onToken_checked(result) {
             anime365TokenField.isValidToken = result
         }
+        function onProxy_checked(result) {
+            proxyField.isValidProxy = result
+        }
         function onShiki_token_checked(result) {
             shikiStatus.text = result ? "Connected" : "Invalid token"
             shikiStatus.color = result ? "#4CAF50" : "#EF5350"
@@ -241,6 +244,25 @@ Pane {
                         id: proxyField
                         Layout.fillWidth: true
                         placeholderText: "socks5://host:port"
+                        property bool isValidProxy: text === ""
+                        onTextChanged: {
+                            if (text === "") {
+                                isValidProxy = true
+                            } else if (text === settings.proxy && settings.proxy !== "") {
+                                isValidProxy = true
+                            } else {
+                                isValidProxy = false
+                                validateProxyTimer.restart()
+                            }
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: proxyField.isValidProxy
+                                ? "#4CAF50"
+                                : (proxyField.text ? "#EF5350" : palette.mid)
+                            border.width: proxyField.isValidProxy || proxyField.text ? 2 : 1
+                            radius: 4
+                        }
                     }
                 }
 
@@ -360,6 +382,20 @@ Pane {
                         color: settings.shikimori_access_token ? "#4CAF50" : palette.placeholderText
                     }
                 }
+            }
+        }
+    }
+
+    Timer {
+        id: validateProxyTimer
+        interval: 1000
+        running: false
+        repeat: false
+        onTriggered: {
+            if (proxyField.text) {
+                settingsBackend.is_valid_proxy(proxyField.text)
+            } else {
+                proxyField.isValidProxy = true
             }
         }
     }

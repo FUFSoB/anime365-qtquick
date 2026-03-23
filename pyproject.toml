@@ -12,5 +12,5 @@ dependencies = [
 ]
 
 [dependency-groups]
-build = ["pyinstaller"]
+build = ["pyinstaller", "pillow"]
 android = ["jinja2", "pkginfo", "tqdm", "packaging==24.1"]

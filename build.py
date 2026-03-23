@@ -27,11 +27,44 @@ ROOT = Path(__file__).parent
 SRC = ROOT / "src"
 DIST = ROOT / "dist"
 BUILD = ROOT / "build"
+ICON_PNG = ROOT / "resources" / "icon-512.png"
 
 APP_NAME = "Anime365"
 
 # PyInstaller uses os.pathsep as src<sep>dest separator in --add-data
 SEP = os.pathsep
+
+
+def _make_icon() -> Path | None:
+    """Convert icon-512.png to platform-specific icon format."""
+    if not ICON_PNG.exists():
+        print("Warning: icon-512.png not found, building without icon")
+        return None
+
+    from PIL import Image
+
+    if sys.platform == "win32":
+        ico_path = BUILD / "icon.ico"
+        ico_path.parent.mkdir(parents=True, exist_ok=True)
+        img = Image.open(ICON_PNG)
+        sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
+        img.save(ico_path, format="ICO", sizes=sizes)
+        return ico_path
+
+    if sys.platform == "darwin":
+        iconset = BUILD / "icon.iconset"
+        iconset.mkdir(parents=True, exist_ok=True)
+        img = Image.open(ICON_PNG)
+        for size in (16, 32, 64, 128, 256, 512):
+            img.resize((size, size), Image.LANCZOS).save(iconset / f"icon_{size}x{size}.png")
+            if size <= 256:
+                doubled = size * 2
+                img.resize((doubled, doubled), Image.LANCZOS).save(iconset / f"icon_{size}x{size}@2x.png")
+        icns_path = BUILD / "icon.icns"
+        subprocess.run(["iconutil", "-c", "icns", str(iconset), "-o", str(icns_path)], check=True)
+        return icns_path
+
+    return None
 
 
 def clean():
@@ -51,6 +84,8 @@ def build_desktop(onefile: bool = False):
             "  uv run --group build python build.py desktop"
         )
 
+    icon_path = _make_icon()
+
     cmd = [
         sys.executable,
         "-m",
@@ -65,6 +100,9 @@ def build_desktop(onefile: bool = False):
         "--paths",
         "src",
     ]
+
+    if icon_path:
+        cmd.extend(["--icon", str(icon_path)])
 
     if onefile:
         cmd.append("--onefile")

@@ -68,11 +68,12 @@ class Backend(QObject):
 
     token_checked = Signal(bool)
     shiki_token_checked = Signal(bool)
+    proxy_checked = Signal(bool)
 
     def __init__(self):
         super().__init__()
         self._settings = None
-        self.worker = None
+        self._workers = []
         self.api = Api(self)
 
     def __getattr__(self, item):
@@ -158,11 +159,22 @@ class Backend(QObject):
 
         return is_executable
 
+    def _run_worker(self, worker):
+        self._workers.append(worker)
+        worker.finished.connect(lambda w=worker: self._workers.remove(w) if w in self._workers else None)
+        worker.start()
+
+    @Slot(str)
+    def is_valid_proxy(self, proxy_url):
+        worker = AsyncFunctionWorker(self.api.check_proxy, proxy_url)
+        worker.result_bool.connect(self.proxy_checked.emit)
+        self._run_worker(worker)
+
     @Slot(str)
     def is_valid_token(self, token):
-        self.worker = AsyncFunctionWorker(self.api.check_token, token)
-        self.worker.result_bool.connect(self.token_checked.emit)
-        self.worker.start()
+        worker = AsyncFunctionWorker(self.api.check_token, token)
+        worker.result_bool.connect(self.token_checked.emit)
+        self._run_worker(worker)
 
     @Slot(str)
     def apply_theme(self, theme: str):
@@ -176,6 +188,6 @@ class Backend(QObject):
 
     @Slot(str)
     def is_valid_shiki_token(self, token):
-        self.worker = AsyncFunctionWorker(self.api.shiki_check_token, token)
-        self.worker.result_bool.connect(self.shiki_token_checked.emit)
-        self.worker.start()
+        worker = AsyncFunctionWorker(self.api.shiki_check_token, token)
+        worker.result_bool.connect(self.shiki_token_checked.emit)
+        self._run_worker(worker)

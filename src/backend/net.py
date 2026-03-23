@@ -26,6 +26,18 @@ class Api:
             return ProxyConnector.from_url(self.settings.proxy, ssl=self._ssl_context())
         return aiohttp.TCPConnector(ssl=self._ssl_context())
 
+    async def check_proxy(self, proxy_url: str) -> bool:
+        try:
+            connector = ProxyConnector.from_url(proxy_url, ssl=self._ssl_context())
+            timeout = aiohttp.ClientTimeout(total=10)
+            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+                async with session.get(
+                    f"{self.anime365_url}/api/series", params={"limit": 1}
+                ) as response:
+                    return response.status == 200
+        except Exception:
+            return False
+
     # Anime365 API
 
     async def check_token(self, token: str) -> bool:
