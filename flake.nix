@@ -43,7 +43,7 @@
         in
         pkgs.stdenv.mkDerivation {
           pname = "anime365";
-          version = "0.1.0";
+          version = (fromTOML (builtins.readFile ./pyproject.toml)).project.version;
           src = self;
 
           nativeBuildInputs = [
