@@ -3,6 +3,12 @@ import sys
 from pathlib import Path
 
 APP_NAME = "anime365"
+
+from importlib.metadata import version, PackageNotFoundError
+try:
+    APP_VERSION = version("anime365-qtquick")
+except PackageNotFoundError:
+    APP_VERSION = "0.0.0"
 FROZEN = getattr(sys, "frozen", False)
 IS_ANDROID = hasattr(sys, "getandroidapilevel")
 

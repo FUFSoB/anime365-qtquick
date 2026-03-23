@@ -5,16 +5,28 @@ import QtQuick.Layouts
 Pane {
     padding: 12
 
+    property string updateTag: ""
+    property string updateUrl: ""
+
+    Connections {
+        target: updaterBackend
+        function onUpdate_found(tag, url) {
+            updateTag = tag
+            updateUrl = url
+        }
+    }
+
+    Component.onCompleted: {
+        updaterBackend.check()
+        updateHistory()
+    }
+
     function updateHistory() {
         var history = databaseBackend.get_list()
         historyModel.clear()
         for (var i = 0; i < history.length; i++) {
             historyModel.append(history[i])
         }
-    }
-
-    Component.onCompleted: {
-        updateHistory()
     }
 
     Connections {
@@ -72,6 +84,34 @@ Pane {
                 Layout.fillWidth: true
                 text: "Settings"
                 onClicked: stackView.push(settingsScreen)
+            }
+        }
+
+        Pane {
+            Layout.fillWidth: true
+            visible: updateTag !== ""
+            padding: 8
+
+            RowLayout {
+                anchors.fill: parent
+                spacing: 8
+
+                Label {
+                    Layout.fillWidth: true
+                    text: `New version available: <a href='${updateUrl}'>${updateTag}</a>`
+                    textFormat: Text.RichText
+                    onLinkActivated: (url) => Qt.openUrlExternally(url)
+                    HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                }
+
+                StyledButton {
+                    text: "✕"
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    leftPadding: 0
+                    rightPadding: 0
+                    onClicked: updateTag = ""
+                }
             }
         }
 
