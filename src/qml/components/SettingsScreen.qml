@@ -44,7 +44,10 @@ Pane {
                 text: "\u2190 Back"
                 palette.button: "#EF5350"
                 palette.buttonText: "#FFFFFF"
-                onClicked: stackView.pop()
+                onClicked: {
+                    settingsBackend.apply_theme(savedTheme)
+                    stackView.pop()
+                }
             }
 
             Item { Layout.fillWidth: true }
