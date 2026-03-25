@@ -160,6 +160,36 @@ Pane {
             busyIndicator.running = false
         }
 
+        function onPlayback_finished(completed) {
+            if (completed) {
+                // Auto-advance to next episode
+                var idx = episodeDropdown.selectedIndex
+                if (idx >= 0 && idx < episodeDropdown.model.length - 1) {
+                    episodeDropdown.changeSelection(idx + 1)
+                }
+            }
+        }
+
+        function onBatch_progress(current, total) {
+            batchDownloadButton.batchCurrent = current
+            batchDownloadButton.batchTotal = total
+        }
+
+        function onBatch_item_ready(item) {
+            var title = anime.title + " \u2014 " + item.episode_name
+            var episodesTotal = episodeDropdown.model ? episodeDropdown.model.length : 1
+            var filename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+            downloaderBackend.add_download(item.url, filename)
+            if (item.subs_url) {
+                var subsFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                downloaderBackend.add_download(item.subs_url, subsFilename)
+            }
+        }
+
+        function onBatch_complete() {
+            batchDownloadButton.batchBusy = false
+        }
+
         function onSubtitle_fonts_got(results) {
             var formatted = "Fonts availability (during application startup): <br><br>" + results.map(fontName => {
                 var isAvailable = Qt.fontFamilies().includes(fontName)
@@ -567,7 +597,7 @@ Pane {
                                         var url = videoUrlField.text
                                         var subs = subsUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
-                                        animeBackend.launch_mpv(url, subs, title)
+                                        animeBackend.launch_mpv(url, subs, title, anime.image_url || "")
                                         mpvButton.enabled = false
                                         mpvTimer.start()
                                     }

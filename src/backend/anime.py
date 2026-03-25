@@ -1,14 +1,16 @@
+import re
 import subprocess
 import sys
-import re
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 import aiohttp
-from PySide6.QtCore import QObject, Slot, Signal, QUrl
+from PySide6.QtCore import QObject, QUrl, Signal, Slot
 from PySide6.QtGui import QDesktopServices
 
-from constants import DOWNLOADS_DIR, CACHE_DIR
-from .utils import AsyncFunctionWorker, get_subtitle_fonts, monitor_mpv_status
+from constants import CACHE_DIR
 
-from typing import TYPE_CHECKING
+from .utils import AsyncFunctionWorker, get_subtitle_fonts, monitor_mpv_status
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
@@ -334,48 +336,27 @@ class Backend(QObject):
         )
         QDesktopServices.openUrl(QUrl(intent_url))
 
-    @staticmethod
-    def _title_to_filename(title: str, episodes_total: int, ext: str) -> str:
-        title, episode = title.split(" — ")
-
-        title = re.sub(r"[^\w\d\-_]", "_", title).strip("_")
-
-        episode = episode.split(" ")[0].rjust(len(str(episodes_total)), "0")
-
-        return f"{title}-{episode}.{ext}"
-
-    @Slot(str, str, int, bool)
-    def launch_uget(self, url: str, title: str, episodes_total: int, is_subs: bool):
-        if IS_ANDROID:
-            self._android_download(url, title, episodes_total, is_subs)
-            return
-
-        name = self._title_to_filename(
-            title, episodes_total, "ass" if is_subs else "mp4"
-        )
-        command = [
-            self.settings.uget_path,
-            "--quiet",
-            f"--folder={DOWNLOADS_DIR}",
-            f"--filename={name}",
-            url,
-        ]
-        subprocess.Popen(
-            command,
-            shell=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-    @Slot()
-    def open_uget(self):
-        if IS_ANDROID:
-            return
-        subprocess.Popen([self.settings.uget_path])
-
-    @staticmethod
-    def _android_download(
-        url: str, title: str, episodes_total: int, is_subs: bool
+    @Slot(str, str, str)
+    def batch_download(
+        self, episode_ids_str: str, episode_names_str: str, preferred_translation: str
     ):
-        """Open a download URL in the Android browser / download manager."""
-        QDesktopServices.openUrl(QUrl(url))
+        ep_ids = [int(x) for x in episode_ids_str.split(";") if x]
+        ep_names = episode_names_str.split(";")
+        worker = BatchStreamsWorker(
+            ep_ids, ep_names, preferred_translation, self.settings
+        )
+        self.workers.append(worker)
+        worker.batch_progress.connect(self.batch_progress.emit)
+        worker.batch_item_ready.connect(self.batch_item_ready.emit)
+        worker.completed.connect(self.batch_complete.emit)
+        worker.completed.connect(
+            lambda *_: self.workers.remove(worker) if worker in self.workers else None
+        )
+        worker.start()
+
+    @Slot(str, int, str, result=str)
+    def title_to_filename(self, title: str, episodes_total: int, ext: str) -> str:
+        name, episode = title.split(" \u2014 ")
+        name = re.sub(r"[^\w\d\-_]", "_", name).strip("_")
+        episode = episode.split(" ")[0].rjust(len(str(episodes_total)), "0")
+        return f"{name}-{episode}.{ext}"
