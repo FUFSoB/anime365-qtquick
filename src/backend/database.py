@@ -150,7 +150,7 @@ class Database:
 
     def get_continue_watching(self) -> list[dict]:
         rows = self.conn.execute(
-            "SELECT * FROM anime WHERE episode != '' AND total_episodes > 0 "
+            "SELECT * FROM anime WHERE episode != '' "
             "ORDER BY last_viewed DESC LIMIT 10"
         ).fetchall()
         return [_decode(r) for r in rows]
