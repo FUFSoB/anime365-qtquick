@@ -4,7 +4,30 @@ import QtQuick.Layouts
 
 Pane {
     id: root
+    objectName: "animeScreen"
     padding: 12
+    focus: true
+
+    Keys.onPressed: (event) => {
+        if (event.key === Qt.Key_N) {
+            // Next episode
+            var idx = episodeDropdown.selectedIndex
+            if (idx >= 0 && idx < episodeDropdown.model.length - 1) {
+                episodeDropdown.changeSelection(idx + 1)
+            }
+            event.accepted = true
+        } else if (event.key === Qt.Key_P) {
+            // Previous episode
+            var idx = episodeDropdown.selectedIndex
+            if (idx > 0) {
+                episodeDropdown.changeSelection(idx - 1)
+            }
+            event.accepted = true
+        } else if ((event.key === Qt.Key_Return || event.key === Qt.Key_Space) && urlsContainer.visible && mpvButton.enabled) {
+            mpvButton.clicked()
+            event.accepted = true
+        }
+    }
 
     property var anime: ({})
     property var translations: ({})
