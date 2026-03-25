@@ -3,7 +3,10 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Pane {
+    objectName: "mainScreen"
     padding: 12
+
+    function focusSearch() { searchField.forceActiveFocus() }
 
     property string updateTag: ""
     property string updateUrl: ""
@@ -26,6 +29,12 @@ Pane {
         historyModel.clear()
         for (var i = 0; i < history.length; i++) {
             historyModel.append(history[i])
+        }
+
+        var cw = databaseBackend.get_continue_watching()
+        continueWatchingModel.clear()
+        for (var i = 0; i < cw.length; i++) {
+            continueWatchingModel.append(cw[i])
         }
     }
 
@@ -111,6 +120,92 @@ Pane {
                     leftPadding: 0
                     rightPadding: 0
                     onClicked: updateTag = ""
+                }
+            }
+        }
+
+        // Continue Watching section
+        ColumnLayout {
+            Layout.fillWidth: true
+            visible: continueWatchingModel.count > 0
+            spacing: 4
+
+            Label {
+                text: "Continue Watching"
+                font.pixelSize: 16
+                font.bold: true
+            }
+
+            ListView {
+                id: continueWatchingList
+                Layout.fillWidth: true
+                Layout.preferredHeight: 260
+                orientation: ListView.Horizontal
+                spacing: 10
+                clip: true
+
+                model: ListModel {
+                    id: continueWatchingModel
+                }
+
+                delegate: Rectangle {
+                    width: 180
+                    height: 250
+                    radius: 6
+                    color: cwMouseArea.containsMouse ? palette.highlight : palette.base
+
+                    MouseArea {
+                        id: cwMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            var item = Object.assign({}, model)
+                            item.next_episode = true
+                            stackView.push(animeScreen, { anime: item })
+                        }
+                    }
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        anchors.margins: 6
+                        spacing: 4
+
+                        Image {
+                            id: cwImage
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 160
+                            source: imageCacheBackend.cache_image(model.image_url)
+                            fillMode: Image.PreserveAspectFit
+                            cache: true
+                            asynchronous: true
+                            Connections {
+                                target: imageCacheBackend
+                                function onImage_downloaded(origUrl, localUrl) {
+                                    if (origUrl === model.image_url)
+                                        cwImage.source = localUrl
+                                }
+                            }
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: model.title
+                            font.pixelSize: 13
+                            font.bold: true
+                            elide: Text.ElideRight
+                            maximumLineCount: 2
+                            wrapMode: Text.WordWrap
+                        }
+
+                        Label {
+                            Layout.fillWidth: true
+                            text: model.episode
+                            font.pixelSize: 11
+                            opacity: 0.7
+                            elide: Text.ElideRight
+                        }
+                    }
                 }
             }
         }

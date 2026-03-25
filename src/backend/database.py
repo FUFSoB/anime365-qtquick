@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QObject, Slot, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 
 from constants import DATABASE_FILE, LEGACY_DATABASE_FILE
 
@@ -73,8 +73,7 @@ class Database:
 
     def _add_columns_if_missing(self):
         existing = {
-            row[1]
-            for row in self.conn.execute("PRAGMA table_info(anime)").fetchall()
+            row[1] for row in self.conn.execute("PRAGMA table_info(anime)").fetchall()
         }
         new_cols = {
             "mal_id": "INTEGER DEFAULT 0",
@@ -95,7 +94,9 @@ class Database:
             for item in legacy.values():
                 self._insert(item)
             self.conn.commit()
-            LEGACY_DATABASE_FILE.rename(LEGACY_DATABASE_FILE.with_suffix(".json.migrated"))
+            LEGACY_DATABASE_FILE.rename(
+                LEGACY_DATABASE_FILE.with_suffix(".json.migrated")
+            )
         except Exception:
             pass
 
@@ -142,11 +143,19 @@ class Database:
         return _decode(row) if row else {}
 
     def get_list(self) -> list[dict]:
-        rows = self.conn.execute("SELECT * FROM anime ORDER BY last_viewed DESC").fetchall()
+        rows = self.conn.execute(
+            "SELECT * FROM anime ORDER BY last_viewed DESC"
+        ).fetchall()
+        return [_decode(r) for r in rows]
+
+    def get_continue_watching(self) -> list[dict]:
+        rows = self.conn.execute(
+            "SELECT * FROM anime WHERE episode != '' AND total_episodes > 0 "
+            "ORDER BY last_viewed DESC LIMIT 10"
+        ).fetchall()
         return [_decode(r) for r in rows]
 
     def put(self, key: str, value: dict) -> bool:
-        """Insert new or refresh metadata for existing. Returns True if new."""
         existing = self.get(key)
         row = _encode(value)
         now = int(datetime.now().timestamp())
@@ -225,12 +234,30 @@ class Backend(QObject):
     def get_list(self) -> list[dict]:
         return self.db.get_list()
 
+    @Slot(result=list)
+    def get_continue_watching(self) -> list[dict]:
+        return self.db.get_continue_watching()
+
     @Slot(str, dict, result=bool)
     def put(self, key: str, value: dict) -> bool:
         keys = (
-            "id", "title", "titles", "total_episodes", "image_url",
-            "type", "score", "year", "hentai", "h_type", "description", "genres",
-            "mal_id", "world_art_id", "anidb_id", "ann_id", "anime365_url",
+            "id",
+            "title",
+            "titles",
+            "total_episodes",
+            "image_url",
+            "type",
+            "score",
+            "year",
+            "hentai",
+            "h_type",
+            "description",
+            "genres",
+            "mal_id",
+            "world_art_id",
+            "anidb_id",
+            "ann_id",
+            "anime365_url",
         )
         data = {k: value.get(k) for k in keys}
         result = self.db.put(key, data)
@@ -240,12 +267,15 @@ class Backend(QObject):
 
     @Slot(str, dict)
     def update(self, key: str, value: dict):
-        self.db.update(key, {
-            "episode": value.get("episode"),
-            "translation": value.get("translation"),
-            "alt_video": value.get("alt_video"),
-            "quality": value.get("quality"),
-        })
+        self.db.update(
+            key,
+            {
+                "episode": value.get("episode"),
+                "translation": value.get("translation"),
+                "alt_video": value.get("alt_video"),
+                "quality": value.get("quality"),
+            },
+        )
         self.list_updated.emit()
 
     @Slot(str)
