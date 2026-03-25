@@ -1,63 +1,83 @@
 import json
 import os
 import shutil
-from PySide6.QtCore import QObject, Slot, Signal
+
+from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
 
 def _dark_palette() -> QPalette:
     p = QPalette()
-    p.setColor(QPalette.ColorRole.Window,          QColor(45,  45,  45))
-    p.setColor(QPalette.ColorRole.WindowText,      QColor(220, 220, 220))
-    p.setColor(QPalette.ColorRole.Base,            QColor(30,  30,  30))
-    p.setColor(QPalette.ColorRole.AlternateBase,   QColor(45,  45,  45))
-    p.setColor(QPalette.ColorRole.Text,            QColor(220, 220, 220))
-    p.setColor(QPalette.ColorRole.Button,          QColor(53,  53,  53))
-    p.setColor(QPalette.ColorRole.ButtonText,      QColor(220, 220, 220))
-    p.setColor(QPalette.ColorRole.BrightText,      QColor(255, 100, 100))
-    p.setColor(QPalette.ColorRole.Highlight,       QColor(42,  130, 218))
-    p.setColor(QPalette.ColorRole.HighlightedText, QColor(0,   0,   0))
-    p.setColor(QPalette.ColorRole.Link,            QColor(42,  130, 218))
-    p.setColor(QPalette.ColorRole.ToolTipBase,     QColor(30,  30,  30))
-    p.setColor(QPalette.ColorRole.ToolTipText,     QColor(220, 220, 220))
-    p.setColor(QPalette.ColorRole.PlaceholderText, QColor(127, 127, 127))
-    p.setColor(QPalette.ColorRole.Mid,             QColor(80,  80,  80))
-    p.setColor(QPalette.ColorRole.Midlight,        QColor(90,  90,  90))
-    p.setColor(QPalette.ColorRole.Dark,            QColor(35,  35,  35))
-    p.setColor(QPalette.ColorRole.Shadow,          QColor(20,  20,  20))
-    for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text,
-                 QPalette.ColorRole.ButtonText):
-        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(127, 127, 127))
+    p.setColor(QPalette.ColorRole.Window, QColor(38, 38, 38))  # main surface
+    p.setColor(QPalette.ColorRole.WindowText, QColor(228, 228, 228))  # primary text
+    p.setColor(QPalette.ColorRole.Base, QColor(24, 24, 24))  # input / list bg
+    p.setColor(
+        QPalette.ColorRole.AlternateBase, QColor(50, 50, 50)
+    )  # alternate rows / strips
+    p.setColor(QPalette.ColorRole.Text, QColor(228, 228, 228))
+    p.setColor(QPalette.ColorRole.Button, QColor(60, 60, 60))  # raised button bg
+    p.setColor(QPalette.ColorRole.ButtonText, QColor(228, 228, 228))
+    p.setColor(QPalette.ColorRole.BrightText, QColor(255, 100, 100))
+    p.setColor(QPalette.ColorRole.Highlight, QColor(42, 130, 218))
+    p.setColor(
+        QPalette.ColorRole.HighlightedText, QColor(255, 255, 255)
+    )  # white on blue (was black)
+    p.setColor(QPalette.ColorRole.Link, QColor(80, 160, 240))
+    p.setColor(QPalette.ColorRole.ToolTipBase, QColor(50, 50, 50))
+    p.setColor(QPalette.ColorRole.ToolTipText, QColor(228, 228, 228))
+    p.setColor(QPalette.ColorRole.PlaceholderText, QColor(140, 140, 140))
+    p.setColor(QPalette.ColorRole.Mid, QColor(75, 75, 75))  # borders / separators
+    p.setColor(QPalette.ColorRole.Midlight, QColor(95, 95, 95))  # hover surfaces
+    p.setColor(QPalette.ColorRole.Dark, QColor(28, 28, 28))
+    p.setColor(QPalette.ColorRole.Shadow, QColor(12, 12, 12))
+    for role in (
+        QPalette.ColorRole.WindowText,
+        QPalette.ColorRole.Text,
+        QPalette.ColorRole.ButtonText,
+    ):
+        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(105, 105, 105))
     return p
 
 
 def _light_palette() -> QPalette:
     p = QPalette()
-    p.setColor(QPalette.ColorRole.Window,          QColor(240, 240, 240))
-    p.setColor(QPalette.ColorRole.WindowText,      QColor(0,   0,   0))
-    p.setColor(QPalette.ColorRole.Base,            QColor(255, 255, 255))
-    p.setColor(QPalette.ColorRole.AlternateBase,   QColor(233, 231, 227))
-    p.setColor(QPalette.ColorRole.Text,            QColor(0,   0,   0))
-    p.setColor(QPalette.ColorRole.Button,          QColor(240, 240, 240))
-    p.setColor(QPalette.ColorRole.ButtonText,      QColor(0,   0,   0))
-    p.setColor(QPalette.ColorRole.BrightText,      QColor(255, 0,   0))
-    p.setColor(QPalette.ColorRole.Highlight,       QColor(0,   120, 215))
+    p.setColor(QPalette.ColorRole.Window, QColor(242, 242, 242))  # main surface
+    p.setColor(
+        QPalette.ColorRole.WindowText, QColor(15, 15, 15)
+    )  # primary text (near-black)
+    p.setColor(QPalette.ColorRole.Base, QColor(255, 255, 255))
+    p.setColor(
+        QPalette.ColorRole.AlternateBase, QColor(232, 232, 236)
+    )  # alternate rows
+    p.setColor(QPalette.ColorRole.Text, QColor(15, 15, 15))
+    p.setColor(
+        QPalette.ColorRole.Button, QColor(218, 218, 218)
+    )  # visibly distinct from Window
+    p.setColor(QPalette.ColorRole.ButtonText, QColor(15, 15, 15))
+    p.setColor(QPalette.ColorRole.BrightText, QColor(200, 0, 0))
+    p.setColor(QPalette.ColorRole.Highlight, QColor(0, 110, 205))
     p.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
-    p.setColor(QPalette.ColorRole.Link,            QColor(0,   0,   255))
-    p.setColor(QPalette.ColorRole.ToolTipBase,     QColor(255, 255, 220))
-    p.setColor(QPalette.ColorRole.ToolTipText,     QColor(0,   0,   0))
-    p.setColor(QPalette.ColorRole.PlaceholderText, QColor(160, 160, 160))
-    p.setColor(QPalette.ColorRole.Mid,             QColor(160, 160, 160))
-    p.setColor(QPalette.ColorRole.Midlight,        QColor(200, 200, 200))
-    p.setColor(QPalette.ColorRole.Dark,            QColor(160, 160, 160))
-    p.setColor(QPalette.ColorRole.Shadow,          QColor(105, 105, 105))
-    for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text,
-                 QPalette.ColorRole.ButtonText):
-        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(120, 120, 120))
+    p.setColor(QPalette.ColorRole.Link, QColor(0, 90, 200))
+    p.setColor(QPalette.ColorRole.ToolTipBase, QColor(255, 255, 210))
+    p.setColor(QPalette.ColorRole.ToolTipText, QColor(15, 15, 15))
+    p.setColor(QPalette.ColorRole.PlaceholderText, QColor(148, 148, 148))
+    p.setColor(QPalette.ColorRole.Mid, QColor(145, 145, 145))  # borders
+    p.setColor(QPalette.ColorRole.Midlight, QColor(196, 196, 196))  # hover
+    p.setColor(
+        QPalette.ColorRole.Dark, QColor(110, 110, 110)
+    )  # actually darker than Mid
+    p.setColor(QPalette.ColorRole.Shadow, QColor(68, 68, 68))  # deeper shadow
+    for role in (
+        QPalette.ColorRole.WindowText,
+        QPalette.ColorRole.Text,
+        QPalette.ColorRole.ButtonText,
+    ):
+        p.setColor(QPalette.ColorGroup.Disabled, role, QColor(148, 148, 148))
     return p
 
-from constants import SETTINGS_FILE, LEGACY_SETTINGS_FILE, IS_ANDROID
+
+from constants import IS_ANDROID, LEGACY_SETTINGS_FILE, SETTINGS_FILE
 
 from .net import Api
 from .utils import AsyncFunctionWorker
@@ -138,7 +158,6 @@ class Backend(QObject):
         if not IS_ANDROID:
             settings["mpv_path"] = shutil.which(settings.get("mpv_path", "")) or ""
             settings["vlc_path"] = shutil.which(settings.get("vlc_path", "")) or ""
-            settings["uget_path"] = shutil.which(settings.get("uget_path", "")) or ""
 
         with SETTINGS_FILE.open("w") as file:
             json.dump(settings, file, indent=4, ensure_ascii=False)
@@ -154,7 +173,9 @@ class Backend(QObject):
 
     def _run_worker(self, worker):
         self._workers.append(worker)
-        worker.finished.connect(lambda w=worker: self._workers.remove(w) if w in self._workers else None)
+        worker.finished.connect(
+            lambda w=worker: self._workers.remove(w) if w in self._workers else None
+        )
         worker.start()
 
     @Slot(str)
@@ -178,4 +199,3 @@ class Backend(QObject):
         else:
             # "auto" — restore the default palette derived from the system/style
             QApplication.setPalette(QApplication.style().standardPalette())
-
