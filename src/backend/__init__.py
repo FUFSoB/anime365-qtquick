@@ -4,10 +4,11 @@ from .search import Backend as SearchBackend
 from .anime import Backend as AnimeBackend
 from .image_cache import Backend as ImageCacheBackend
 from .updater import Backend as UpdaterBackend
+from .downloader import Backend as DownloaderBackend
 
 
 settings = SettingsBackend()
-
+downloader = DownloaderBackend(settings)
 
 backends = {
     "settingsBackend": settings,
@@ -16,4 +17,5 @@ backends = {
     "animeBackend": AnimeBackend(settings),
     "imageCacheBackend": ImageCacheBackend(settings),
     "updaterBackend": UpdaterBackend(settings),
+    "downloaderBackend": downloader,
 }

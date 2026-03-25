@@ -109,7 +109,6 @@ class Backend(QObject):
             # binary paths
             "mpv_path": shutil.which("mpv") or "",
             "vlc_path": shutil.which("vlc") or "",
-            "uget_path": shutil.which("uget-gtk") or shutil.which("uget") or "",
             # tokens
             "anime365_token": "",
             # not in UI
@@ -126,7 +125,9 @@ class Backend(QObject):
                     legacy = json.load(f)
                 self._settings = self.get_defaults() | legacy
                 self.save_settings(self._settings)
-                LEGACY_SETTINGS_FILE.rename(LEGACY_SETTINGS_FILE.with_suffix(".json.migrated"))
+                LEGACY_SETTINGS_FILE.rename(
+                    LEGACY_SETTINGS_FILE.with_suffix(".json.migrated")
+                )
             except Exception:
                 pass
 

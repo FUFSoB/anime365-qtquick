@@ -3,20 +3,22 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 Pane {
+    objectName: "settingsScreen"
     padding: 12
 
     property var settings: ({})
     property var defaults: ({})
+    property string savedTheme: "auto"
 
     Component.onCompleted: {
         settings = settingsBackend.get_settings()
         defaults = settingsBackend.get_defaults()
+        savedTheme = settings.theme || "auto"
         mpvPathField.text = settings.mpv_path || defaults.mpv_path
         vlcPathField.text = settings.vlc_path || defaults.vlc_path
-        ugetPathField.text = settings.uget_path || defaults.uget_path
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
         proxyField.text = settings.proxy || ""
-        var themeIdx = ["auto", "light", "dark"].indexOf(settings.theme || "auto")
+        var themeIdx = ["auto", "light", "dark"].indexOf(savedTheme)
         themeDropdown.changeSelection(themeIdx < 0 ? 0 : themeIdx)
     }
 
@@ -62,7 +64,6 @@ Pane {
                 palette.buttonText: "#FFFFFF"
                 enabled: mpvPathField.text !== (settings.mpv_path ?? "")
                     || vlcPathField.text !== (settings.vlc_path ?? "")
-                    || ugetPathField.text !== (settings.uget_path ?? "")
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
                     || themeDropdown.selectedValue !== (settings.theme || "auto")
@@ -70,7 +71,6 @@ Pane {
                     settingsBackend.save_settings({
                         "mpv_path": mpvPathField.text,
                         "vlc_path": vlcPathField.text,
-                        "uget_path": ugetPathField.text,
                         "anime365_token": anime365TokenField.text,
                         "proxy": proxyField.text,
                         "theme": themeDropdown.selectedValue,
@@ -171,32 +171,6 @@ Pane {
                                 ? "#4CAF50"
                                 : (vlcPathField.text ? "#EF5350" : palette.mid)
                             border.width: vlcPathField.isValidPath || vlcPathField.text ? 2 : 1
-                            radius: 4
-                        }
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    visible: !isAndroid
-
-                    Label { text: "Path to uGet binary" }
-
-                    StyledTextField {
-                        id: ugetPathField
-                        Layout.fillWidth: true
-                        placeholderText: "Enter uGet binary path"
-                        property bool isValidPath: true
-                        onTextChanged: {
-                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
-                        }
-                        background: Rectangle {
-                            color: palette.base
-                            border.color: ugetPathField.isValidPath
-                                ? "#4CAF50"
-                                : (ugetPathField.text ? "#EF5350" : palette.mid)
-                            border.width: ugetPathField.isValidPath || ugetPathField.text ? 2 : 1
                             radius: 4
                         }
                     }

@@ -19,7 +19,7 @@ Pane {
 
     readonly property bool mpvAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpv_path")))
     readonly property bool vlcAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path")))
-    readonly property bool ugetAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("uget_path")))
+    readonly property bool downloadAvailable: !isAndroid
     readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
     Component.onCompleted: {
@@ -394,9 +394,9 @@ Pane {
                         placeholder: "Select Quality"
                         onSelectionChangedIndex: function(value) {
                             urlsContainer.visible = true
-                            ugetButton.enabled = ugetAvailable
-                            ugetButtonSubs.enabled = ugetAvailable
-                            ugetAllButton.enabled = ugetAvailable
+                            dlButton.enabled = downloadAvailable
+                            dlButtonSubs.enabled = downloadAvailable
+                            dlEpisodeButton.enabled = downloadAvailable
                             mpvButton.enabled = mpvAvailable
                             vlcButton.enabled = vlcAvailable
 
@@ -467,14 +467,16 @@ Pane {
                                 }
 
                                 StyledButton {
-                                    id: ugetButton
-                                    text: isAndroid ? "Download" : "uGet"
+                                    id: dlButton
+                                    text: "Download"
+                                    visible: !isAndroid
                                     onClicked: {
                                         var url = videoUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
                                         var episodesTotal = episodeDropdown.model.length
-                                        animeBackend.launch_uget(url, title, episodesTotal, false)
-                                        ugetButton.enabled = false
+                                        var filename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+                                        downloaderBackend.add_download(url, filename)
+                                        dlButton.enabled = false
                                     }
                                 }
                             }
@@ -512,14 +514,16 @@ Pane {
                                 }
 
                                 StyledButton {
-                                    id: ugetButtonSubs
-                                    text: isAndroid ? "Download" : "uGet"
+                                    id: dlButtonSubs
+                                    text: "Download"
+                                    visible: !isAndroid
                                     onClicked: {
                                         var url = subsUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
                                         var episodesTotal = episodeDropdown.model.length
-                                        animeBackend.launch_uget(url, title, episodesTotal, true)
-                                        ugetButtonSubs.enabled = false
+                                        var filename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                                        downloaderBackend.add_download(url, filename)
+                                        dlButtonSubs.enabled = false
                                     }
                                 }
                             }
@@ -566,12 +570,14 @@ Pane {
                                 }
 
                                 StyledButton {
-                                    id: ugetAllButton
-                                    text: isAndroid ? "Download All" : "uGet Episode"
+                                    id: dlEpisodeButton
+                                    text: "Download Episode"
+                                    visible: !isAndroid
                                     onClicked: {
-                                        ugetButton.clicked()
-                                        ugetButtonSubs.clicked()
-                                        ugetAllButton.enabled = false
+                                        dlButton.clicked()
+                                        if (subsRow.visible)
+                                            dlButtonSubs.clicked()
+                                        dlEpisodeButton.enabled = false
                                     }
                                 }
                             }

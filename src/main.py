@@ -1,13 +1,14 @@
 # main.py
-import sys
 import signal
+import sys
 from pathlib import Path
-from PySide6.QtCore import QUrl, QTimer
+
+from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication
 
-from constants import create_dirs, IS_ANDROID
+from constants import IS_ANDROID, create_dirs
 
 create_dirs()
 
@@ -24,9 +25,14 @@ class Anime365:
         self.engine = QQmlApplicationEngine()
 
         self.app.setApplicationName("Anime365")
-        self.app.setDesktopFileName("anime365")  # must match the .desktop filename for Wayland app-id
+        self.app.setDesktopFileName(
+            "anime365"
+        )  # must match the .desktop filename for Wayland app-id
+        self.app.aboutToQuit.connect(lambda: backends["downloaderBackend"].shutdown())
 
-        backends["settingsBackend"].apply_theme(backends["settingsBackend"].get("theme"))
+        backends["settingsBackend"].apply_theme(
+            backends["settingsBackend"].get("theme")
+        )
 
         for name, backend in backends.items():
             self.engine.rootContext().setContextProperty(name, backend)
@@ -43,6 +49,7 @@ class Anime365:
 
     def handle_sigint(self):
         print("\nClosing application...")
+        backends["downloaderBackend"].shutdown()
         self.app.quit()
 
     def run(self):

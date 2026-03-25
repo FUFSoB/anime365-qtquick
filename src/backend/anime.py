@@ -225,19 +225,7 @@ class Backend(QObject):
         self.vlc_worker.start()
 
     @staticmethod
-    def _launch_android_player(
-        url: str, subs_url: str, title: str, package: str
-    ):
-        """Launch video in an Android player app via intent URI.
-
-        mpv-android supports:
-          - subs       (S.subs)
-          - subs.name  (S.subs.name)
-          - title      (S.title)
-        VLC for Android supports:
-          - subtitles_location (S.subtitles_location)
-          - title              (S.title)
-        """
+    def _launch_android_player(url: str, subs_url: str, title: str, package: str):
         extras = f";S.title={title}"
 
         if subs_url:
