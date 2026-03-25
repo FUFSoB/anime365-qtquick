@@ -10,7 +10,13 @@ from PySide6.QtGui import QDesktopServices
 
 from constants import CACHE_DIR
 
-from .utils import AsyncFunctionWorker, get_subtitle_fonts, monitor_mpv_status
+from .utils import (
+    AsyncFunctionWorker,
+    find_free_port,
+    get_subtitle_fonts,
+    monitor_mpv_status,
+    monitor_vlc_status,
+)
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
@@ -278,19 +284,30 @@ class Backend(QObject):
         self.mpv_worker.result_bool.connect(self.playback_finished.emit)
         self.mpv_worker.start()
 
-    @Slot(str, str, str)
-    def launch_vlc(self, url: str, subs_url: str, title: str):
+    @Slot(str, str, str, str)
+    def launch_vlc(self, url: str, subs_url: str, title: str, cover_url: str = ""):
         if IS_ANDROID:
             self._launch_android_player(url, subs_url, title, "org.videolan.vlc")
             return
 
+        import secrets
+        port = find_free_port(41365)  # 4n1m3 + 65 (leet "anime365")
+        http_password = secrets.token_hex(16)
+
         command = [
             self.settings.vlc_path,
             url,
-            "--meta-title",
-            title,
+            "--meta-title", title,
             "--no-video-title-show",
+            "--extraintf", "http",
+            "--http-host", "localhost",
+            f"--http-port={port}",
+            f"--http-password={http_password}",
         ]
+
+        parts = title.split(" \u2014 ", 1)
+        anime_title = parts[0] if parts else title
+        episode_str = parts[1] if len(parts) > 1 else ""
 
         async def _run_vlc():
             if subs_url:
@@ -301,18 +318,20 @@ class Backend(QObject):
                     async with session.get(subs_url) as response:
                         if response.status != 200:
                             raise Exception("Subtitles unavailable")
-
                         subtitle_bytes = await response.read()
                         with subs_file.open("wb") as file:
                             file.write(subtitle_bytes)
-
                 command.extend(["--sub-file", str(subs_file)])
 
-            subprocess.Popen(command)
+            process = subprocess.Popen(command)
+            return await monitor_vlc_status(
+                process, port, http_password, anime_title, episode_str, cover_url
+            )
 
         if self.vlc_worker:
             self.vlc_worker.terminate()
         self.vlc_worker = AsyncFunctionWorker(_run_vlc)
+        self.vlc_worker.result_bool.connect(self.playback_finished.emit)
         self.vlc_worker.start()
 
     @staticmethod
@@ -356,7 +375,18 @@ class Backend(QObject):
 
     @Slot(str, int, str, result=str)
     def title_to_filename(self, title: str, episodes_total: int, ext: str) -> str:
-        name, episode = title.split(" \u2014 ")
+        name, episode = title.split(" \u2014 ", 1)
         name = re.sub(r"[^\w\d\-_]", "_", name).strip("_")
-        episode = episode.split(" ")[0].rjust(len(str(episodes_total)), "0")
-        return f"{name}-{episode}.{ext}"
+        pad = len(str(max(episodes_total, 1)))
+        parts = episode.rsplit(" ", 1)
+        if len(parts) == 2 and parts[-1].isdigit():
+            # e.g. "ONA 1", "OVA 2", "Серия 5"
+            prefix = re.sub(r"[^\w\d\-_]", "_", parts[0]).strip("_")
+            num = parts[-1].rjust(pad, "0")
+            ep_part = f"{prefix}_{num}" if prefix else num
+        elif parts[0].isdigit():
+            # bare number e.g. "5"
+            ep_part = parts[0].rjust(pad, "0")
+        else:
+            ep_part = re.sub(r"[^\w\d\-_]", "_", episode).strip("_")
+        return f"{name}-{ep_part}.{ext}"

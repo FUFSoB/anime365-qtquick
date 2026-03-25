@@ -1,22 +1,56 @@
 import asyncio
+import socket
 import subprocess
+import time
 import traceback
+from dataclasses import dataclass, field
 
 import aiohttp
 import ass
 from PySide6.QtCore import QThread, Signal
 
 
-async def monitor_mpv_status(
+@dataclass
+class _PlaybackState:
+    time_pos: float = 0.0
+    duration: float = 0.0
+    speed: float = 1.0
+    is_paused: bool = False
+    max_percent: float = 0.0
+    completed: bool = False
+    last_time_pos_wall: float = field(default_factory=time.time)
+    last_rpc_update: float = 0.0
+
+
+def find_free_port(start: int = 8080, count: int = 20) -> int:
+    for port in range(start, start + count):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+            return port
+        except OSError:
+            continue
+    raise OSError(f"No free port found in range {start}–{start + count - 1}")
+
+
+def _on_time_pos(val: float, state: _PlaybackState, push_rpc) -> bool:
+    now_wall = time.time()
+    expected = state.time_pos + (now_wall - state.last_time_pos_wall) * state.speed
+    seeked = abs(val - expected) > 3.0
+    state.time_pos = val
+    state.last_time_pos_wall = now_wall
+    return seeked
+
+
+async def _monitor(
     process: subprocess.Popen[bytes],
-    ipc_path: str,
+    driver,  # async generator/coroutine: _mpv_driver or _vlc_driver
     title: str = "",
     episode: str = "",
     cover_url: str = "",
 ) -> bool:
     import json as _json
     import sys as _sys
-    import time as _time
 
     try:
         from .discord_rpc import DiscordRPC
@@ -25,15 +59,60 @@ async def monitor_mpv_status(
     except ImportError:
         rpc = None
 
-    start_time = _time.time()
+    start_time = time.time()
     if rpc and title:
         await rpc.update(title=title, episode=episode, cover_url=cover_url)
 
-    # Wait for mpv to create the IPC socket
-    await asyncio.sleep(1)
+    state = _PlaybackState()
+    RPC_DRIFT_INTERVAL = 30.0
 
-    max_percent = 0.0
-    completed = False
+    async def push_rpc():
+        if not rpc or not title:
+            return
+        now = time.time()
+        if state.is_paused:
+            await rpc.update(
+                title=title,
+                episode=episode,
+                start_time=start_time,
+                cover_url=cover_url,
+                paused=True,
+            )
+        else:
+            end_ts = (
+                (now + (state.duration - state.time_pos) / state.speed)
+                if state.duration > 0
+                else None
+            )
+            await rpc.update(
+                title=title,
+                episode=episode,
+                start_time=now - state.time_pos / state.speed,
+                end_time=end_ts,
+                cover_url=cover_url,
+            )
+        state.last_rpc_update = now
+
+    await driver(process, state, push_rpc, RPC_DRIFT_INTERVAL)
+
+    if rpc:
+        await rpc.clear()
+        await rpc.disconnect()
+
+    return state.completed
+
+
+async def _mpv_driver(
+    process: subprocess.Popen[bytes],
+    state: _PlaybackState,
+    push_rpc,
+    rpc_drift_interval: float,
+    ipc_path: str,
+):
+    import json as _json
+    import sys as _sys
+
+    await asyncio.sleep(1)
 
     try:
         if _sys.platform == "win32":
@@ -41,12 +120,12 @@ async def monitor_mpv_status(
         else:
             reader, writer = await asyncio.open_unix_connection(ipc_path)
 
-        # Observe percent-pos (1), time-pos (2), duration (3), pause (4)
         for obs_id, prop in [
             (1, "percent-pos"),
             (2, "time-pos"),
             (3, "duration"),
             (4, "pause"),
+            (5, "speed"),
         ]:
             writer.write(
                 (
@@ -54,37 +133,6 @@ async def monitor_mpv_status(
                 ).encode()
             )
         await writer.drain()
-
-        time_pos = 0.0
-        duration = 0.0
-        is_paused = False
-        last_rpc_update = 0.0
-        RPC_DRIFT_INTERVAL = 30.0  # periodic re-sync to correct wall-clock drift
-
-        async def push_rpc():
-            nonlocal last_rpc_update
-            if not rpc or not title:
-                return
-            now = _time.time()
-            if is_paused:
-                # Use session start so elapsed time keeps ticking stably; no end = no bar
-                await rpc.update(
-                    title=title,
-                    episode=episode,
-                    start_time=start_time,
-                    cover_url=cover_url,
-                    paused=True,
-                )
-            else:
-                end_ts = (now + (duration - time_pos)) if duration > 0 else None
-                await rpc.update(
-                    title=title,
-                    episode=episode,
-                    start_time=now - time_pos,
-                    end_time=end_ts,
-                    cover_url=cover_url,
-                )
-            last_rpc_update = now
 
         while process.poll() is None:
             try:
@@ -95,26 +143,37 @@ async def monitor_mpv_status(
                 if data.get("event") == "property-change":
                     name = data.get("name")
                     val = data.get("data")
-                    if name == "percent-pos" and isinstance(val, (int, float)):
-                        if val > max_percent:
-                            max_percent = val
-                            if max_percent >= 85:
-                                completed = True
-                    elif name == "time-pos" and isinstance(val, (int, float)):
-                        time_pos = val
-                    elif name == "duration" and isinstance(val, (int, float)):
-                        duration = val
-                        await push_rpc()  # progress bar becomes available
-                    elif name == "pause" and isinstance(val, bool):
-                        is_paused = val
-                        await push_rpc()  # immediate update on pause/resume
 
-                    # Periodic drift correction while playing
+                    if name == "percent-pos" and isinstance(val, (int, float)):
+                        if val > state.max_percent:
+                            state.max_percent = val
+                            if state.max_percent >= 85:
+                                state.completed = True
+
+                    elif name == "time-pos" and isinstance(val, (int, float)):
+                        seeked = _on_time_pos(val, state, push_rpc)
+                        if seeked and not state.is_paused:
+                            await push_rpc()
+
+                    elif name == "duration" and isinstance(val, (int, float)):
+                        state.duration = val
+                        await push_rpc()
+
+                    elif name == "pause" and isinstance(val, bool):
+                        state.is_paused = val
+                        state.last_time_pos_wall = time.time()
+                        await push_rpc()
+
+                    elif name == "speed" and isinstance(val, (int, float)) and val > 0:
+                        state.speed = val
+                        await push_rpc()
+
                     if (
-                        not is_paused
-                        and (_time.time() - last_rpc_update) >= RPC_DRIFT_INTERVAL
+                        not state.is_paused
+                        and (time.time() - state.last_rpc_update) >= rpc_drift_interval
                     ):
                         await push_rpc()
+
             except asyncio.TimeoutError:
                 continue
             except Exception:
@@ -122,18 +181,126 @@ async def monitor_mpv_status(
 
         writer.close()
     except (ConnectionRefusedError, FileNotFoundError, OSError):
-        # IPC not available — just wait for process to exit
         while process.poll() is None:
             await asyncio.sleep(1)
 
-    # Ensure process is done
     process.wait()
 
-    if rpc:
-        await rpc.clear()
-        await rpc.disconnect()
 
-    return completed
+# ---------------------------------------------------------------------------
+# VLC driver
+# ---------------------------------------------------------------------------
+
+
+async def _vlc_driver(
+    process: subprocess.Popen[bytes],
+    state: _PlaybackState,
+    push_rpc,
+    rpc_drift_interval: float,
+    port: int,
+    password: str = "",
+):
+    await asyncio.sleep(1.5)  # give VLC a moment to start
+
+    status_url = f"http://localhost:{port}/requests/status.json"
+    auth = aiohttp.BasicAuth("", password)
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            while process.poll() is None:
+                try:
+                    async with session.get(
+                        status_url, auth=auth, timeout=aiohttp.ClientTimeout(total=1.5)
+                    ) as resp:
+                        if resp.status == 200:
+                            data = await resp.json(content_type=None)
+
+                            raw_time = data.get("time", 0)
+                            raw_length = data.get("length", 0)
+                            raw_rate = data.get("rate", 1.0)
+                            raw_state = data.get("state", "")
+
+                            # --- duration ---
+                            if raw_length and raw_length != state.duration:
+                                state.duration = float(raw_length)
+                                await push_rpc()
+
+                            # --- speed ---
+                            new_speed = float(raw_rate) if raw_rate else 1.0
+                            if abs(new_speed - state.speed) > 0.01:
+                                state.speed = new_speed
+                                await push_rpc()
+
+                            # --- pause state ---
+                            new_paused = raw_state == "paused"
+                            if new_paused != state.is_paused:
+                                state.is_paused = new_paused
+                                state.last_time_pos_wall = time.time()
+                                await push_rpc()
+
+                            # --- time position / seek ---
+                            new_time = float(raw_time)
+                            seeked = _on_time_pos(new_time, state, push_rpc)
+                            if seeked and not state.is_paused:
+                                await push_rpc()
+
+                            # --- percent / completion ---
+                            if state.duration > 0:
+                                pct = (new_time / state.duration) * 100.0
+                                if pct > state.max_percent:
+                                    state.max_percent = pct
+                                    if state.max_percent >= 85:
+                                        state.completed = True
+
+                            # --- drift correction ---
+                            if (
+                                not state.is_paused
+                                and (time.time() - state.last_rpc_update)
+                                >= rpc_drift_interval
+                            ):
+                                await push_rpc()
+
+                except (aiohttp.ClientError, asyncio.TimeoutError):
+                    pass
+
+                await asyncio.sleep(1.0)
+
+    except Exception:
+        pass
+
+    process.wait()
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+
+async def monitor_mpv_status(
+    process: subprocess.Popen[bytes],
+    ipc_path: str,
+    title: str = "",
+    episode: str = "",
+    cover_url: str = "",
+) -> bool:
+    async def driver(proc, state, push_rpc, drift):
+        await _mpv_driver(proc, state, push_rpc, drift, ipc_path)
+
+    return await _monitor(process, driver, title, episode, cover_url)
+
+
+async def monitor_vlc_status(
+    process: subprocess.Popen[bytes],
+    port: int,
+    password: str = "",
+    title: str = "",
+    episode: str = "",
+    cover_url: str = "",
+) -> bool:
+    async def driver(proc, state, push_rpc, drift):
+        await _vlc_driver(proc, state, push_rpc, drift, port, password)
+
+    return await _monitor(process, driver, title, episode, cover_url)
 
 
 async def get_subtitle_fonts(url: str) -> list[str]:
@@ -143,15 +310,12 @@ async def get_subtitle_fonts(url: str) -> list[str]:
                 return []
 
             subtitle_bytes = await response.read()
-            # file can be with or without BOM
             subtitle_content = subtitle_bytes.decode("utf-8-sig", errors="replace")
 
             try:
                 subtitle = ass.parse_string(subtitle_content)
                 styles: list[ass.Style] = subtitle.styles
-
                 return sorted({style.fontname for style in styles})
-
             except Exception as e:
                 print(f"Error parsing subtitle file: {e}")
                 return []

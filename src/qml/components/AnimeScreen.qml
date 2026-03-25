@@ -46,7 +46,7 @@ Pane {
     readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
     Component.onCompleted: {
-        if (anime.episode_list === undefined) {
+        if (!anime.episode_list) {
             busyIndicator.running = true
             episodeDropdown.visible = false
             animeBackend.get_episodes(anime.id)
@@ -639,7 +639,7 @@ Pane {
                                         var url = videoUrlField.text
                                         var subs = subsUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
-                                        animeBackend.launch_vlc(url, subs, title)
+                                        animeBackend.launch_vlc(url, subs, title, anime.image_url || "")
                                         vlcButton.enabled = false
                                         vlcTimer.start()
                                     }
