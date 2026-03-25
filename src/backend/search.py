@@ -1,9 +1,9 @@
 import json
-from PySide6.QtCore import QObject, Slot, Signal
+from typing import TYPE_CHECKING
+
+from PySide6.QtCore import QObject, Signal, Slot
 
 from .utils import AsyncFunctionWorker
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend

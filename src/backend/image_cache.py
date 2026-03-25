@@ -1,12 +1,12 @@
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import aiohttp
-from PySide6.QtCore import QObject, Slot, Signal, QUrl
+from PySide6.QtCore import QObject, QUrl, Signal, Slot
 
 from constants import IMG_CACHE_DIR
-from .utils import AsyncFunctionWorker
 
-from typing import TYPE_CHECKING
+from .utils import AsyncFunctionWorker
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend

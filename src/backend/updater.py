@@ -1,10 +1,11 @@
-import aiohttp
-from PySide6.QtCore import QObject, Slot, Signal
+from typing import TYPE_CHECKING
 
-from .utils import AsyncFunctionWorker
+import aiohttp
+from PySide6.QtCore import QObject, Signal, Slot
+
 from constants import APP_VERSION, FROZEN
 
-from typing import TYPE_CHECKING
+from .utils import AsyncFunctionWorker
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend

@@ -1,10 +1,10 @@
 import asyncio
 import ssl
-import certifi
-import aiohttp
-from aiohttp_socks import ProxyConnector
-
 from typing import TYPE_CHECKING
+
+import aiohttp
+import certifi
+from aiohttp_socks import ProxyConnector
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
@@ -29,7 +29,9 @@ class Api:
         try:
             connector = ProxyConnector.from_url(proxy_url, ssl=self._ssl_context())
             timeout = aiohttp.ClientTimeout(total=10)
-            async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+            async with aiohttp.ClientSession(
+                connector=connector, timeout=timeout
+            ) as session:
                 async with session.get(
                     f"{self.anime365_url}/api/series", params={"limit": 1}
                 ) as response:
@@ -105,4 +107,3 @@ class Api:
                 params={"access_token": self.settings.anime365_token},
             ) as response:
                 return (await response.json())["data"]
-
