@@ -114,11 +114,81 @@ class StreamsWorker(AsyncFunctionWorker):
         )
 
 
+class BatchStreamsWorker(AsyncFunctionWorker):
+    batch_item_ready = Signal(dict)  # {url, subs_url, episode_name, episode_index}
+    batch_progress = Signal(int, int)  # (current, total)
+
+    def __init__(
+        self,
+        episode_ids: list[int],
+        episode_names: list[str],
+        preferred_translation: str,
+        settings: "SettingsBackend",
+    ):
+        super().__init__(self.perform_batch)
+        self.episode_ids = episode_ids
+        self.episode_names = episode_names
+        self.preferred_translation = preferred_translation
+        self.api = settings.api
+
+    async def perform_batch(self):
+        results = []
+        total = len(self.episode_ids)
+        for i, (ep_id, ep_name) in enumerate(zip(self.episode_ids, self.episode_names)):
+            self.batch_progress.emit(i + 1, total)
+            try:
+                translations_raw = await self.api.get_translations(ep_id)
+                translations = [
+                    EpisodeWorker._create_episode_result(t) for t in translations_raw
+                ]
+                translations.sort(key=EpisodeWorker._sort_translations, reverse=True)
+
+                # Try to match the preferred translation
+                chosen = translations[0] if translations else None
+                if self.preferred_translation:
+                    for t in translations:
+                        if t["full_title"] == self.preferred_translation:
+                            chosen = t
+                            break
+
+                if not chosen:
+                    continue
+
+                stream_data = await self.api.get_streams(chosen["id"])
+                streams = sorted(
+                    stream_data["stream"], key=lambda x: x["height"], reverse=True
+                )
+                if not streams:
+                    continue
+
+                subs_url = stream_data.get("subtitlesUrl") or None
+                if subs_url and subs_url.startswith("/"):
+                    subs_url = self.api.anime365_url + subs_url
+                if subs_url:
+                    subs_url = subs_url.removesuffix("?willcache")
+
+                item = dict(
+                    url=streams[0]["urls"][0],
+                    subs_url=subs_url,
+                    episode_name=ep_name,
+                    episode_index=i,
+                )
+                self.batch_item_ready.emit(item)
+                results.append(item)
+            except Exception:
+                continue
+        return results
+
+
 class Backend(QObject):
     episodes_got = Signal(dict)
     translations_got = Signal(list)
     streams_got = Signal(list, bool)
     subtitle_fonts_got = Signal(list)
+    batch_progress = Signal(int, int)
+    batch_item_ready = Signal(dict)
+    batch_complete = Signal()
+    playback_finished = Signal(bool)  # True = episode completed (>85% watched)
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
@@ -170,21 +240,40 @@ class Backend(QObject):
         worker.completed.connect(lambda *_: self.workers.remove(worker))
         worker.start()
 
-    @Slot(str, str, str)
-    def launch_mpv(self, url: str, subs_url: str, title: str):
+    @Slot(str, str, str, str)
+    def launch_mpv(self, url: str, subs_url: str, title: str, cover_url: str = ""):
         if IS_ANDROID:
             self._launch_android_player(url, subs_url, title, "is.xyz.mpv")
             return
 
-        command = [self.settings.mpv_path, url, "-title", title]
+        import tempfile
+
+        if sys.platform == "win32":
+            ipc_path = r"\\.\pipe\anime365-mpv-ipc"
+        else:
+            ipc_path = str(Path(tempfile.gettempdir()) / "anime365-mpv-ipc")
+
+        command = [
+            self.settings.mpv_path,
+            url,
+            f"--title={title}",
+            f"--input-ipc-server={ipc_path}",
+        ]
 
         if subs_url:
-            command.extend(["-sub-file", subs_url])
+            command.append(f"--sub-file={subs_url}")
 
         process = subprocess.Popen(command)
         if self.mpv_worker:
             self.mpv_worker.terminate()
-        self.mpv_worker = AsyncFunctionWorker(monitor_mpv_status, process)
+        # Parse title/episode from the title string "Anime Title — Episode N"
+        parts = title.split(" \u2014 ", 1)
+        anime_title = parts[0] if parts else title
+        episode_str = parts[1] if len(parts) > 1 else ""
+        self.mpv_worker = AsyncFunctionWorker(
+            monitor_mpv_status, process, ipc_path, anime_title, episode_str, cover_url
+        )
+        self.mpv_worker.result_bool.connect(self.playback_finished.emit)
         self.mpv_worker.start()
 
     @Slot(str, str, str)

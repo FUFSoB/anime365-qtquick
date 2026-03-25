@@ -327,20 +327,43 @@ Pane {
                         color: "#EF5350"
                     }
 
-                    CustomDropdown {
-                        id: episodeDropdown
+                    RowLayout {
                         Layout.fillWidth: true
-                        placeholder: "Select Episode"
-                        onSelectionChangedIndex: function(value) {
-                            sourceDropdown.visible = false
-                            videoSourceDropdown.visible = false
-                            qualityDropdown.visible = false
-                            urlsContainer.visible = false
+                        spacing: 8
 
-                            busyIndicator.running = true
+                        CustomDropdown {
+                            id: episodeDropdown
+                            Layout.fillWidth: true
+                            placeholder: "Select Episode"
+                            onSelectionChangedIndex: function(value) {
+                                sourceDropdown.visible = false
+                                videoSourceDropdown.visible = false
+                                qualityDropdown.visible = false
+                                urlsContainer.visible = false
 
-                            var split = anime.episode_ids.split(";")
-                            animeBackend.select_episode(split[value])
+                                busyIndicator.running = true
+
+                                var split = anime.episode_ids.split(";")
+                                animeBackend.select_episode(split[value])
+                            }
+                        }
+
+                        StyledButton {
+                            id: batchDownloadButton
+                            text: batchBusy ? ("Fetching " + batchCurrent + "/" + batchTotal + "...") : "Download All"
+                            visible: !isAndroid && anime.episode_ids !== undefined
+                            enabled: !batchBusy && downloadAvailable
+                            property bool batchBusy: false
+                            property int batchCurrent: 0
+                            property int batchTotal: 0
+                            onClicked: {
+                                batchBusy = true
+                                animeBackend.batch_download(
+                                    anime.episode_ids,
+                                    anime.episode_list,
+                                    streamSelected
+                                )
+                            }
                         }
                     }
 
