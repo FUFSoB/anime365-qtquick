@@ -11,11 +11,13 @@ Pane {
 
     property var allResults: []
     property string currentSort: "year"
+    property bool sortAscending: false
     property bool filterHideHentai: false
+    property bool filterHideUnreleased: true
     property var filterTypes: []
     property real filterMinScore: 0
 
-    property bool hasActiveFilters: filterHideHentai || filterTypes.length > 0 || filterMinScore > 0
+    property bool hasActiveFilters: filterHideHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
 
     Component.onCompleted: {
         busyIndicator.running = true
@@ -24,6 +26,9 @@ Pane {
     function applyFilterSort() {
         var results = allResults.slice()
 
+        if (filterHideUnreleased) {
+            results = results.filter(r => r.year > 0 && r.total_episodes > 0)
+        }
         if (filterHideHentai) {
             results = results.filter(r => !r.hentai)
         }
@@ -38,16 +43,16 @@ Pane {
         }
 
         results.sort((a, b) => {
+            var cmp
             switch (currentSort) {
-                case "year": return (b.year || 0) - (a.year || 0)
+                case "year":     cmp = (a.year || 0) - (b.year || 0); break
                 case "score":
-                    var sa = parseFloat(a.score) || 0
-                    var sb = parseFloat(b.score) || 0
-                    return sb - sa
-                case "title": return (a.title || "").localeCompare(b.title || "")
-                case "episodes": return (b.total_episodes || 0) - (a.total_episodes || 0)
-                default: return 0
+                    cmp = (parseFloat(a.score) || 0) - (parseFloat(b.score) || 0); break
+                case "title":    cmp = (a.title || "").localeCompare(b.title || ""); break
+                case "episodes": cmp = (a.total_episodes || 0) - (b.total_episodes || 0); break
+                default: cmp = 0
             }
+            return sortAscending ? cmp : -cmp
         })
 
         searchResultsModel.clear()
@@ -160,151 +165,178 @@ Pane {
             }
         }
 
-        // ── Row 2: control strip (sort + type filter + score + hentai) ───
+        // ── Row 2: control strip ─────────────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
-            implicitHeight: controlRow.implicitHeight + 14
+            implicitHeight: controlColumn.implicitHeight + 14
             color: palette.alternateBase
             radius: 6
 
-            RowLayout {
-                id: controlRow
+            ColumnLayout {
+                id: controlColumn
                 anchors {
                     left: parent.left; right: parent.right
                     verticalCenter: parent.verticalCenter
                     leftMargin: 10; rightMargin: 10
                 }
-                spacing: 5
+                spacing: 6
 
-                // — Sort ——————————————————————
-                Label {
-                    text: "Sort"
-                    color: palette.windowText
-                    opacity: 0.5
-                    font.pixelSize: 11
-                    font.capitalization: Font.AllUppercase
-                    font.letterSpacing: 0.5
-                }
+                // — Row A: Sort + Type ————————————————————————————————
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
 
-                Repeater {
-                    model: [
-                        {value: "year",     label: "Year"},
-                        {value: "score",    label: "Score"},
-                        {value: "title",    label: "Title"},
-                        {value: "episodes", label: "Episodes"}
-                    ]
+                    Label {
+                        text: "Sort"
+                        color: palette.windowText
+                        opacity: 0.5
+                        font.pixelSize: 11
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 0.5
+                    }
+
+                    Repeater {
+                        model: [
+                            {value: "year",     label: "Year"},
+                            {value: "score",    label: "Score"},
+                            {value: "title",    label: "Title"},
+                            {value: "episodes", label: "Episodes"}
+                        ]
+                        Chip {
+                            label: modelData.label
+                            active: currentSort === modelData.value
+                            onActivated: {
+                                currentSort = modelData.value
+                                applyFilterSort()
+                            }
+                        }
+                    }
+
                     Chip {
-                        label: modelData.label
-                        active: currentSort === modelData.value
+                        label: sortAscending ? "\u2191" : "\u2193"
+                        active: false
+                        implicitWidth: 32
                         onActivated: {
-                            currentSort = modelData.value
+                            sortAscending = !sortAscending
                             applyFilterSort()
                         }
                     }
+
+                    VDivider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
+
+                    Label {
+                        text: "Type"
+                        color: palette.windowText
+                        opacity: 0.5
+                        font.pixelSize: 11
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 0.5
+                    }
+
+                    Repeater {
+                        model: [
+                            {value: "tv",      label: "TV"},
+                            {value: "ova",     label: "OVA"},
+                            {value: "ona",     label: "ONA"},
+                            {value: "movie",   label: "Movie"},
+                            {value: "special", label: "Special"}
+                        ]
+                        Chip {
+                            label: modelData.label
+                            active: filterTypes.indexOf(modelData.value) !== -1
+                            onActivated: {
+                                var types = filterTypes.slice()
+                                var idx = types.indexOf(modelData.value)
+                                if (idx !== -1) types.splice(idx, 1)
+                                else types.push(modelData.value)
+                                filterTypes = types
+                                applyFilterSort()
+                            }
+                        }
+                    }
+
+                    Item { Layout.fillWidth: true }
                 }
 
-                VDivider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
+                // — Row B: Score + toggles + reset + busy ————————————
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 5
 
-                // — Type ———————————————————————
-                Label {
-                    text: "Type"
-                    color: palette.windowText
-                    opacity: 0.5
-                    font.pixelSize: 11
-                    font.capitalization: Font.AllUppercase
-                    font.letterSpacing: 0.5
-                }
+                    Label {
+                        text: "Score \u2265"
+                        color: palette.windowText
+                        opacity: 0.5
+                        font.pixelSize: 11
+                        font.capitalization: Font.AllUppercase
+                        font.letterSpacing: 0.5
+                    }
 
-                Repeater {
-                    model: [
-                        {value: "tv",      label: "TV"},
-                        {value: "ova",     label: "OVA"},
-                        {value: "ona",     label: "ONA"},
-                        {value: "movie",   label: "Movie"},
-                        {value: "special", label: "Special"}
-                    ]
-                    Chip {
-                        label: modelData.label
-                        active: filterTypes.indexOf(modelData.value) !== -1
-                        onActivated: {
-                            var types = filterTypes.slice()
-                            var idx = types.indexOf(modelData.value)
-                            if (idx !== -1) types.splice(idx, 1)
-                            else types.push(modelData.value)
-                            filterTypes = types
+                    Label {
+                        id: scoreValueLabel
+                        text: filterMinScore > 0 ? filterMinScore.toFixed(1) : "Any"
+                        color: filterMinScore > 0 ? palette.highlight : palette.windowText
+                        font.pixelSize: 12
+                        font.bold: filterMinScore > 0
+                        Layout.minimumWidth: 28
+                        horizontalAlignment: Text.AlignHCenter
+                    }
+
+                    Slider {
+                        id: scoreSlider
+                        from: 0; to: 10
+                        stepSize: 0.5
+                        value: filterMinScore
+                        Layout.preferredWidth: 96
+                        onMoved: {
+                            filterMinScore = value
                             applyFilterSort()
                         }
                     }
-                }
 
-                VDivider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
+                    VDivider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
 
-                // — Score ——————————————————————
-                Label {
-                    text: "Score \u2265"
-                    color: palette.windowText
-                    opacity: 0.5
-                    font.pixelSize: 11
-                    font.capitalization: Font.AllUppercase
-                    font.letterSpacing: 0.5
-                }
-
-                Label {
-                    id: scoreValueLabel
-                    text: filterMinScore > 0 ? filterMinScore.toFixed(1) : "Any"
-                    color: filterMinScore > 0 ? palette.highlight : palette.windowText
-                    font.pixelSize: 12
-                    font.bold: filterMinScore > 0
-                    Layout.minimumWidth: 28
-                    horizontalAlignment: Text.AlignHCenter
-                }
-
-                Slider {
-                    id: scoreSlider
-                    from: 0; to: 10
-                    stepSize: 0.5
-                    value: filterMinScore
-                    Layout.preferredWidth: 96
-                    onMoved: {
-                        filterMinScore = value
-                        applyFilterSort()
+                    Chip {
+                        label: "Unreleased"
+                        active: !filterHideUnreleased
+                        onActivated: {
+                            filterHideUnreleased = !filterHideUnreleased
+                            applyFilterSort()
+                        }
                     }
-                }
 
-                VDivider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
-
-                // — Hentai toggle ——————————————
-                Chip {
-                    label: filterHideHentai ? "Hide hentai" : "Hentai"
-                    active: filterHideHentai
-                    onActivated: {
-                        filterHideHentai = !filterHideHentai
-                        applyFilterSort()
+                    Chip {
+                        label: filterHideHentai ? "Hide hentai" : "Hentai"
+                        active: filterHideHentai
+                        onActivated: {
+                            filterHideHentai = !filterHideHentai
+                            applyFilterSort()
+                        }
                     }
-                }
 
-                Item { Layout.fillWidth: true }
+                    Item { Layout.fillWidth: true }
 
-                // — Reset (only when filters active) ——
-                Chip {
-                    visible: hasActiveFilters
-                    label: "Reset filters"
-                    active: false
-                    onActivated: {
-                        filterHideHentai = false
-                        filterTypes = []
-                        filterMinScore = 0
-                        scoreSlider.value = 0
-                        applyFilterSort()
+                    Chip {
+                        visible: hasActiveFilters
+                        label: "Reset filters"
+                        active: false
+                        onActivated: {
+                            filterHideHentai = false
+                            filterHideUnreleased = true
+                            filterTypes = []
+                            filterMinScore = 0
+                            scoreSlider.value = 0
+                            applyFilterSort()
+                        }
                     }
-                }
 
-                BusyIndicator {
-                    id: busyIndicator
-                    running: false
-                    Layout.preferredWidth: 28
-                    Layout.preferredHeight: 28
-                    Layout.leftMargin: 4
+                    BusyIndicator {
+                        id: busyIndicator
+                        running: false
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        Layout.leftMargin: 4
+                    }
                 }
             }
         }
@@ -356,12 +388,8 @@ Pane {
             Label {
                 text: {
                     if (busyIndicator.running) return ""
-                    if (searchResultsModel.count === 0 && allResults.length === 0) return ""
-                    if (hasActiveFilters && allResults.length > 0)
-                        return searchResultsModel.count + " of " + allResults.length + " results"
-                    if (searchResultsModel.count > 0)
-                        return searchResultsModel.count + " result" + (searchResultsModel.count !== 1 ? "s" : "")
-                    return ""
+                    if (allResults.length === 0) return ""
+                    return searchResultsModel.count + " of " + allResults.length + " results"
                 }
                 color: palette.windowText
                 opacity: 0.45
