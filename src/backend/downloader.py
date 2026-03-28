@@ -118,6 +118,7 @@ class DownloadItem:
     total_size: int = 0
     downloaded: int = 0
     error_message: str = ""
+    pausable: bool = True
 
     def to_dict(self) -> dict:
         return {
@@ -130,6 +131,7 @@ class DownloadItem:
             "total_size": self.total_size,
             "downloaded": self.downloaded,
             "error_message": self.error_message,
+            "pausable": self.pausable,
         }
 
 
@@ -301,7 +303,7 @@ class AiohttpDownloader:
     def add_download(self, url: str, filename: str) -> str:
         self._counter += 1
         gid = f"aio-{self._counter}"
-        item = DownloadItem(gid=gid, filename=filename, url=url, status="active")
+        item = DownloadItem(gid=gid, filename=filename, url=url, status="active", pausable=False)
         self._downloads[gid] = item
         return gid
 
@@ -322,8 +324,6 @@ class AiohttpDownloader:
             with filepath.open("r+b") as f:
                 f.seek(start)
                 async for chunk in resp.content.iter_chunked(65536):
-                    if item.status == "paused":
-                        return
                     f.write(chunk)
                     item.downloaded += len(chunk)
                     if item.total_size > 0:
@@ -354,6 +354,7 @@ class AiohttpDownloader:
                     # Multithreaded: pre-allocate file and download chunks in parallel
                     item.total_size = total
                     item.downloaded = 0
+                    item._multithreaded = True
                     with filepath.open("wb") as f:
                         f.seek(total - 1)
                         f.write(b"\0")
@@ -397,29 +398,19 @@ class AiohttpDownloader:
                         mode = "ab" if resp.status == 206 else "wb"
                         with filepath.open(mode) as f:
                             async for chunk in resp.content.iter_chunked(65536):
-                                if item.status == "paused":
-                                    return
                                 f.write(chunk)
                                 item.downloaded += len(chunk)
                                 if item.total_size > 0:
                                     item.progress = item.downloaded / item.total_size
 
-                if item.status != "paused":
-                    item.status = "complete"
-                    item.progress = 1.0
-        except asyncio.CancelledError:
-            item.status = "paused"
+                item.status = "complete"
+                item.progress = 1.0
         except Exception as e:
             item.status = "error"
             item.error_message = str(e)
 
     def get_all_items(self) -> list[DownloadItem]:
         return list(self._downloads.values())
-
-    def pause(self, gid: str):
-        item = self._downloads.get(gid)
-        if item:
-            item.status = "paused"
 
     def remove(self, gid: str):
         self._downloads.pop(gid, None)
@@ -521,8 +512,7 @@ class Backend(QObject):
                 )
             )
             worker.start()
-        elif self._aiohttp_dl:
-            self._aiohttp_dl.pause(gid)
+        # aiohttp downloads are not pausable
 
     @Slot(str)
     def resume_download(self, gid: str):
@@ -539,26 +529,7 @@ class Backend(QObject):
             worker.start()
             if not self._poll_timer.isActive():
                 self._poll_timer.start()
-        elif self._aiohttp_dl:
-            item = self._aiohttp_dl._downloads.get(gid)
-            if item and item.status == "paused":
-                item.status = "active"
-
-                async def _run():
-                    await self._aiohttp_dl.run_download(gid)
-
-                from .utils import AsyncFunctionWorker
-
-                worker = AsyncFunctionWorker(_run)
-                self._workers.append(worker)
-                worker.completed.connect(
-                    lambda *_: (
-                        self._workers.remove(worker)
-                        if worker in self._workers
-                        else None
-                    )
-                )
-                worker.start()
+        # aiohttp downloads are not pausable
 
     @Slot(str)
     def cancel_download(self, gid: str):

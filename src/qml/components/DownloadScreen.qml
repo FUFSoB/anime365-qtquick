@@ -207,7 +207,7 @@ Pane {
                                 leftPadding: 0
                                 rightPadding: 0
                                 text: model.status === "paused" ? "\u25B6" : "\u23F8"
-                                visible: model.status === "active" || model.status === "paused"
+                                visible: model.pausable && (model.status === "active" || model.status === "paused")
                                 onClicked: {
                                     if (model.status === "paused")
                                         downloaderBackend.resume_download(model.gid)
