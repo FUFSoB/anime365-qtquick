@@ -96,6 +96,9 @@ def build_desktop(onefile: bool = False):
         # Include QML files in the bundle
         "--add-data",
         f"src/qml{SEP}qml",
+        # Include package metadata so importlib.metadata.version() works when frozen
+        "--copy-metadata",
+        "anime365-qtquick",
         # Add src/ to Python path so 'backend' and 'constants' imports resolve
         "--paths",
         "src",
