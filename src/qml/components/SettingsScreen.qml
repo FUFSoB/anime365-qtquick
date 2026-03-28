@@ -21,6 +21,7 @@ Pane {
         vlcArgsField.text = settings.vlc_args || ""
         aria2cArgsField.text = settings.aria2c_args || ""
         discordRpcSwitch.checked = settings.discord_rpc !== false
+        checkUpdatesSwitch.checked = settings.check_updates !== false
         downloadThreadsSpin.value = settings.download_threads || 4
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
         proxyField.text = settings.proxy || ""
@@ -78,6 +79,7 @@ Pane {
                     || vlcArgsField.text !== (settings.vlc_args ?? "")
                     || aria2cArgsField.text !== (settings.aria2c_args ?? "")
                     || discordRpcSwitch.checked !== (settings.discord_rpc !== false)
+                    || checkUpdatesSwitch.checked !== (settings.check_updates !== false)
                     || downloadThreadsSpin.value !== (settings.download_threads || 4)
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
@@ -91,6 +93,7 @@ Pane {
                         "vlc_args": vlcArgsField.text,
                         "aria2c_args": aria2cArgsField.text,
                         "discord_rpc": discordRpcSwitch.checked,
+                        "check_updates": checkUpdatesSwitch.checked,
                         "download_threads": downloadThreadsSpin.value,
                         "anime365_token": anime365TokenField.text,
                         "proxy": proxyField.text,
@@ -230,6 +233,18 @@ Pane {
                     text: "Behavior"
                     font.pixelSize: 16
                     font.bold: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label { text: "Check for updates" }
+                    Item { Layout.fillWidth: true }
+                    Switch {
+                        id: checkUpdatesSwitch
+                        checked: true
+                    }
                 }
 
                 RowLayout {

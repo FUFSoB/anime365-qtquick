@@ -140,6 +140,7 @@ class Backend(QObject):
             "aria2c_args": "",
             # behavior
             "discord_rpc": True,
+            "check_updates": True,
             "download_threads": 4,
             # tokens
             "anime365_token": "",

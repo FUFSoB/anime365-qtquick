@@ -77,3 +77,72 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "${{ github.ref_name }}" artifacts/Anime365-linux artifacts/Anime365-windows.exe artifacts/Anime365-macos --generate-notes
 
+  patch:
+    needs: [release]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Install xdelta3
+        run: sudo apt-get install -y xdelta3
+
+      - name: Find previous release tag
+        id: prev
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          prev=$(gh release list --repo "${{ github.repository }}" --limit 10 \
+            --json tagName,isDraft,isPrerelease \
+            --jq '[.[] | select(.isDraft == false and .isPrerelease == false) | .tagName] | .[1]')
+          echo "tag=$prev" >> "$GITHUB_OUTPUT"
+
+      - name: Download previous release artifacts
+        if: steps.prev.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p previous
+          gh release download "${{ steps.prev.outputs.tag }}" \
+            --repo "${{ github.repository }}" --dir previous || true
+
+      - name: Download current release artifacts
+        if: steps.prev.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p current
+          gh release download "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" --dir current
+
+      - name: Create binary patches
+        if: steps.prev.outputs.tag != ''
+        run: |
+          for platform in linux macos; do
+            old="previous/Anime365-$platform"
+            new="current/Anime365-$platform"
+            if [ -f "$old" ] && [ -f "$new" ]; then
+              xdelta3 -e -s "$old" "$new" "current/Anime365-$platform.patch"
+              echo "Created patch for $platform"
+            fi
+          done
+          if [ -f previous/Anime365-windows.exe ] && [ -f current/Anime365-windows.exe ]; then
+            xdelta3 -e -s previous/Anime365-windows.exe current/Anime365-windows.exe \
+              current/Anime365-windows.exe.patch
+            echo "Created patch for windows"
+          fi
+
+      - name: Upload patches to release
+        if: steps.prev.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          patches=$(ls current/*.patch 2>/dev/null || true)
+          if [ -n "$patches" ]; then
+            gh release upload "${{ github.ref_name }}" \
+              --repo "${{ github.repository }}" $patches
+          else
+            echo "No patches generated (previous binaries not found)"
+          fi
+
