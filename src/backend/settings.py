@@ -141,6 +141,7 @@ class Backend(QObject):
             # behavior
             "discord_rpc": True,
             "check_updates": True,
+            "auto_advance": False,
             "download_threads": 4,
             # tokens
             "anime365_token": "",

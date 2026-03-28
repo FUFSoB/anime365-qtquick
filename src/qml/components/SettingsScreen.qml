@@ -22,6 +22,7 @@ Pane {
         aria2cArgsField.text = settings.aria2c_args || ""
         discordRpcSwitch.checked = settings.discord_rpc !== false
         checkUpdatesSwitch.checked = settings.check_updates !== false
+        autoAdvanceSwitch.checked = settings.auto_advance === true
         downloadThreadsSpin.value = settings.download_threads || 4
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
         proxyField.text = settings.proxy || ""
@@ -80,6 +81,7 @@ Pane {
                     || aria2cArgsField.text !== (settings.aria2c_args ?? "")
                     || discordRpcSwitch.checked !== (settings.discord_rpc !== false)
                     || checkUpdatesSwitch.checked !== (settings.check_updates !== false)
+                    || autoAdvanceSwitch.checked !== (settings.auto_advance === true)
                     || downloadThreadsSpin.value !== (settings.download_threads || 4)
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
@@ -94,6 +96,7 @@ Pane {
                         "aria2c_args": aria2cArgsField.text,
                         "discord_rpc": discordRpcSwitch.checked,
                         "check_updates": checkUpdatesSwitch.checked,
+                        "auto_advance": autoAdvanceSwitch.checked,
                         "download_threads": downloadThreadsSpin.value,
                         "anime365_token": anime365TokenField.text,
                         "proxy": proxyField.text,
@@ -244,6 +247,18 @@ Pane {
                     Switch {
                         id: checkUpdatesSwitch
                         checked: true
+                    }
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label { text: "Auto-advance to next episode" }
+                    Item { Layout.fillWidth: true }
+                    Switch {
+                        id: autoAdvanceSwitch
+                        checked: false
                     }
                 }
 

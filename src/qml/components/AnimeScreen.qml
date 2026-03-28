@@ -284,11 +284,11 @@ Pane {
         }
 
         function onPlayback_finished(completed) {
-            if (completed) {
-                // Auto-advance to next episode
+            if (completed && settingsBackend.get_settings()["auto_advance"] === true) {
                 var idx = episodeDropdown.selectedIndex
                 if (idx >= 0 && idx < episodeDropdown.model.length - 1) {
                     episodeDropdown.changeSelection(idx + 1)
+                    autoAdvanceNotice.show()
                 }
             }
         }
@@ -914,6 +914,65 @@ Pane {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    Rectangle {
+        id: autoAdvanceNotice
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 20
+        z: 10
+        visible: opacity > 0
+        opacity: 0
+        color: palette.highlight
+        radius: 6
+        implicitWidth: noticeLabel.implicitWidth + 24
+        implicitHeight: noticeLabel.implicitHeight + 16
+
+        Label {
+            id: noticeLabel
+            anchors.centerIn: parent
+            text: "Auto-advancing to next episode"
+            color: palette.highlightedText
+        }
+
+        property bool pendingTimer: false
+
+        Connections {
+            target: Qt.application
+            function onStateChanged() {
+                if (Qt.application.state === Qt.ApplicationActive && autoAdvanceNotice.pendingTimer) {
+                    autoAdvanceNotice.pendingTimer = false
+                    noticeTimer.restart()
+                }
+            }
+        }
+
+        NumberAnimation {
+            id: noticeFadeOut
+            target: autoAdvanceNotice
+            property: "opacity"
+            to: 0
+            duration: 500
+        }
+
+        Timer {
+            id: noticeTimer
+            interval: 6000
+            onTriggered: noticeFadeOut.start()
+        }
+
+        function show() {
+            noticeFadeOut.stop()
+            opacity = 1
+            pendingTimer = false
+            if (Qt.application.state === Qt.ApplicationActive) {
+                noticeTimer.restart()
+            } else {
+                noticeTimer.stop()
+                pendingTimer = true
             }
         }
     }
