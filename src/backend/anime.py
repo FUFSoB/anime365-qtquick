@@ -274,7 +274,7 @@ class Backend(QObject):
         extra_args = self.settings.get("mpv_args") or ""
         if extra_args:
             import shlex
-            command.extend(shlex.split(extra_args))
+            command.extend(shlex.split(extra_args, posix=(sys.platform != "win32")))
 
         process = subprocess.Popen(command)
         if self.mpv_worker:
@@ -315,7 +315,7 @@ class Backend(QObject):
         extra_args = self.settings.get("vlc_args") or ""
         if extra_args:
             import shlex
-            command.extend(shlex.split(extra_args))
+            command.extend(shlex.split(extra_args, posix=(sys.platform != "win32")))
 
         parts = title.split(" \u2014 ", 1)
         anime_title = parts[0] if parts else title

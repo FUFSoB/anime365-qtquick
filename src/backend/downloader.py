@@ -72,7 +72,7 @@ class Aria2Daemon:
         ]
         if self.extra_args:
             import shlex
-            cmd.extend(shlex.split(self.extra_args))
+            cmd.extend(shlex.split(self.extra_args, posix=(sys.platform != "win32")))
         self.process = subprocess.Popen(
             cmd,
             stdout=subprocess.DEVNULL,
