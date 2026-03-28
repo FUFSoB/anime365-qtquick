@@ -186,16 +186,23 @@ class Aria2Daemon:
             "method": method,
             "params": params or [],
         }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                self.rpc_url,
-                json=payload,
-                timeout=aiohttp.ClientTimeout(total=5),
-            ) as resp:
-                data = await resp.json()
-                if "error" in data:
-                    raise Exception(data["error"]["message"])
-                return data.get("result")
+        last_err = None
+        for attempt in range(10):
+            try:
+                async with aiohttp.ClientSession() as session:
+                    async with session.post(
+                        self.rpc_url,
+                        json=payload,
+                        timeout=aiohttp.ClientTimeout(total=5),
+                    ) as resp:
+                        data = await resp.json()
+                        if "error" in data:
+                            raise Exception(data["error"]["message"])
+                        return data.get("result")
+            except (aiohttp.ClientConnectorError, ConnectionRefusedError, OSError) as e:
+                last_err = e
+                await asyncio.sleep(0.3)
+        raise last_err or Exception("aria2 RPC not reachable")
 
     async def add_uri(self, url: str, filename: str) -> str:
         result = await self._rpc_call(
@@ -530,6 +537,8 @@ class Backend(QObject):
                 )
             )
             worker.start()
+            if not self._poll_timer.isActive():
+                self._poll_timer.start()
         elif self._aiohttp_dl:
             item = self._aiohttp_dl._downloads.get(gid)
             if item and item.status == "paused":

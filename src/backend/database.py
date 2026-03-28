@@ -166,8 +166,11 @@ class Database:
             # Skip completed series (last episode watched == total episodes, total known)
             if total > 0 and ep_num >= total:
                 continue
+            # Skip single-episode titles (total unknown but only ep 1 of an OVA/ONA/Special)
+            if total == 0 and ep_num == 1 and len(parts) == 2 and not parts[0].isdigit():
+                continue
             # Build next episode label
-            if ep_num > 0:
+            if ep_num > 0 and (total == 0 or ep_num < total):
                 prefix = parts[0] + " " if len(parts) == 2 and not parts[0].isdigit() else ""
                 d["next_episode_label"] = f"{ep} \u2192 {prefix}{ep_num + 1}"
             else:

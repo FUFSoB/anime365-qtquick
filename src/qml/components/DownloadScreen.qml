@@ -187,6 +187,8 @@ Pane {
                             }
 
                             Label {
+                                Layout.preferredWidth: 180
+                                horizontalAlignment: Text.AlignRight
                                 text: {
                                     var parts = []
                                     if (model.total_size > 0)

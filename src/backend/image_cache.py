@@ -58,6 +58,6 @@ class Backend(QObject):
         worker.result_str.connect(
             lambda local_url, orig=url: self.image_downloaded.emit(orig, local_url)
         )
-        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
 
         return ""

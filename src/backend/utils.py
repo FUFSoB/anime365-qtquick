@@ -346,9 +346,8 @@ class AsyncFunctionWorker(QThread):
             result = asyncio.run(self.func(*self.args, **self.kwargs))
         except Exception:
             self.error.emit(traceback.format_exc())
+            self.completed.emit()
             return
-
-        self.completed.emit()
 
         if isinstance(result, bool):
             self.result_bool.emit(result)
@@ -358,3 +357,5 @@ class AsyncFunctionWorker(QThread):
             self.result_list.emit(result)
         elif isinstance(result, dict):
             self.result_dict.emit(result)
+
+        self.completed.emit()

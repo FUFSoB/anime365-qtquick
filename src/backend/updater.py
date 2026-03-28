@@ -22,7 +22,7 @@ def _parse_version(tag: str) -> tuple:
 
 
 class Backend(QObject):
-    update_found = Signal(str, str)  # new_version_tag, release_url
+    update_found = Signal(str, str, str)  # new_version_tag, release_url, current_version
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
@@ -53,4 +53,4 @@ class Backend(QObject):
         if not tag:
             return
         if _parse_version(tag) > _parse_version(APP_VERSION):
-            self.update_found.emit(tag, html_url)
+            self.update_found.emit(tag, html_url, APP_VERSION)

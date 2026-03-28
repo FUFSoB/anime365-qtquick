@@ -740,6 +740,8 @@ Pane {
                                 }
 
                                 Label {
+                                    Layout.preferredWidth: 180
+                                    horizontalAlignment: Text.AlignRight
                                     text: {
                                         var parts = []
                                         if (episodeDownloadTotal > 0)

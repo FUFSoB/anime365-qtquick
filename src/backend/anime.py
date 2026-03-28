@@ -217,7 +217,7 @@ class Backend(QObject):
         worker = GetEpisodesWorker(anime_id, self.settings)
         self.workers.append(worker)
         worker.result_dict.connect(self.episodes_got.emit)
-        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
         worker.start()
 
     @Slot(int)
@@ -226,7 +226,7 @@ class Backend(QObject):
         worker = EpisodeWorker(episode_id, self.settings)
         self.workers.append(worker)
         worker.result_list.connect(self.translations_got.emit)
-        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
         worker.start()
 
     @Slot(int, bool)
@@ -237,7 +237,7 @@ class Backend(QObject):
         worker.result_list.connect(
             lambda result: self.streams_got.emit(result, is_for_other_video)
         )
-        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
         worker.start()
 
     @Slot(str)
@@ -245,7 +245,7 @@ class Backend(QObject):
         worker = AsyncFunctionWorker(get_subtitle_fonts, url)
         self.workers.append(worker)
         worker.result_list.connect(self.subtitle_fonts_got)
-        worker.completed.connect(lambda *_: self.workers.remove(worker))
+        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
         worker.start()
 
     @Slot(str, str, str, str)

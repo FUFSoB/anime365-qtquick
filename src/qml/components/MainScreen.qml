@@ -10,12 +10,14 @@ Pane {
 
     property string updateTag: ""
     property string updateUrl: ""
+    property string currentVersion: ""
 
     Connections {
         target: updaterBackend
-        function onUpdate_found(tag, url) {
+        function onUpdate_found(tag, url, current) {
             updateTag = tag
             updateUrl = url
+            currentVersion = current
         }
     }
 
@@ -106,7 +108,7 @@ Pane {
 
                 Label {
                     Layout.fillWidth: true
-                    text: `New version available: <a href='${updateUrl}'>${updateTag}</a>`
+                    text: `Update available: ${currentVersion} \u2192 <a href='${updateUrl}'>${updateTag}</a>`
                     textFormat: Text.RichText
                     onLinkActivated: (url) => Qt.openUrlExternally(url)
                     HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
