@@ -169,10 +169,10 @@ class Database:
             # Skip single-episode titles (total unknown but only ep 1 of an OVA/ONA/Special)
             if total == 0 and ep_num == 1 and len(parts) == 2 and not parts[0].isdigit():
                 continue
-            # Build next episode label
+            # Build next episode label: "5 → 6" or "OVA 2 → OVA 3"
             if ep_num > 0 and (total == 0 or ep_num < total):
                 prefix = parts[0] + " " if len(parts) == 2 and not parts[0].isdigit() else ""
-                d["next_episode_label"] = f"{ep} \u2192 {prefix}{ep_num + 1}"
+                d["next_episode_label"] = f"{prefix}{ep_num} \u2192 {prefix}{ep_num + 1}"
             else:
                 d["next_episode_label"] = ep
             results.append(d)
