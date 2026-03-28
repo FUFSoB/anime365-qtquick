@@ -151,9 +151,31 @@ class Database:
     def get_continue_watching(self) -> list[dict]:
         rows = self.conn.execute(
             "SELECT * FROM anime WHERE episode != '' "
-            "ORDER BY last_viewed DESC LIMIT 10"
+            "ORDER BY last_viewed DESC LIMIT 20"
         ).fetchall()
-        return [_decode(r) for r in rows]
+        results = []
+        for r in rows:
+            d = _decode(r)
+            ep = d.get("episode", "")
+            total = d.get("total_episodes", 0) or 0
+            # Parse the episode number from the episode string (e.g. "5" or "OVA 2")
+            parts = ep.rsplit(" ", 1)
+            ep_num = 0
+            if parts[-1].isdigit():
+                ep_num = int(parts[-1])
+            # Skip completed series (last episode watched == total episodes, total known)
+            if total > 0 and ep_num >= total:
+                continue
+            # Build next episode label
+            if ep_num > 0:
+                prefix = parts[0] + " " if len(parts) == 2 and not parts[0].isdigit() else ""
+                d["next_episode_label"] = f"{ep} \u2192 {prefix}{ep_num + 1}"
+            else:
+                d["next_episode_label"] = ep
+            results.append(d)
+            if len(results) >= 10:
+                break
+        return results
 
     def put(self, key: str, value: dict) -> bool:
         existing = self.get(key)

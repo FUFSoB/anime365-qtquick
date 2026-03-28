@@ -199,7 +199,7 @@ Pane {
 
                         Label {
                             Layout.fillWidth: true
-                            text: model.episode
+                            text: model.next_episode_label || model.episode
                             font.pixelSize: 11
                             opacity: 0.7
                             elide: Text.ElideRight
