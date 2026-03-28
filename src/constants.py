@@ -25,6 +25,7 @@ else:
     SRC_DIR = Path(__file__).parent  # src/
 
 QML_DIR = SRC_DIR / "qml"
+ICON_PATH = SRC_DIR / "icon-512.png" if FROZEN else Path(__file__).parent.parent / "resources" / "icon-512.png"
 
 # --- User data paths: always OS-standard, dev or packaged ---
 

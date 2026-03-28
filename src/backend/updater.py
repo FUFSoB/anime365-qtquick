@@ -60,7 +60,14 @@ def _replace_binary(target: Path, new_binary: Path) -> None:
             )
         )
     else:
-        os.replace(new_binary, target)
+        # Copy to the same filesystem as target first to avoid EXDEV
+        # (os.replace fails across devices, e.g. /tmp on tmpfs vs exe on ext4)
+        tmp = target.with_suffix(".tmp_update")
+        try:
+            shutil.copy2(new_binary, tmp)
+            os.replace(tmp, target)
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 class Backend(QObject):

@@ -112,6 +112,8 @@ def build_desktop(onefile: bool = False):
         # Include version file in the bundle
         "--add-data",
         f"src/_version.txt{SEP}.",
+        "--add-data",
+        f"resources/icon-512.png{SEP}.",
         # Add src/ to Python path so 'backend' and 'constants' imports resolve
         "--paths",
         "src",

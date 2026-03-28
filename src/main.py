@@ -4,11 +4,12 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtGui import QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication
 
-from constants import IS_ANDROID, create_dirs
+from constants import ICON_PATH, IS_ANDROID, create_dirs
 
 create_dirs()
 
@@ -25,6 +26,8 @@ class Anime365:
         self.engine = QQmlApplicationEngine()
 
         self.app.setApplicationName("Anime365")
+        if ICON_PATH.exists():
+            self.app.setWindowIcon(QIcon(str(ICON_PATH)))
         self.app.setDesktopFileName(
             "anime365"
         )  # must match the .desktop filename for Wayland app-id
