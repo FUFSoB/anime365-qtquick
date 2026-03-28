@@ -75,6 +75,37 @@ Pane {
         anchors.fill: parent
         spacing: 12
 
+        Rectangle {
+            visible: !downloaderBackend.has_aria2
+            Layout.fillWidth: true
+            implicitHeight: ariaRow.implicitHeight + 16
+            color: "#1A90CAF5"
+            radius: 4
+            border.color: "#4090CAF5"
+
+            RowLayout {
+                id: ariaRow
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.margins: 12
+                spacing: 8
+
+                Label {
+                    Layout.fillWidth: true
+                    text: "\u2139 <b>aria2c</b> is recommended for downloads — it supports resuming, parallel connections and faster speeds. Set the path in Settings."
+                    textFormat: Text.RichText
+                    wrapMode: Text.WordWrap
+                    font.pixelSize: 12
+                }
+
+                StyledButton {
+                    text: "Settings"
+                    onClicked: stackView.push(settingsScreen)
+                }
+            }
+        }
+
         RowLayout {
             Layout.fillWidth: true
             spacing: 12
@@ -133,12 +164,15 @@ Pane {
 
                 delegate: Rectangle {
                     width: downloadList.width
-                    height: 72
+                    height: dlItemCol.implicitHeight + 16
                     radius: 4
                     color: index % 2 === 0 ? "transparent" : palette.alternateBase
 
                     ColumnLayout {
-                        anchors.fill: parent
+                        id: dlItemCol
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
                         anchors.margins: 8
                         spacing: 4
 
@@ -173,6 +207,15 @@ Pane {
                                     }
                                 }
                             }
+                        }
+
+                        Label {
+                            visible: model.status === "error" && (model.error_message || "") !== ""
+                            text: model.error_message || ""
+                            color: "#EF5350"
+                            font.pixelSize: 11
+                            elide: Text.ElideRight
+                            Layout.fillWidth: true
                         }
 
                         RowLayout {
@@ -214,6 +257,12 @@ Pane {
                                     else
                                         downloaderBackend.pause_download(model.gid)
                                 }
+                            }
+
+                            StyledButton {
+                                text: "Retry"
+                                visible: model.status === "error"
+                                onClicked: downloaderBackend.retry_download(model.gid)
                             }
 
                             StyledButton {

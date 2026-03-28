@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiohttp
-from PySide6.QtCore import QObject, QTimer, Signal, Slot
+from PySide6.QtCore import Property, QObject, QTimer, Signal, Slot
 
 from constants import DATA_DIR, DOWNLOADS_DIR
 
@@ -422,6 +422,10 @@ class Backend(QObject):
     downloads_updated = Signal(list)  # list of dicts
     history_updated = Signal(list)  # list of history entry dicts
 
+    @Property(bool, constant=True)
+    def has_aria2(self) -> bool:
+        return self._aria2 is not None
+
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
         self.settings = settings
@@ -539,6 +543,58 @@ class Backend(QObject):
             if not self._poll_timer.isActive():
                 self._poll_timer.start()
         # aiohttp downloads are not pausable
+
+    @Slot(str)
+    def retry_download(self, gid: str):
+        item = self._items.get(gid)
+        if not item or item.status != "error":
+            return
+        url = item.url
+        filename = item.filename
+        # Drop the errored entry before re-adding so it gets a fresh slot
+        self._items.pop(gid, None)
+        if self._aria2:
+            from .utils import AsyncFunctionWorker
+
+            async def _remove_and_readd():
+                try:
+                    await self._aria2.remove(gid)
+                except Exception:
+                    pass
+                return await self._aria2.add_uri(url, filename)
+
+            worker = AsyncFunctionWorker(_remove_and_readd)
+            worker.result_str.connect(
+                lambda new_gid: self._register_item(new_gid, filename, url)
+            )
+            self._workers.append(worker)
+            worker.completed.connect(
+                lambda *_: (
+                    self._workers.remove(worker) if worker in self._workers else None
+                )
+            )
+            worker.start()
+        elif self._aiohttp_dl:
+            self._aiohttp_dl.remove(gid)
+            new_gid = self._aiohttp_dl.add_download(url, filename)
+            new_item = self._aiohttp_dl._downloads[new_gid]
+            self._items[new_gid] = new_item
+
+            from .utils import AsyncFunctionWorker
+
+            worker = AsyncFunctionWorker(self._aiohttp_dl.run_download, new_gid)
+            self._workers.append(worker)
+            worker.completed.connect(
+                lambda *_: (
+                    self._workers.remove(worker) if worker in self._workers else None
+                )
+            )
+            worker.start()
+
+            if not self._poll_timer.isActive():
+                self._poll_timer.start()
+
+        self._emit_updates()
 
     @Slot(str)
     def cancel_download(self, gid: str):
