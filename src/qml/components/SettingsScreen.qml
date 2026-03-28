@@ -16,6 +16,12 @@ Pane {
         savedTheme = settings.theme || "auto"
         mpvPathField.text = settings.mpv_path || defaults.mpv_path
         vlcPathField.text = settings.vlc_path || defaults.vlc_path
+        aria2cPathField.text = settings.aria2c_path || defaults.aria2c_path
+        mpvArgsField.text = settings.mpv_args || ""
+        vlcArgsField.text = settings.vlc_args || ""
+        aria2cArgsField.text = settings.aria2c_args || ""
+        discordRpcSwitch.checked = settings.discord_rpc !== false
+        downloadThreadsSpin.value = settings.download_threads || 4
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
         proxyField.text = settings.proxy || ""
         var themeIdx = ["auto", "light", "dark"].indexOf(savedTheme)
@@ -67,6 +73,12 @@ Pane {
                 palette.buttonText: "#FFFFFF"
                 enabled: mpvPathField.text !== (settings.mpv_path ?? "")
                     || vlcPathField.text !== (settings.vlc_path ?? "")
+                    || aria2cPathField.text !== (settings.aria2c_path ?? "")
+                    || mpvArgsField.text !== (settings.mpv_args ?? "")
+                    || vlcArgsField.text !== (settings.vlc_args ?? "")
+                    || aria2cArgsField.text !== (settings.aria2c_args ?? "")
+                    || discordRpcSwitch.checked !== (settings.discord_rpc !== false)
+                    || downloadThreadsSpin.value !== (settings.download_threads || 4)
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
                     || themeDropdown.selectedValue !== (settings.theme || "auto")
@@ -74,6 +86,12 @@ Pane {
                     settingsBackend.save_settings({
                         "mpv_path": mpvPathField.text,
                         "vlc_path": vlcPathField.text,
+                        "aria2c_path": aria2cPathField.text,
+                        "mpv_args": mpvArgsField.text,
+                        "vlc_args": vlcArgsField.text,
+                        "aria2c_args": aria2cArgsField.text,
+                        "discord_rpc": discordRpcSwitch.checked,
+                        "download_threads": downloadThreadsSpin.value,
                         "anime365_token": anime365TokenField.text,
                         "proxy": proxyField.text,
                         "theme": themeDropdown.selectedValue,
@@ -118,70 +136,7 @@ Pane {
 
                 Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
 
-                // --- Player Paths (desktop only) ---
-
-                Label {
-                    text: "Player Paths"
-                    font.pixelSize: 16
-                    font.bold: true
-                    visible: !isAndroid
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    visible: !isAndroid
-
-                    Label { text: "Path to MPV binary" }
-
-                    StyledTextField {
-                        id: mpvPathField
-                        Layout.fillWidth: true
-                        placeholderText: "Enter MPV binary path"
-                        property bool isValidPath: true
-                        onTextChanged: {
-                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
-                        }
-                        background: Rectangle {
-                            color: palette.base
-                            border.color: mpvPathField.isValidPath
-                                ? "#4CAF50"
-                                : (mpvPathField.text ? "#EF5350" : palette.mid)
-                            border.width: mpvPathField.isValidPath || mpvPathField.text ? 2 : 1
-                            radius: 4
-                        }
-                    }
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 8
-                    visible: !isAndroid
-
-                    Label { text: "Path to VLC binary" }
-
-                    StyledTextField {
-                        id: vlcPathField
-                        Layout.fillWidth: true
-                        placeholderText: "Enter VLC binary path"
-                        property bool isValidPath: true
-                        onTextChanged: {
-                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
-                        }
-                        background: Rectangle {
-                            color: palette.base
-                            border.color: vlcPathField.isValidPath
-                                ? "#4CAF50"
-                                : (vlcPathField.text ? "#EF5350" : palette.mid)
-                            border.width: vlcPathField.isValidPath || vlcPathField.text ? 2 : 1
-                            radius: 4
-                        }
-                    }
-                }
-
                 // --- Network ---
-
-                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
 
                 Label {
                     text: "Network"
@@ -266,6 +221,153 @@ Pane {
                         }
                     }
                 }
+
+                // --- Behavior ---
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
+
+                Label {
+                    text: "Behavior"
+                    font.pixelSize: 16
+                    font.bold: true
+                }
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+
+                    Label { text: "Discord Rich Presence" }
+                    Item { Layout.fillWidth: true }
+                    Switch {
+                        id: discordRpcSwitch
+                        checked: true
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
+
+                    Label { text: "Download threads per file" }
+
+                    CustomSpinBox {
+                        id: downloadThreadsSpin
+                        Layout.fillWidth: true
+                        from: 1
+                        to: 16
+                        value: 4
+                    }
+                }
+
+                // --- Programs (desktop only) ---
+
+                Rectangle { Layout.fillWidth: true; height: 1; color: palette.mid }
+
+                Label {
+                    text: "Programs"
+                    font.pixelSize: 16
+                    font.bold: true
+                    visible: !isAndroid
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
+
+                    Label { text: "MPV" }
+
+                    StyledTextField {
+                        id: mpvPathField
+                        Layout.fillWidth: true
+                        placeholderText: "Path to binary"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: mpvPathField.isValidPath
+                                ? "#4CAF50"
+                                : (mpvPathField.text ? "#EF5350" : palette.mid)
+                            border.width: mpvPathField.isValidPath || mpvPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+
+                    StyledTextField {
+                        id: mpvArgsField
+                        Layout.fillWidth: true
+                        placeholderText: "Extra command line arguments"
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
+
+                    Label { text: "VLC" }
+
+                    StyledTextField {
+                        id: vlcPathField
+                        Layout.fillWidth: true
+                        placeholderText: "Path to binary"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: vlcPathField.isValidPath
+                                ? "#4CAF50"
+                                : (vlcPathField.text ? "#EF5350" : palette.mid)
+                            border.width: vlcPathField.isValidPath || vlcPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+
+                    StyledTextField {
+                        id: vlcArgsField
+                        Layout.fillWidth: true
+                        placeholderText: "Extra command line arguments"
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
+
+                    Label { text: "aria2c" }
+
+                    StyledTextField {
+                        id: aria2cPathField
+                        Layout.fillWidth: true
+                        placeholderText: "Path to binary"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: aria2cPathField.isValidPath
+                                ? "#4CAF50"
+                                : (aria2cPathField.text ? "#EF5350" : palette.mid)
+                            border.width: aria2cPathField.isValidPath || aria2cPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+
+                    StyledTextField {
+                        id: aria2cArgsField
+                        Layout.fillWidth: true
+                        placeholderText: "Extra command line arguments"
+                    }
+                }
+
+
 
             }
         }

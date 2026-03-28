@@ -45,8 +45,10 @@ class DownloadItem:
 
 
 class Aria2Daemon:
-    def __init__(self, aria2c_path: str):
+    def __init__(self, aria2c_path: str, extra_args: str = "", download_threads: int = 4):
         self.aria2c_path = aria2c_path
+        self.extra_args = extra_args
+        self.download_threads = max(1, min(download_threads, 16))
         self.process: subprocess.Popen | None = None
         self.rpc_url = "http://localhost:6800/jsonrpc"
         self._id_counter = 0
@@ -54,20 +56,25 @@ class Aria2Daemon:
     def start(self):
         if self.process and self.process.poll() is None:
             return
+        cmd = [
+            self.aria2c_path,
+            "--enable-rpc",
+            "--rpc-listen-port=6800",
+            "--rpc-listen-all=false",
+            "--dir",
+            str(DOWNLOADS_DIR),
+            "--continue=true",
+            f"--split={self.download_threads}",
+            f"--max-connection-per-server={self.download_threads}",
+            "--auto-file-renaming=false",
+            "--max-concurrent-downloads=3",
+            "--quiet",
+        ]
+        if self.extra_args:
+            import shlex
+            cmd.extend(shlex.split(self.extra_args))
         self.process = subprocess.Popen(
-            [
-                self.aria2c_path,
-                "--enable-rpc",
-                "--rpc-listen-port=6800",
-                "--rpc-listen-all=false",
-                "--dir",
-                str(DOWNLOADS_DIR),
-                "--continue=true",
-                "--max-connection-per-server=4",
-                "--auto-file-renaming=false",
-                "--max-concurrent-downloads=3",
-                "--quiet",
-            ],
+            cmd,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
@@ -280,9 +287,11 @@ class Backend(QObject):
         self._poll_timer.timeout.connect(self._poll_progress)
         self._polling = False  # guard against stacking poll workers
 
-        aria2c_path = shutil.which("aria2c") or ""
+        aria2c_path = settings.get("aria2c_path") or shutil.which("aria2c") or ""
         if aria2c_path and not IS_ANDROID:
-            self._aria2 = Aria2Daemon(aria2c_path)
+            extra_args = settings.get("aria2c_args") or ""
+            download_threads = int(settings.get("download_threads") or 4)
+            self._aria2 = Aria2Daemon(aria2c_path, extra_args, download_threads)
         else:
             self._aiohttp_dl = AiohttpDownloader(settings)
 

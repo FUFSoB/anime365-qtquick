@@ -271,6 +271,11 @@ class Backend(QObject):
         if subs_url:
             command.append(f"--sub-file={subs_url}")
 
+        extra_args = self.settings.get("mpv_args") or ""
+        if extra_args:
+            import shlex
+            command.extend(shlex.split(extra_args))
+
         process = subprocess.Popen(command)
         if self.mpv_worker:
             self.mpv_worker.terminate()
@@ -278,8 +283,10 @@ class Backend(QObject):
         parts = title.split(" \u2014 ", 1)
         anime_title = parts[0] if parts else title
         episode_str = parts[1] if len(parts) > 1 else ""
+        discord_rpc_enabled = self.settings.get("discord_rpc") is not False
         self.mpv_worker = AsyncFunctionWorker(
-            monitor_mpv_status, process, ipc_path, anime_title, episode_str, cover_url
+            monitor_mpv_status, process, ipc_path, anime_title, episode_str, cover_url,
+            discord_rpc_enabled,
         )
         self.mpv_worker.result_bool.connect(self.playback_finished.emit)
         self.mpv_worker.start()
@@ -305,6 +312,11 @@ class Backend(QObject):
             f"--http-password={http_password}",
         ]
 
+        extra_args = self.settings.get("vlc_args") or ""
+        if extra_args:
+            import shlex
+            command.extend(shlex.split(extra_args))
+
         parts = title.split(" \u2014 ", 1)
         anime_title = parts[0] if parts else title
         episode_str = parts[1] if len(parts) > 1 else ""
@@ -324,8 +336,10 @@ class Backend(QObject):
                 command.extend(["--sub-file", str(subs_file)])
 
             process = subprocess.Popen(command)
+            discord_rpc_enabled = self.settings.get("discord_rpc") is not False
             return await monitor_vlc_status(
-                process, port, http_password, anime_title, episode_str, cover_url
+                process, port, http_password, anime_title, episode_str, cover_url,
+                discord_rpc_enabled,
             )
 
         if self.vlc_worker:

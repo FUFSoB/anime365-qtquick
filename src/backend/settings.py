@@ -125,10 +125,17 @@ class Backend(QObject):
     @Slot(result=dict)
     def get_defaults(self):
         return {
-            # behavior
             # binary paths
             "mpv_path": shutil.which("mpv") or "",
             "vlc_path": shutil.which("vlc") or "",
+            "aria2c_path": shutil.which("aria2c") or "",
+            # extra command line arguments
+            "mpv_args": "",
+            "vlc_args": "",
+            "aria2c_args": "",
+            # behavior
+            "discord_rpc": True,
+            "download_threads": 4,
             # tokens
             "anime365_token": "",
             # not in UI
@@ -158,6 +165,7 @@ class Backend(QObject):
         if not IS_ANDROID:
             settings["mpv_path"] = shutil.which(settings.get("mpv_path", "")) or ""
             settings["vlc_path"] = shutil.which(settings.get("vlc_path", "")) or ""
+            settings["aria2c_path"] = shutil.which(settings.get("aria2c_path", "")) or ""
 
         with SETTINGS_FILE.open("w") as file:
             json.dump(settings, file, indent=4, ensure_ascii=False)

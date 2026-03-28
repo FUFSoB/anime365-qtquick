@@ -48,16 +48,19 @@ async def _monitor(
     title: str = "",
     episode: str = "",
     cover_url: str = "",
+    discord_rpc_enabled: bool = True,
 ) -> bool:
     import json as _json
     import sys as _sys
 
-    try:
-        from .discord_rpc import DiscordRPC
+    rpc = None
+    if discord_rpc_enabled:
+        try:
+            from .discord_rpc import DiscordRPC
 
-        rpc = DiscordRPC()
-    except ImportError:
-        rpc = None
+            rpc = DiscordRPC()
+        except ImportError:
+            pass
 
     start_time = time.time()
     if rpc and title:
@@ -282,11 +285,12 @@ async def monitor_mpv_status(
     title: str = "",
     episode: str = "",
     cover_url: str = "",
+    discord_rpc_enabled: bool = True,
 ) -> bool:
     async def driver(proc, state, push_rpc, drift):
         await _mpv_driver(proc, state, push_rpc, drift, ipc_path)
 
-    return await _monitor(process, driver, title, episode, cover_url)
+    return await _monitor(process, driver, title, episode, cover_url, discord_rpc_enabled)
 
 
 async def monitor_vlc_status(
@@ -296,11 +300,12 @@ async def monitor_vlc_status(
     title: str = "",
     episode: str = "",
     cover_url: str = "",
+    discord_rpc_enabled: bool = True,
 ) -> bool:
     async def driver(proc, state, push_rpc, drift):
         await _vlc_driver(proc, state, push_rpc, drift, port, password)
 
-    return await _monitor(process, driver, title, episode, cover_url)
+    return await _monitor(process, driver, title, episode, cover_url, discord_rpc_enabled)
 
 
 async def get_subtitle_fonts(url: str) -> list[str]:
