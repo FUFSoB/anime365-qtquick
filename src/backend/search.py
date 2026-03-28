@@ -41,7 +41,7 @@ class Worker(AsyncFunctionWorker):
         episode_ids = ";".join(str(i["id"]) for i in item.get("episodes", []))
 
         return dict(
-            id=item["id"],
+            id=str(item["id"]),
             title=title,
             titles=item["titles"],
             total_episodes=item["numberOfEpisodes"],

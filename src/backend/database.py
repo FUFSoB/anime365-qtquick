@@ -150,8 +150,7 @@ class Database:
 
     def get_continue_watching(self) -> list[dict]:
         rows = self.conn.execute(
-            "SELECT * FROM anime WHERE episode != '' "
-            "ORDER BY last_viewed DESC LIMIT 20"
+            "SELECT * FROM anime WHERE episode != '' ORDER BY last_viewed DESC LIMIT 20"
         ).fetchall()
         results = []
         for r in rows:
@@ -167,14 +166,13 @@ class Database:
             if total > 0 and ep_num >= total:
                 continue
             # Skip single-episode titles (total unknown but only ep 1 of an OVA/ONA/Special)
-            if total == 0 and ep_num == 1 and len(parts) == 2 and not parts[0].isdigit():
+            if (
+                total == 0
+                and ep_num == 1
+                and len(parts) == 2
+                and not parts[0].isdigit()
+            ):
                 continue
-            # Build next episode label: "5 → 6" or "OVA 2 → OVA 3"
-            if ep_num > 0 and (total == 0 or ep_num < total):
-                prefix = parts[0] + " " if len(parts) == 2 and not parts[0].isdigit() else ""
-                d["next_episode_label"] = f"{prefix}{ep_num} \u2192 {prefix}{ep_num + 1}"
-            else:
-                d["next_episode_label"] = ep
             results.append(d)
             if len(results) >= 10:
                 break

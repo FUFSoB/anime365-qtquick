@@ -325,7 +325,7 @@ Pane {
                 onItemClicked: (item) => {
                     if (!databaseBackend.put(item.id, item)) {
                         var _item = item
-                        item = databaseBackend.get(item.id)
+                        item = Object.assign({}, databaseBackend.get(item.id))
                         item.episode_list = _item.episode_list
                         item.episode_ids = _item.episode_ids
                     }

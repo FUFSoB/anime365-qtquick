@@ -45,6 +45,8 @@ Pane {
     readonly property bool downloadAvailable: !isAndroid
     readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
+    property bool episodeIdsReady: false
+
     property string localVideoPath: ""
     property string localSubsPath: ""
     property string localVideoMeta: ""  // info about local file quality/translation
@@ -103,6 +105,7 @@ Pane {
         } else {
             episodeDropdown.model = anime.episode_list.split(";")
         }
+        episodeIdsReady = anime.episode_ids !== undefined
         translations = undefined
         streams = undefined
         streamSelected = anime.translation || ""
@@ -187,6 +190,7 @@ Pane {
         function onEpisodes_got(result) {
             anime.episode_list = result.episode_list
             anime.episode_ids = result.episode_ids
+            episodeIdsReady = true
             episodeDropdown.model = result.episode_list.split(";")
             episodeDropdown.visible = true
             if (anime.episode) {
@@ -512,6 +516,17 @@ Pane {
 
                                 busyIndicator.running = true
 
+                                // Persist episode selection immediately so it survives navigation
+                                // even if the user never reaches quality selection.
+                                if (anime.id) {
+                                    databaseBackend.update(String(anime.id), {
+                                        episode: episodeDropdown.model[value],
+                                        translation: streamSelected,
+                                        alt_video: videoStreamSelected,
+                                        quality: qualitySelected
+                                    })
+                                }
+
                                 var split = anime.episode_ids.split(";")
                                 animeBackend.select_episode(split[value])
                             }
@@ -520,7 +535,7 @@ Pane {
                         StyledButton {
                             id: batchDownloadButton
                             text: batchBusy ? ("Fetching " + batchCurrent + "/" + batchTotal + "...") : "Download All"
-                            visible: !isAndroid && anime.episode_ids !== undefined
+                            visible: !isAndroid && episodeIdsReady
                             enabled: !batchBusy && downloadAvailable
                             property bool batchBusy: false
                             property int batchCurrent: 0
@@ -608,7 +623,7 @@ Pane {
 
                             qualitySelected = qualityDropdown.selectedValue
 
-                            databaseBackend.update(anime.id, {
+                            databaseBackend.update(String(anime.id), {
                                 episode: episodeDropdown.selectedValue,
                                 translation: streamSelected,
                                 alt_video: videoStreamSelected,

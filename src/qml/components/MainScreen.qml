@@ -201,7 +201,19 @@ Pane {
 
                         Label {
                             Layout.fillWidth: true
-                            text: model.next_episode_label || model.episode
+                            text: {
+                                var ep = model.episode || ""
+                                var total = model.total_episodes || 0
+                                var match = ep.match(/\d+/)
+                                if (match) {
+                                    var epNum = parseInt(match[0])
+                                    if (epNum > 0 && (total === 0 || epNum < total)) {
+                                        var nextEp = ep.replace(/\d+/, String(epNum + 1))
+                                        return ep + " \u2192 " + nextEp
+                                    }
+                                }
+                                return ep
+                            }
                             font.pixelSize: 11
                             opacity: 0.7
                             elide: Text.ElideRight
