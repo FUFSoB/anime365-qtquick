@@ -80,7 +80,15 @@ Item {
 
         MouseArea {
             anchors.fill: parent
+            property bool wasOpenOnPress: false
+            onPressed: {
+                wasOpenOnPress = dropdownPopup.visible
+            }
             onClicked: {
+                if (wasOpenOnPress) {
+                    // popup was already closed by CloseOnPressOutside, don't reopen
+                    return
+                }
                 dropdownPopup.open()
                 if (selectedIndex >= 0) {
                     listView.positionViewAtIndex(selectedIndex, ListView.Center)
@@ -95,7 +103,7 @@ Item {
         height: Math.min(searchRow.height + listView.contentHeight, 300)
         y: header.height + 4
         padding: 0
-        closePolicy: Popup.CloseOnPressOutside | Popup.CloseOnEscape
+        closePolicy: Popup.CloseOnReleaseOutside | Popup.CloseOnEscape
         background: Rectangle {
             color: pal.base
             radius: 4
