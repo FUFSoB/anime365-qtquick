@@ -299,13 +299,35 @@ Pane {
         }
 
         function onBatch_item_ready(item) {
-            var title = anime.title + " \u2014 " + item.episode_name
             var ep = item.episode_name
+            var title = anime.title + " \u2014 " + ep
             var episodesTotal = episodeDropdown.model ? episodeDropdown.model.length : 1
+
+            // Skip if already downloaded at exact or better quality
+            var checkResult = downloaderBackend.find_downloaded_video(
+                anime.title, ep, streamSelected, qualitySelected)
+            if (checkResult && checkResult.path && !checkResult.lower_quality) {
+                batchDownloadButton.batchSkipped++
+                return
+            }
+
+            // Build video filename to check against active downloads
             var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
             var filename = downloaderBackend.resolve_filename(
                 baseFilename, anime.title, ep,
                 streamSelected, videoStreamSelected, "video")
+
+            // Skip if this exact file is already an active or waiting download
+            var downloads = downloaderBackend.get_downloads()
+            for (var j = 0; j < downloads.length; j++) {
+                var dl = downloads[j]
+                if (dl.filename === filename &&
+                        (dl.status === "active" || dl.status === "waiting")) {
+                    batchDownloadButton.batchSkipped++
+                    return
+                }
+            }
+
             var subsUrl = item.subs_url || ""
             var subsFilename = ""
             if (subsUrl) {
@@ -325,6 +347,10 @@ Pane {
 
         function onBatch_complete() {
             batchDownloadButton.batchBusy = false
+        }
+
+        function onBatch_unavailable(episodeName) {
+            batchDownloadButton.batchStoppedAt = episodeName
         }
 
         function onSubtitle_fonts_got(results) {
@@ -536,18 +562,53 @@ Pane {
                             id: batchDownloadButton
                             text: batchBusy ? ("Fetching " + batchCurrent + "/" + batchTotal + "...") : "Download All"
                             visible: !isAndroid && episodeIdsReady
-                            enabled: !batchBusy && downloadAvailable
+                            enabled: !batchBusy && downloadAvailable && urlsContainer.visible
                             property bool batchBusy: false
                             property int batchCurrent: 0
                             property int batchTotal: 0
+                            property int batchSkipped: 0
+                            property string batchStoppedAt: ""
+                            ToolTip.visible: hovered && !urlsContainer.visible
+                            ToolTip.text: "Select an episode, team and quality first"
+                            ToolTip.delay: 600
                             onClicked: {
                                 batchBusy = true
+                                batchSkipped = 0
+                                batchStoppedAt = ""
+                                var startIdx = Math.max(0, episodeDropdown.selectedIndex)
+                                var allIds = anime.episode_ids.split(";")
+                                var allNames = anime.episode_list.split(";")
+                                var ids = allIds.slice(startIdx).join(";")
+                                var names = allNames.slice(startIdx).join(";")
                                 animeBackend.batch_download(
-                                    anime.episode_ids,
-                                    anime.episode_list,
-                                    streamSelected
+                                    ids,
+                                    names,
+                                    streamSelected,
+                                    qualitySelected
                                 )
                             }
+                        }
+                    }
+
+                    Label {
+                        id: batchStatusLabel
+                        visible: !batchDownloadButton.batchBusy
+                                 && (batchDownloadButton.batchStoppedAt !== ""
+                                     || batchDownloadButton.batchSkipped > 0)
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: 12
+                        color: batchDownloadButton.batchStoppedAt !== "" ? "#FF9800" : "#4CAF50"
+                        text: {
+                            var parts = []
+                            if (batchDownloadButton.batchStoppedAt !== "")
+                                parts.push("\u26A0 Stopped at \u201C" + batchDownloadButton.batchStoppedAt
+                                           + "\u201D \u2014 not available in selected team / quality")
+                            if (batchDownloadButton.batchSkipped > 0)
+                                parts.push((batchDownloadButton.batchStoppedAt !== "" ? "s" : "S")
+                                           + "kipped " + batchDownloadButton.batchSkipped
+                                           + " already downloaded")
+                            return parts.join("  \u2022  ")
                         }
                     }
 

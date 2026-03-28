@@ -125,23 +125,33 @@ class StreamsWorker(AsyncFunctionWorker):
 class BatchStreamsWorker(AsyncFunctionWorker):
     batch_item_ready = Signal(dict)  # {url, subs_url, episode_name, episode_index}
     batch_progress = Signal(int, int)  # (current, total)
+    batch_unavailable = Signal(
+        str
+    )  # episode_name that lacks the requested team/quality
 
     def __init__(
         self,
         episode_ids: list[int],
         episode_names: list[str],
         preferred_translation: str,
+        preferred_quality: str,
         settings: "SettingsBackend",
     ):
         super().__init__(self.perform_batch)
         self.episode_ids = episode_ids
         self.episode_names = episode_names
         self.preferred_translation = preferred_translation
+        self.preferred_quality = preferred_quality
         self.api = settings.api
 
     async def perform_batch(self):
         results = []
         total = len(self.episode_ids)
+        preferred_height = 0
+        if self.preferred_quality:
+            q = self.preferred_quality.rstrip("p")
+            preferred_height = int(q) if q.isdigit() else 0
+
         for i, (ep_id, ep_name) in enumerate(zip(self.episode_ids, self.episode_names)):
             self.batch_progress.emit(i + 1, total)
             try:
@@ -151,23 +161,45 @@ class BatchStreamsWorker(AsyncFunctionWorker):
                 ]
                 translations.sort(key=EpisodeWorker._sort_translations, reverse=True)
 
-                # Try to match the preferred translation
-                chosen = translations[0] if translations else None
+                # Require exact translation match when one is specified; stop on miss
                 if self.preferred_translation:
-                    for t in translations:
-                        if t["full_title"] == self.preferred_translation:
-                            chosen = t
-                            break
+                    chosen = next(
+                        (
+                            t
+                            for t in translations
+                            if t["full_title"] == self.preferred_translation
+                        ),
+                        None,
+                    )
+                    if chosen is None:
+                        self.batch_unavailable.emit(ep_name)
+                        return results
+                else:
+                    chosen = translations[0] if translations else None
 
                 if not chosen:
-                    continue
+                    self.batch_unavailable.emit(ep_name)
+                    return results
 
                 stream_data = await self.api.get_streams(chosen["id"])
                 streams = sorted(
                     stream_data["stream"], key=lambda x: x["height"], reverse=True
                 )
                 if not streams:
-                    continue
+                    self.batch_unavailable.emit(ep_name)
+                    return results
+
+                # Require exact quality match when one is specified; stop on miss
+                if preferred_height:
+                    chosen_stream = next(
+                        (s for s in streams if s["height"] == preferred_height),
+                        None,
+                    )
+                    if chosen_stream is None:
+                        self.batch_unavailable.emit(ep_name)
+                        return results
+                else:
+                    chosen_stream = streams[0]
 
                 subs_url = stream_data.get("subtitlesUrl") or None
                 if subs_url and subs_url.startswith("/"):
@@ -176,7 +208,7 @@ class BatchStreamsWorker(AsyncFunctionWorker):
                     subs_url = subs_url.removesuffix("?willcache")
 
                 item = dict(
-                    url=streams[0]["urls"][0],
+                    url=chosen_stream["urls"][0],
                     subs_url=subs_url,
                     episode_name=ep_name,
                     episode_index=i,
@@ -184,7 +216,7 @@ class BatchStreamsWorker(AsyncFunctionWorker):
                 self.batch_item_ready.emit(item)
                 results.append(item)
             except Exception:
-                continue
+                continue  # transient network error – keep going
         return results
 
 
@@ -195,6 +227,9 @@ class Backend(QObject):
     subtitle_fonts_got = Signal(list)
     batch_progress = Signal(int, int)
     batch_item_ready = Signal(dict)
+    batch_unavailable = Signal(
+        str
+    )  # episode name that lacks the requested team/quality
     batch_complete = Signal()
     playback_finished = Signal(bool)  # True = episode completed (>85% watched)
 
@@ -217,7 +252,9 @@ class Backend(QObject):
         worker = GetEpisodesWorker(anime_id, self.settings)
         self.workers.append(worker)
         worker.result_dict.connect(self.episodes_got.emit)
-        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
+        worker.completed.connect(
+            lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None
+        )
         worker.start()
 
     @Slot(int)
@@ -226,7 +263,9 @@ class Backend(QObject):
         worker = EpisodeWorker(episode_id, self.settings)
         self.workers.append(worker)
         worker.result_list.connect(self.translations_got.emit)
-        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
+        worker.completed.connect(
+            lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None
+        )
         worker.start()
 
     @Slot(int, bool)
@@ -237,7 +276,9 @@ class Backend(QObject):
         worker.result_list.connect(
             lambda result: self.streams_got.emit(result, is_for_other_video)
         )
-        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
+        worker.completed.connect(
+            lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None
+        )
         worker.start()
 
     @Slot(str)
@@ -245,7 +286,9 @@ class Backend(QObject):
         worker = AsyncFunctionWorker(get_subtitle_fonts, url)
         self.workers.append(worker)
         worker.result_list.connect(self.subtitle_fonts_got)
-        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
+        worker.completed.connect(
+            lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None
+        )
         worker.start()
 
     @Slot(str, str, str, str)
@@ -274,6 +317,7 @@ class Backend(QObject):
         extra_args = self.settings.get("mpv_args") or ""
         if extra_args:
             import shlex
+
             command.extend(shlex.split(extra_args, posix=(sys.platform != "win32")))
 
         process = subprocess.Popen(command)
@@ -285,7 +329,12 @@ class Backend(QObject):
         episode_str = parts[1] if len(parts) > 1 else ""
         discord_rpc_enabled = self.settings.get("discord_rpc") is not False
         self.mpv_worker = AsyncFunctionWorker(
-            monitor_mpv_status, process, ipc_path, anime_title, episode_str, cover_url,
+            monitor_mpv_status,
+            process,
+            ipc_path,
+            anime_title,
+            episode_str,
+            cover_url,
             discord_rpc_enabled,
         )
         self.mpv_worker.result_bool.connect(self.playback_finished.emit)
@@ -298,16 +347,20 @@ class Backend(QObject):
             return
 
         import secrets
+
         port = find_free_port(41365)  # 4n1m3 + 65 (leet "anime365")
         http_password = secrets.token_hex(16)
 
         command = [
             self.settings.vlc_path,
             url,
-            "--meta-title", title,
+            "--meta-title",
+            title,
             "--no-video-title-show",
-            "--extraintf", "http",
-            "--http-host", "localhost",
+            "--extraintf",
+            "http",
+            "--http-host",
+            "localhost",
             f"--http-port={port}",
             f"--http-password={http_password}",
         ]
@@ -315,6 +368,7 @@ class Backend(QObject):
         extra_args = self.settings.get("vlc_args") or ""
         if extra_args:
             import shlex
+
             command.extend(shlex.split(extra_args, posix=(sys.platform != "win32")))
 
         parts = title.split(" \u2014 ", 1)
@@ -338,7 +392,12 @@ class Backend(QObject):
             process = subprocess.Popen(command)
             discord_rpc_enabled = self.settings.get("discord_rpc") is not False
             return await monitor_vlc_status(
-                process, port, http_password, anime_title, episode_str, cover_url,
+                process,
+                port,
+                http_password,
+                anime_title,
+                episode_str,
+                cover_url,
                 discord_rpc_enabled,
             )
 
@@ -369,18 +428,23 @@ class Backend(QObject):
         )
         QDesktopServices.openUrl(QUrl(intent_url))
 
-    @Slot(str, str, str)
+    @Slot(str, str, str, str)
     def batch_download(
-        self, episode_ids_str: str, episode_names_str: str, preferred_translation: str
+        self,
+        episode_ids_str: str,
+        episode_names_str: str,
+        preferred_translation: str,
+        preferred_quality: str,
     ):
         ep_ids = [int(x) for x in episode_ids_str.split(";") if x]
         ep_names = episode_names_str.split(";")
         worker = BatchStreamsWorker(
-            ep_ids, ep_names, preferred_translation, self.settings
+            ep_ids, ep_names, preferred_translation, preferred_quality, self.settings
         )
         self.workers.append(worker)
         worker.batch_progress.connect(self.batch_progress.emit)
         worker.batch_item_ready.connect(self.batch_item_ready.emit)
+        worker.batch_unavailable.connect(self.batch_unavailable.emit)
         worker.completed.connect(self.batch_complete.emit)
         worker.completed.connect(
             lambda *_: self.workers.remove(worker) if worker in self.workers else None
