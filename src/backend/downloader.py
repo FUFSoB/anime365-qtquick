@@ -143,7 +143,7 @@ class Aria2Daemon:
         self.extra_args = extra_args
         self.download_threads = max(1, min(download_threads, 16))
         self.process: subprocess.Popen | None = None
-        self.rpc_url = "http://localhost:6800/jsonrpc"
+        self.rpc_url = "http://127.0.0.1:6800/jsonrpc"
         self._id_counter = 0
 
     def start(self):
