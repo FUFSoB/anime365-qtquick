@@ -45,6 +45,56 @@ Pane {
     readonly property bool downloadAvailable: !isAndroid
     readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
+    property string localVideoPath: ""
+    property string localSubsPath: ""
+    property string localVideoMeta: ""  // info about local file quality/translation
+    property string otherDownloadsInfo: ""  // "TeamName +N" for other-TL downloads
+    property real episodeDownloadProgress: -1  // -1 = no active download
+    property int episodeDownloadSpeed: 0
+    property int episodeDownloaded: 0
+    property int episodeDownloadTotal: 0
+
+    function checkLocalFiles() {
+        localVideoPath = ""
+        localSubsPath = ""
+        localVideoMeta = ""
+        otherDownloadsInfo = ""
+        if (!anime.title || !episodeDropdown.selectedValue) return
+
+        var ep = episodeDropdown.selectedValue
+        var result = downloaderBackend.find_downloaded_video(
+            anime.title, ep, streamSelected, qualitySelected)
+
+        if (!result || !result.path && !result.other_count) return
+
+        // Build other-TL notification: "TeamName" or "TeamName +2"
+        if (result.other_count > 0) {
+            var info = result.other_first_tl || "other"
+            if (result.other_count > 1)
+                info += " +" + (result.other_count - 1)
+            otherDownloadsInfo = info
+        }
+
+        if (result.path) {
+            // Exact TL match found on disk
+            if (result.lower_quality) {
+                // Selected quality is higher than downloaded — prefer online stream
+                localVideoMeta = "lower_quality:" + (result.quality || "?")
+            } else {
+                localVideoPath = result.path
+                var notes = []
+                if (result.higher_quality)
+                    notes.push(result.quality + " > " + qualitySelected)
+                else if (result.quality && result.quality !== qualitySelected)
+                    notes.push(result.quality)
+                localVideoMeta = notes.join(", ")
+            }
+        }
+        // If path is empty (non-exact TL only), we just show the notification — no local playback
+
+        localSubsPath = downloaderBackend.find_downloaded_subs(anime.title, ep, streamSelected)
+    }
+
     Component.onCompleted: {
         if (!anime.episode_list) {
             busyIndicator.running = true
@@ -83,6 +133,50 @@ Pane {
         }
         qualityDropdown.model = data
         qualityDropdown.visible = true
+    }
+
+    function formatSize(bytes) {
+        if (bytes <= 0) return ""
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB"
+        if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB"
+        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB"
+    }
+
+    function formatSpeed(bytesPerSec) {
+        if (bytesPerSec <= 0) return ""
+        if (bytesPerSec < 1024) return bytesPerSec + " B/s"
+        if (bytesPerSec < 1024 * 1024) return (bytesPerSec / 1024).toFixed(1) + " KB/s"
+        return (bytesPerSec / (1024 * 1024)).toFixed(1) + " MB/s"
+    }
+
+    Connections {
+        target: downloaderBackend
+        function onDownloads_updated(items) {
+            if (!anime.title || !episodeDropdown.selectedValue) return
+            var ep = episodeDropdown.selectedValue
+            var title = anime.title + " \u2014 " + ep
+            var episodesTotal = episodeDropdown.model ? episodeDropdown.model.length : 1
+            var baseFile = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+            var baseStem = baseFile.substring(0, baseFile.lastIndexOf("."))
+            episodeDownloadProgress = -1
+            episodeDownloadSpeed = 0
+            episodeDownloaded = 0
+            episodeDownloadTotal = 0
+            for (var i = 0; i < items.length; i++) {
+                var fn = items[i].filename
+                if (fn.startsWith(baseStem) && (fn.endsWith(".mp4") || fn.endsWith(".mkv") || fn.endsWith(".webm"))) {
+                    if (items[i].status === "complete") {
+                        checkLocalFiles()
+                    } else if (items[i].status === "active" || items[i].status === "waiting") {
+                        episodeDownloadProgress = items[i].progress
+                        episodeDownloadSpeed = items[i].speed
+                        episodeDownloaded = items[i].downloaded
+                        episodeDownloadTotal = items[i].total_size
+                    }
+                    break
+                }
+            }
+        }
     }
 
     Connections {
@@ -200,12 +294,25 @@ Pane {
 
         function onBatch_item_ready(item) {
             var title = anime.title + " \u2014 " + item.episode_name
+            var ep = item.episode_name
             var episodesTotal = episodeDropdown.model ? episodeDropdown.model.length : 1
-            var filename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+            var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+            var filename = downloaderBackend.resolve_filename(
+                baseFilename, anime.title, ep,
+                streamSelected, videoStreamSelected, "video")
             downloaderBackend.add_download(item.url, filename)
+            downloaderBackend.record_meta(
+                filename, anime.title, ep,
+                streamSelected, videoStreamSelected, qualitySelected)
             if (item.subs_url) {
-                var subsFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                var baseSubsFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                var subsFilename = downloaderBackend.resolve_filename(
+                    baseSubsFilename, anime.title, ep,
+                    streamSelected, videoStreamSelected, "subs")
                 downloaderBackend.add_download(item.subs_url, subsFilename)
+                downloaderBackend.record_meta(
+                    subsFilename, anime.title, ep,
+                    streamSelected, videoStreamSelected, qualitySelected)
             }
         }
 
@@ -501,6 +608,8 @@ Pane {
                                 alt_video: videoStreamSelected,
                                 quality: qualitySelected
                             })
+
+                            checkLocalFiles()
                         }
                     }
 
@@ -549,9 +658,16 @@ Pane {
                                     onClicked: {
                                         var url = videoUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        var ep = episodeDropdown.selectedValue
                                         var episodesTotal = episodeDropdown.model.length
-                                        var filename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+                                        var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+                                        var filename = downloaderBackend.resolve_filename(
+                                            baseFilename, anime.title, ep,
+                                            streamSelected, videoStreamSelected, "video")
                                         downloaderBackend.add_download(url, filename)
+                                        downloaderBackend.record_meta(
+                                            filename, anime.title, ep,
+                                            streamSelected, videoStreamSelected, qualitySelected)
                                         dlButton.enabled = false
                                     }
                                 }
@@ -596,11 +712,44 @@ Pane {
                                     onClicked: {
                                         var url = subsUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        var ep = episodeDropdown.selectedValue
                                         var episodesTotal = episodeDropdown.model.length
-                                        var filename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                                        var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                                        var filename = downloaderBackend.resolve_filename(
+                                            baseFilename, anime.title, ep,
+                                            streamSelected, videoStreamSelected, "subs")
                                         downloaderBackend.add_download(url, filename)
+                                        downloaderBackend.record_meta(
+                                            filename, anime.title, ep,
+                                            streamSelected, videoStreamSelected, qualitySelected)
                                         dlButtonSubs.enabled = false
                                     }
+                                }
+                            }
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                spacing: 8
+                                visible: episodeDownloadProgress >= 0
+
+                                ProgressBar {
+                                    Layout.fillWidth: true
+                                    from: 0
+                                    to: 1
+                                    value: episodeDownloadProgress
+                                }
+
+                                Label {
+                                    text: {
+                                        var parts = []
+                                        if (episodeDownloadTotal > 0)
+                                            parts.push(formatSize(episodeDownloaded) + " / " + formatSize(episodeDownloadTotal))
+                                        if (episodeDownloadSpeed > 0)
+                                            parts.push(formatSpeed(episodeDownloadSpeed))
+                                        return parts.join("  ") || "Waiting..."
+                                    }
+                                    font.pixelSize: 12
+                                    opacity: 0.7
                                 }
                             }
 
@@ -609,7 +758,7 @@ Pane {
 
                                 StyledButton {
                                     id: mpvButton
-                                    text: "mpv"
+                                    text: localVideoPath ? "mpv (local)" : "mpv"
                                     Timer {
                                         id: mpvTimer
                                         interval: 5000
@@ -617,8 +766,8 @@ Pane {
                                         onTriggered: mpvButton.enabled = mpvAvailable
                                     }
                                     onClicked: {
-                                        var url = videoUrlField.text
-                                        var subs = subsUrlField.text
+                                        var url = localVideoPath || videoUrlField.text
+                                        var subs = localSubsPath || subsUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
                                         animeBackend.launch_mpv(url, subs, title, anime.image_url || "")
                                         mpvButton.enabled = false
@@ -628,7 +777,7 @@ Pane {
 
                                 StyledButton {
                                     id: vlcButton
-                                    text: "VLC"
+                                    text: localVideoPath ? "VLC (local)" : "VLC"
                                     Timer {
                                         id: vlcTimer
                                         interval: 5000
@@ -636,8 +785,8 @@ Pane {
                                         onTriggered: vlcButton.enabled = vlcAvailable
                                     }
                                     onClicked: {
-                                        var url = videoUrlField.text
-                                        var subs = subsUrlField.text
+                                        var url = localVideoPath || videoUrlField.text
+                                        var subs = localSubsPath || subsUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
                                         animeBackend.launch_vlc(url, subs, title, anime.image_url || "")
                                         vlcButton.enabled = false
@@ -655,6 +804,47 @@ Pane {
                                             dlButtonSubs.clicked()
                                         dlEpisodeButton.enabled = false
                                     }
+                                }
+
+                                Label {
+                                    visible: localVideoPath !== "" && localVideoMeta === ""
+                                    text: "\u2714 Downloaded"
+                                    color: "#4CAF50"
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    visible: localVideoPath !== "" && localVideoMeta !== ""
+                                    text: "\u2714 Downloaded (" + localVideoMeta + ")"
+                                    color: "#FF9800"
+                                    font.bold: true
+                                }
+
+                                Label {
+                                    visible: localVideoMeta.startsWith("lower_quality")
+                                    text: {
+                                        if (!localVideoMeta.startsWith("lower_quality")) return ""
+                                        var parts = localVideoMeta.split(":")
+                                        return "\u26A0 Downloaded in " + (parts[1] || "?") + " \u2014 streaming " + qualitySelected + " online"
+                                    }
+                                    color: "#FF9800"
+                                    font.pixelSize: 12
+                                }
+
+                                Label {
+                                    visible: otherDownloadsInfo !== "" && localVideoPath === ""
+                                        && !localVideoMeta.startsWith("lower_quality")
+                                    text: "\u2193 Also downloaded: " + otherDownloadsInfo
+                                    color: "#64B5F6"
+                                    font.pixelSize: 12
+                                }
+
+                                Label {
+                                    visible: otherDownloadsInfo !== "" && localVideoPath !== ""
+                                    text: "Also downloaded by: " + otherDownloadsInfo
+                                    color: palette.text
+                                    opacity: 0.6
+                                    font.pixelSize: 12
                                 }
                             }
                         }

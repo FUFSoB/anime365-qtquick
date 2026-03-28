@@ -10,12 +10,101 @@ from typing import TYPE_CHECKING
 import aiohttp
 from PySide6.QtCore import QObject, QTimer, Signal, Slot
 
-from constants import DOWNLOADS_DIR
+from constants import DATA_DIR, DOWNLOADS_DIR
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
 
 IS_ANDROID = hasattr(sys, "getandroidapilevel")
+
+_METADATA_FILE = DOWNLOADS_DIR / ".metadata.json"
+_HISTORY_FILE = DATA_DIR / "download_history.json"
+
+
+class DownloadMetadata:
+    def __init__(self):
+        self._data: dict[str, dict] = {}
+        self._load()
+
+    def _load(self):
+        try:
+            if _METADATA_FILE.exists():
+                self._data = json.loads(_METADATA_FILE.read_text())
+        except Exception:
+            self._data = {}
+
+    def _save(self):
+        try:
+            _METADATA_FILE.write_text(
+                json.dumps(self._data, indent=2, ensure_ascii=False)
+            )
+        except Exception:
+            pass
+
+    def record(self, filename: str, meta: dict):
+        self._data[filename] = meta
+        self._save()
+
+    def remove(self, filename: str):
+        self._data.pop(filename, None)
+        self._save()
+
+    def get(self, filename: str) -> dict:
+        return self._data.get(filename, {})
+
+    def find(self, **match) -> list[tuple[str, dict]]:
+        results = []
+        for fname, meta in self._data.items():
+            if all(meta.get(k) == v for k, v in match.items()):
+                results.append((fname, meta))
+        return results
+
+
+class DownloadHistory:
+    def __init__(self):
+        self._entries: list[dict] = []
+        self._load()
+
+    def _load(self):
+        try:
+            if _HISTORY_FILE.exists():
+                self._entries = json.loads(_HISTORY_FILE.read_text())
+        except Exception:
+            self._entries = []
+
+    def _save(self):
+        try:
+            _HISTORY_FILE.write_text(
+                json.dumps(self._entries, indent=2, ensure_ascii=False)
+            )
+        except Exception:
+            pass
+
+    def add(self, filename: str, size: int, meta: dict):
+        from time import time
+
+        self._entries.insert(
+            0,
+            {
+                "filename": filename,
+                "size": size,
+                "timestamp": int(time()),
+                **meta,
+            },
+        )
+        self._save()
+
+    def get_all(self) -> list[dict]:
+        return list(self._entries)
+
+    def remove(self, index: int):
+        if 0 <= index < len(self._entries):
+            self._entries.pop(index)
+            self._save()
+
+    def clear(self):
+        self._entries.clear()
+        self._save()
 
 
 @dataclass
@@ -45,7 +134,9 @@ class DownloadItem:
 
 
 class Aria2Daemon:
-    def __init__(self, aria2c_path: str, extra_args: str = "", download_threads: int = 4):
+    def __init__(
+        self, aria2c_path: str, extra_args: str = "", download_threads: int = 4
+    ):
         self.aria2c_path = aria2c_path
         self.extra_args = extra_args
         self.download_threads = max(1, min(download_threads, 16))
@@ -72,6 +163,7 @@ class Aria2Daemon:
         ]
         if self.extra_args:
             import shlex
+
             cmd.extend(shlex.split(self.extra_args, posix=(sys.platform != "win32")))
         self.process = subprocess.Popen(
             cmd,
@@ -265,7 +357,9 @@ class AiohttpDownloader:
                         start = i * chunk_size
                         end = (start + chunk_size - 1) if i < n - 1 else (total - 1)
                         tasks.append(
-                            self._download_chunk(session, item.url, filepath, start, end, item)
+                            self._download_chunk(
+                                session, item.url, filepath, start, end, item
+                            )
                         )
                     await asyncio.gather(*tasks)
                 else:
@@ -326,6 +420,7 @@ class AiohttpDownloader:
 
 class Backend(QObject):
     downloads_updated = Signal(list)  # list of dicts
+    history_updated = Signal(list)  # list of history entry dicts
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
@@ -334,6 +429,9 @@ class Backend(QObject):
         self._aria2: Aria2Daemon | None = None
         self._aiohttp_dl: AiohttpDownloader | None = None
         self._workers: list = []
+        self._meta = DownloadMetadata()
+        self._history = DownloadHistory()
+        self._recorded_history: set[str] = set()  # gids already added to history
 
         self._poll_timer = QTimer()
         self._poll_timer.setInterval(500)
@@ -498,6 +596,179 @@ class Backend(QObject):
     def get_downloads(self) -> list[dict]:
         return [item.to_dict() for item in self._items.values()]
 
+    @Slot(result=list)
+    def get_history(self) -> list[dict]:
+        return self._history.get_all()
+
+    @Slot(int)
+    def remove_history_item(self, index: int):
+        self._history.remove(index)
+        self.history_updated.emit(self._history.get_all())
+
+    @Slot()
+    def clear_history(self):
+        self._history.clear()
+        self.history_updated.emit(self._history.get_all())
+
+    @Slot(str, result=str)
+    def get_local_file(self, filename: str) -> str:
+        filepath = DOWNLOADS_DIR / filename
+        if filepath.exists() and filepath.stat().st_size > 0:
+            return str(filepath)
+        return ""
+
+    @Slot(str, str, str, str, str, str, result=str)
+    def resolve_filename(
+        self,
+        base_filename: str,
+        anime_title: str,
+        episode: str,
+        translation: str,
+        video_source: str,
+        file_type: str,
+    ) -> str:
+        stem = Path(base_filename).stem
+        ext = Path(base_filename).suffix
+
+        # Check if we already have this exact translation downloaded
+        existing = self._meta.find(
+            anime_title=anime_title,
+            episode=episode,
+            translation=translation,
+            file_type=file_type,
+        )
+        if video_source:
+            existing = [
+                (f, m) for f, m in existing if m.get("video_source") == video_source
+            ]
+        if existing:
+            return existing[0][0]
+
+        # Check if the base filename is free
+        if base_filename not in self._meta._data:
+            filepath = DOWNLOADS_DIR / base_filename
+            if not filepath.exists():
+                return base_filename
+
+        # Find a free numbered variant
+        for i in range(2, 100):
+            candidate = f"{stem}_{i}{ext}"
+            if candidate not in self._meta._data:
+                filepath = DOWNLOADS_DIR / candidate
+                if not filepath.exists():
+                    return candidate
+        return base_filename
+
+    @Slot(str, str, str, str, str, str)
+    def record_meta(
+        self,
+        filename: str,
+        anime_title: str,
+        episode: str,
+        translation: str,
+        video_source: str,
+        quality: str = "",
+    ):
+        ext = Path(filename).suffix
+        file_type = "subs" if ext in (".ass", ".srt", ".ssa") else "video"
+        self._meta.record(
+            filename,
+            {
+                "anime_title": anime_title,
+                "episode": episode,
+                "translation": translation,
+                "video_source": video_source,
+                "quality": quality,
+                "file_type": file_type,
+            },
+        )
+
+    @Slot(str, str, str, str, result=dict)
+    def find_downloaded_video(
+        self, anime_title: str, episode: str, translation: str, quality: str
+    ) -> dict:
+        def _parse_height(q: str) -> int:
+            s = q.rstrip("p")
+            return int(s) if s.isdigit() else 0
+
+        sel_h = _parse_height(quality)
+
+        # Gather all valid downloads for this episode, prune stale entries
+        all_matches = self._meta.find(
+            anime_title=anime_title,
+            episode=episode,
+            file_type="video",
+        )
+        stale = []
+        valid: list[tuple[str, dict]] = []
+        for fname, meta in all_matches:
+            filepath = DOWNLOADS_DIR / fname
+            if filepath.exists() and filepath.stat().st_size > 0:
+                valid.append((fname, meta))
+            else:
+                stale.append(fname)
+        for fname in stale:
+            self._meta.remove(fname)
+
+        # Split into exact-TL and other-TL
+        exact = [(f, m) for f, m in valid if m.get("translation") == translation]
+        others = [(f, m) for f, m in valid if m.get("translation") != translation]
+
+        # Collect unique other translation names
+        other_tls = list(dict.fromkeys(m.get("translation", "") for _, m in others))
+
+        result = {}
+        if exact:
+            fname, meta = exact[0]
+            dl_h = _parse_height(meta.get("quality", ""))
+            result = {
+                "path": str(DOWNLOADS_DIR / fname),
+                "exact_match": True,
+                "translation": meta.get("translation", ""),
+                "quality": meta.get("quality", ""),
+                "lower_quality": sel_h > dl_h > 0,
+                "higher_quality": dl_h > sel_h > 0,
+            }
+        elif others:
+            # Don't set path — just report what's available
+            # Pick highest quality other download for display
+            best_f, best_m, best_h = others[0][0], others[0][1], -1
+            for fname, meta in others:
+                dl_h = _parse_height(meta.get("quality", ""))
+                if dl_h > best_h:
+                    best_h = dl_h
+                    best_f, best_m = fname, meta
+            result = {
+                "path": "",
+                "exact_match": False,
+                "translation": best_m.get("translation", ""),
+                "quality": best_m.get("quality", ""),
+                "lower_quality": False,
+                "higher_quality": False,
+            }
+
+        if result:
+            result["other_count"] = len(other_tls)
+            result["other_first_tl"] = other_tls[0] if other_tls else ""
+
+        return result
+
+    @Slot(str, str, str, result=str)
+    def find_downloaded_subs(
+        self, anime_title: str, episode: str, translation: str
+    ) -> str:
+        matches = self._meta.find(
+            anime_title=anime_title,
+            episode=episode,
+            translation=translation,
+            file_type="subs",
+        )
+        for fname, meta in matches:
+            filepath = DOWNLOADS_DIR / fname
+            if filepath.exists() and filepath.stat().st_size > 0:
+                return str(filepath)
+        return ""
+
     def _poll_progress(self):
         from .utils import AsyncFunctionWorker
 
@@ -551,6 +822,19 @@ class Backend(QObject):
         self._emit_updates()
 
     def _emit_updates(self):
+        # Record newly completed downloads to history
+        for gid, item in self._items.items():
+            if item.status == "complete" and gid not in self._recorded_history:
+                self._recorded_history.add(gid)
+                meta = self._meta.get(item.filename)
+                size = item.total_size or item.downloaded
+                if not size:
+                    filepath = DOWNLOADS_DIR / item.filename
+                    if filepath.exists():
+                        size = filepath.stat().st_size
+                self._history.add(item.filename, size, meta)
+                self.history_updated.emit(self._history.get_all())
+
         self.downloads_updated.emit([item.to_dict() for item in self._items.values()])
 
         # Stop polling if no active downloads
