@@ -53,6 +53,7 @@
           buildInputs = [
             pkgs.qt6.qtdeclarative
             pythonEnv
+            pkgs.aria2
           ];
 
           dontWrapQtApps = true;
@@ -62,6 +63,7 @@
             cp -r src $out/share/anime365/
             makeWrapper ${pythonEnv}/bin/python $out/bin/anime365 \
               --add-flags "$out/share/anime365/src/main.py" \
+              --prefix PATH : "${pkgs.aria2}/bin" \
               --prefix QML2_IMPORT_PATH ':' "${pkgs.qt6.qtdeclarative}/lib/qt-6/qml" \
               --prefix QML_IMPORT_PATH  ':' "${pkgs.qt6.qtdeclarative}/lib/qt-6/qml" \
               "''${qtWrapperArgs[@]}"
@@ -111,6 +113,7 @@
             uv
             cacert
             binutils
+            aria2
           ];
 
           SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";

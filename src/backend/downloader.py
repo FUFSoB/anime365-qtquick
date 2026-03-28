@@ -149,6 +149,11 @@ class Aria2Daemon:
     def start(self):
         if self.process and self.process.poll() is None:
             return
+
+        session_file = DATA_DIR / "aria2.session"
+        if not session_file.exists():
+            session_file.touch()
+
         cmd = [
             self.aria2c_path,
             "--enable-rpc",
@@ -161,6 +166,9 @@ class Aria2Daemon:
             f"--max-connection-per-server={self.download_threads}",
             "--auto-file-renaming=false",
             "--max-concurrent-downloads=3",
+            f"--save-session={session_file}",
+            f"--input-file={session_file}",
+            "--save-session-interval=10",
             "--quiet",
         ]
         if self.extra_args:
@@ -179,6 +187,7 @@ class Aria2Daemon:
                 asyncio.run(self._rpc_call("aria2.shutdown"))
             except Exception:
                 self.process.terminate()
+            self.process.wait()
 
     async def _rpc_call(self, method: str, params: list | None = None):
         self._id_counter += 1
@@ -237,6 +246,7 @@ class Aria2Daemon:
                         "completedLength",
                         "downloadSpeed",
                         "files",
+                        "errorMessage",
                     ]
                 ],
             )
@@ -257,6 +267,7 @@ class Aria2Daemon:
                         "completedLength",
                         "downloadSpeed",
                         "files",
+                        "errorMessage",
                     ],
                 ],
             )
@@ -437,9 +448,7 @@ class Backend(QObject):
         self._history = DownloadHistory()
         self._recorded_history: set[str] = set()  # gids already added to history
 
-        self._poll_timer = QTimer()
-        self._poll_timer.setInterval(500)
-        self._poll_timer.timeout.connect(self._poll_progress)
+        self._poll_timer = None
         self._polling = False  # guard against stacking poll workers
 
         aria2c_path = settings.get("aria2c_path") or shutil.which("aria2c") or ""
@@ -450,10 +459,22 @@ class Backend(QObject):
         else:
             self._aiohttp_dl = AiohttpDownloader(settings)
 
+    @Slot()
+    def init(self):
+        if self._poll_timer is None:
+            self._poll_timer = QTimer(self)
+            self._poll_timer.setInterval(500)
+            self._poll_timer.timeout.connect(self._poll_progress)
+
+        if self._aria2:
+            session_file = DATA_DIR / "aria2.session"
+            if session_file.exists() and session_file.stat().st_size > 0:
+                self._ensure_aria2_running()
+
     def _ensure_aria2_running(self):
         if self._aria2:
             self._aria2.start()
-            if not self._poll_timer.isActive():
+            if self._poll_timer and not self._poll_timer.isActive():
                 self._poll_timer.start()
 
     @Slot(str, str, str, str)
@@ -504,7 +525,7 @@ class Backend(QObject):
             )
             worker.start()
 
-            if not self._poll_timer.isActive():
+            if self._poll_timer and not self._poll_timer.isActive():
                 self._poll_timer.start()
 
     def _register_item(self, gid: str, filename: str, url: str):
@@ -525,6 +546,9 @@ class Backend(QObject):
                 )
             )
             worker.start()
+
+            if self._poll_timer and not self._poll_timer.isActive():
+                self._poll_timer.start()
         # aiohttp downloads are not pausable
 
     @Slot(str)
@@ -540,7 +564,7 @@ class Backend(QObject):
                 )
             )
             worker.start()
-            if not self._poll_timer.isActive():
+            if self._poll_timer and not self._poll_timer.isActive():
                 self._poll_timer.start()
         # aiohttp downloads are not pausable
 
@@ -591,7 +615,7 @@ class Backend(QObject):
             )
             worker.start()
 
-            if not self._poll_timer.isActive():
+            if self._poll_timer and not self._poll_timer.isActive():
                 self._poll_timer.start()
 
         self._emit_updates()
@@ -880,7 +904,11 @@ class Backend(QObject):
             if gid not in self._items:
                 # Discovered a download we didn't track (e.g. from previous session)
                 files = r.get("files", [])
-                filename = Path(files[0]["path"]).name if files else gid
+                filename = (
+                    Path(files[0]["path"]).name
+                    if files and files[0].get("path")
+                    else gid
+                )
                 self._items[gid] = DownloadItem(gid=gid, filename=filename, url="")
 
             item = self._items[gid]
@@ -915,10 +943,11 @@ class Backend(QObject):
         has_active = any(
             item.status in ("active", "waiting") for item in self._items.values()
         )
-        if not has_active and self._poll_timer.isActive():
+        if not has_active and self._poll_timer and self._poll_timer.isActive():
             self._poll_timer.stop()
 
     def shutdown(self):
-        self._poll_timer.stop()
+        if self._poll_timer:
+            self._poll_timer.stop()
         if self._aria2:
             self._aria2.stop()

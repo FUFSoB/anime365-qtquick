@@ -14,9 +14,9 @@ Pane {
         settings = settingsBackend.get_settings()
         defaults = settingsBackend.get_defaults()
         savedTheme = settings.theme || "auto"
-        mpvPathField.text = settings.mpv_path || defaults.mpv_path
-        vlcPathField.text = settings.vlc_path || defaults.vlc_path
-        aria2cPathField.text = settings.aria2c_path || defaults.aria2c_path
+        mpvPathField.text = settings.mpv_path || ""
+        vlcPathField.text = settings.vlc_path || ""
+        aria2cPathField.text = settings.aria2c_path || ""
         mpvArgsField.text = settings.mpv_args || ""
         vlcArgsField.text = settings.vlc_args || ""
         aria2cArgsField.text = settings.aria2c_args || ""
@@ -71,9 +71,9 @@ Pane {
                 text: "Save"
                 palette.button: "#4CAF50"
                 palette.buttonText: "#FFFFFF"
-                enabled: mpvPathField.text !== (settings.mpv_path ?? "")
-                    || vlcPathField.text !== (settings.vlc_path ?? "")
-                    || aria2cPathField.text !== (settings.aria2c_path ?? "")
+                enabled: (mpvPathField.text || defaults.mpv_path) !== (settings.mpv_path || defaults.mpv_path)
+                    || (vlcPathField.text || defaults.vlc_path) !== (settings.vlc_path || defaults.vlc_path)
+                    || (aria2cPathField.text || defaults.aria2c_path) !== (settings.aria2c_path || defaults.aria2c_path)
                     || mpvArgsField.text !== (settings.mpv_args ?? "")
                     || vlcArgsField.text !== (settings.vlc_args ?? "")
                     || aria2cArgsField.text !== (settings.aria2c_args ?? "")
@@ -281,10 +281,15 @@ Pane {
                     StyledTextField {
                         id: mpvPathField
                         Layout.fillWidth: true
-                        placeholderText: "Path to binary"
+                        placeholderText: defaults.mpv_path || "Path to binary"
                         property bool isValidPath: true
                         onTextChanged: {
-                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                            if (text) {
+                                isValidPath = false
+                                validateMpvTimer.restart()
+                            } else {
+                                isValidPath = true
+                            }
                         }
                         background: Rectangle {
                             color: palette.base
@@ -313,10 +318,15 @@ Pane {
                     StyledTextField {
                         id: vlcPathField
                         Layout.fillWidth: true
-                        placeholderText: "Path to binary"
+                        placeholderText: defaults.vlc_path || "Path to binary"
                         property bool isValidPath: true
                         onTextChanged: {
-                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                            if (text) {
+                                isValidPath = false
+                                validateVlcTimer.restart()
+                            } else {
+                                isValidPath = true
+                            }
                         }
                         background: Rectangle {
                             color: palette.base
@@ -345,10 +355,15 @@ Pane {
                     StyledTextField {
                         id: aria2cPathField
                         Layout.fillWidth: true
-                        placeholderText: "Path to binary"
+                        placeholderText: defaults.aria2c_path || "Path to binary"
                         property bool isValidPath: true
                         onTextChanged: {
-                            isValidPath = text ? settingsBackend.is_valid_binary(text) : false
+                            if (text) {
+                                isValidPath = false
+                                validateAria2cTimer.restart()
+                            } else {
+                                isValidPath = true
+                            }
                         }
                         background: Rectangle {
                             color: palette.base
@@ -397,6 +412,42 @@ Pane {
                 settingsBackend.is_valid_token(anime365TokenField.text)
             } else {
                 anime365TokenField.isValidToken = false
+            }
+        }
+    }
+
+    Timer {
+        id: validateMpvTimer
+        interval: 500
+        running: false
+        repeat: false
+        onTriggered: {
+            if (mpvPathField.text) {
+                mpvPathField.isValidPath = settingsBackend.is_valid_binary(mpvPathField.text)
+            }
+        }
+    }
+
+    Timer {
+        id: validateVlcTimer
+        interval: 500
+        running: false
+        repeat: false
+        onTriggered: {
+            if (vlcPathField.text) {
+                vlcPathField.isValidPath = settingsBackend.is_valid_binary(vlcPathField.text)
+            }
+        }
+    }
+
+    Timer {
+        id: validateAria2cTimer
+        interval: 500
+        running: false
+        repeat: false
+        onTriggered: {
+            if (aria2cPathField.text) {
+                aria2cPathField.isValidPath = settingsBackend.is_valid_binary(aria2cPathField.text)
             }
         }
     }

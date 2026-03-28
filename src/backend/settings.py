@@ -99,11 +99,16 @@ class Backend(QObject):
         value = self.get_settings().get(item, self.EmptyValue)
         if value is self.EmptyValue:
             raise AttributeError(f"Attribute {item} not found")
+        if item in ("mpv_path", "vlc_path", "aria2c_path") and not value:
+            return shutil.which(item.split("_")[0]) or ""
         return value
 
     @Slot(str, result=str)
     def get(self, key: str) -> str:
-        return self.get_settings().get(key, "")
+        value = self.get_settings().get(key, "")
+        if key in ("mpv_path", "vlc_path", "aria2c_path") and not value:
+            return shutil.which(key.split("_")[0]) or ""
+        return value
 
     @Slot(result=dict)
     def get_settings(self):
@@ -163,9 +168,16 @@ class Backend(QObject):
         self._settings = settings
 
         if not IS_ANDROID:
-            settings["mpv_path"] = shutil.which(settings.get("mpv_path", "")) or ""
-            settings["vlc_path"] = shutil.which(settings.get("vlc_path", "")) or ""
-            settings["aria2c_path"] = shutil.which(settings.get("aria2c_path", "")) or ""
+            for key, binary in (
+                ("mpv_path", "mpv"),
+                ("vlc_path", "vlc"),
+                ("aria2c_path", "aria2c"),
+            ):
+                val = settings.get(key, "")
+                if val == (shutil.which(binary) or ""):
+                    settings[key] = ""
+                else:
+                    settings[key] = shutil.which(val) or val
 
         with SETTINGS_FILE.open("w") as file:
             json.dump(settings, file, indent=4, ensure_ascii=False)

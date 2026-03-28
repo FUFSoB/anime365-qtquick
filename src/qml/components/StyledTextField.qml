@@ -6,4 +6,5 @@ TextField {
     leftPadding: 12
     rightPadding: 12
     font.pixelSize: 14
+    selectByMouse: true
 }

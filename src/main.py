@@ -47,6 +47,8 @@ class Anime365:
         if not self.engine.rootObjects():
             sys.exit(-1)
 
+        backends["downloaderBackend"].init()
+
     def handle_sigint(self):
         print("\nClosing application...")
         backends["downloaderBackend"].shutdown()
