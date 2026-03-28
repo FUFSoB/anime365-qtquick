@@ -192,6 +192,7 @@ class AiohttpDownloader:
         self._tasks: dict[str, asyncio.Task] = {}
         self._counter = 0
         self._loop: asyncio.AbstractEventLoop | None = None
+        self._num_threads = max(1, min(int(settings.get("download_threads") or 4), 16))
 
     def _get_loop(self):
         if self._loop is None or self._loop.is_closed():
@@ -205,52 +206,104 @@ class AiohttpDownloader:
         self._downloads[gid] = item
         return gid
 
+    async def _download_chunk(
+        self,
+        session: aiohttp.ClientSession,
+        url: str,
+        filepath: Path,
+        start: int,
+        end: int,
+        item: DownloadItem,
+    ):
+        headers = {"Range": f"bytes={start}-{end}"}
+        async with session.get(url, headers=headers) as resp:
+            if resp.status not in (200, 206):
+                raise Exception(f"HTTP {resp.status} for chunk {start}-{end}")
+            offset = start
+            with filepath.open("r+b") as f:
+                f.seek(start)
+                async for chunk in resp.content.iter_chunked(65536):
+                    if item.status == "paused":
+                        return
+                    f.write(chunk)
+                    item.downloaded += len(chunk)
+                    if item.total_size > 0:
+                        item.progress = item.downloaded / item.total_size
+
     async def run_download(self, gid: str):
         item = self._downloads.get(gid)
         if not item:
             return
 
         filepath = DOWNLOADS_DIR / item.filename
-        headers = {}
-        existing_size = 0
-
-        if filepath.exists():
-            existing_size = filepath.stat().st_size
-            headers["Range"] = f"bytes={existing_size}-"
 
         try:
             connector = await self.settings.api.get_connector()
             async with aiohttp.ClientSession(connector=connector) as session:
-                async with session.get(item.url, headers=headers) as resp:
-                    if resp.status == 416:
-                        # Already complete
-                        item.status = "complete"
-                        item.progress = 1.0
-                        return
+                # Probe for size and range support
+                async with session.head(item.url) as head_resp:
+                    total = int(head_resp.headers.get("Content-Length", 0))
+                    accept_ranges = head_resp.headers.get("Accept-Ranges", "none")
 
-                    if resp.status not in (200, 206):
-                        item.status = "error"
-                        item.error_message = f"HTTP {resp.status}"
-                        return
+                supports_ranges = accept_ranges != "none" and total > 0
+                n = self._num_threads if supports_ranges and total > 1024 * 1024 else 1
 
-                    total = int(resp.headers.get("Content-Length", 0))
-                    if resp.status == 206:
-                        item.total_size = existing_size + total
-                        item.downloaded = existing_size
-                    else:
-                        item.total_size = total
-                        existing_size = 0
+                # Resume support: if file exists and is partially downloaded
+                existing_size = filepath.stat().st_size if filepath.exists() else 0
 
-                    mode = "ab" if resp.status == 206 else "wb"
-                    with filepath.open(mode) as f:
-                        async for chunk in resp.content.iter_chunked(65536):
-                            if item.status == "paused":
-                                return
-                            f.write(chunk)
-                            item.downloaded += len(chunk)
-                            if item.total_size > 0:
-                                item.progress = item.downloaded / item.total_size
+                if n > 1 and existing_size == 0:
+                    # Multithreaded: pre-allocate file and download chunks in parallel
+                    item.total_size = total
+                    item.downloaded = 0
+                    with filepath.open("wb") as f:
+                        f.seek(total - 1)
+                        f.write(b"\0")
 
+                    chunk_size = total // n
+                    tasks = []
+                    for i in range(n):
+                        start = i * chunk_size
+                        end = (start + chunk_size - 1) if i < n - 1 else (total - 1)
+                        tasks.append(
+                            self._download_chunk(session, item.url, filepath, start, end, item)
+                        )
+                    await asyncio.gather(*tasks)
+                else:
+                    # Single-connection (with resume support)
+                    headers = {}
+                    if existing_size and supports_ranges:
+                        headers["Range"] = f"bytes={existing_size}-"
+
+                    async with session.get(item.url, headers=headers) as resp:
+                        if resp.status == 416:
+                            item.status = "complete"
+                            item.progress = 1.0
+                            return
+
+                        if resp.status not in (200, 206):
+                            item.status = "error"
+                            item.error_message = f"HTTP {resp.status}"
+                            return
+
+                        content_len = int(resp.headers.get("Content-Length", 0))
+                        if resp.status == 206:
+                            item.total_size = existing_size + content_len
+                            item.downloaded = existing_size
+                        else:
+                            item.total_size = content_len
+                            existing_size = 0
+
+                        mode = "ab" if resp.status == 206 else "wb"
+                        with filepath.open(mode) as f:
+                            async for chunk in resp.content.iter_chunked(65536):
+                                if item.status == "paused":
+                                    return
+                                f.write(chunk)
+                                item.downloaded += len(chunk)
+                                if item.total_size > 0:
+                                    item.progress = item.downloaded / item.total_size
+
+                if item.status != "paused":
                     item.status = "complete"
                     item.progress = 1.0
         except asyncio.CancelledError:
