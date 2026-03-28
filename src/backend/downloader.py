@@ -175,11 +175,10 @@ class Aria2Daemon:
             import shlex
 
             cmd.extend(shlex.split(self.extra_args, posix=(sys.platform != "win32")))
-        self.process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
+        kwargs: dict = dict(stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if sys.platform == "win32":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+        self.process = subprocess.Popen(cmd, **kwargs)
 
     def stop(self):
         if self.process and self.process.poll() is None:
@@ -877,10 +876,16 @@ class Backend(QObject):
         if self._aria2:
 
             async def _poll():
-                active = await self._aria2.tell_active()
-                waiting = await self._aria2.tell_waiting()
-                stopped = await self._aria2.tell_stopped()
-                return active + waiting + stopped
+                try:
+                    active = await self._aria2.tell_active()
+                    waiting = await self._aria2.tell_waiting()
+                    stopped = await self._aria2.tell_stopped()
+                    return active + waiting + stopped
+                except Exception:
+                    # aria2c unreachable — restart if the process died
+                    if self._aria2.process and self._aria2.process.poll() is not None:
+                        self._aria2.start()
+                    return []
 
             worker = AsyncFunctionWorker(_poll)
             worker.result_list.connect(self._update_aria2_items)
