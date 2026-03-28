@@ -1,6 +1,6 @@
 [project]
 name = "anime365-qtquick"
-version = "0.3.2"
+version = "0.3.3"
 description = "Qt Quick client for Anime365"
 requires-python = ">=3.12"
 dependencies = [
