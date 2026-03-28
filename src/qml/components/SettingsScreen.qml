@@ -17,6 +17,7 @@ Pane {
         mpvPathField.text = settings.mpv_path || ""
         vlcPathField.text = settings.vlc_path || ""
         aria2cPathField.text = settings.aria2c_path || ""
+        ffmpegPathField.text = settings.ffmpeg_path || ""
         mpvArgsField.text = settings.mpv_args || ""
         vlcArgsField.text = settings.vlc_args || ""
         aria2cArgsField.text = settings.aria2c_args || ""
@@ -76,6 +77,7 @@ Pane {
                 enabled: (mpvPathField.text || defaults.mpv_path) !== (settings.mpv_path || defaults.mpv_path)
                     || (vlcPathField.text || defaults.vlc_path) !== (settings.vlc_path || defaults.vlc_path)
                     || (aria2cPathField.text || defaults.aria2c_path) !== (settings.aria2c_path || defaults.aria2c_path)
+                    || (ffmpegPathField.text || defaults.ffmpeg_path) !== (settings.ffmpeg_path || defaults.ffmpeg_path)
                     || mpvArgsField.text !== (settings.mpv_args ?? "")
                     || vlcArgsField.text !== (settings.vlc_args ?? "")
                     || aria2cArgsField.text !== (settings.aria2c_args ?? "")
@@ -91,6 +93,7 @@ Pane {
                         "mpv_path": mpvPathField.text,
                         "vlc_path": vlcPathField.text,
                         "aria2c_path": aria2cPathField.text,
+                        "ffmpeg_path": ffmpegPathField.text,
                         "mpv_args": mpvArgsField.text,
                         "vlc_args": vlcArgsField.text,
                         "aria2c_args": aria2cArgsField.text,
@@ -412,7 +415,36 @@ Pane {
                     }
                 }
 
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    visible: !isAndroid
 
+                    Label { text: "ffmpeg" }
+
+                    StyledTextField {
+                        id: ffmpegPathField
+                        Layout.fillWidth: true
+                        placeholderText: defaults.ffmpeg_path || "Path to binary"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            if (text) {
+                                isValidPath = false
+                                validateFfmpegTimer.restart()
+                            } else {
+                                isValidPath = true
+                            }
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: ffmpegPathField.isValidPath
+                                ? "#4CAF50"
+                                : (ffmpegPathField.text ? "#EF5350" : palette.mid)
+                            border.width: ffmpegPathField.isValidPath || ffmpegPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+                }
 
             }
         }
@@ -478,6 +510,18 @@ Pane {
         onTriggered: {
             if (aria2cPathField.text) {
                 aria2cPathField.isValidPath = settingsBackend.is_valid_binary(aria2cPathField.text)
+            }
+        }
+    }
+
+    Timer {
+        id: validateFfmpegTimer
+        interval: 500
+        running: false
+        repeat: false
+        onTriggered: {
+            if (ffmpegPathField.text) {
+                ffmpegPathField.isValidPath = settingsBackend.is_valid_binary(ffmpegPathField.text)
             }
         }
     }

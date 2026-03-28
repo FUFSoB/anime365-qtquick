@@ -112,13 +112,14 @@ class DownloadItem:
     gid: str
     filename: str
     url: str
-    status: str = "waiting"  # waiting, active, complete, error, paused
+    status: str = "waiting"  # waiting, active, complete, muxing, error, paused
     progress: float = 0.0
     speed: int = 0
     total_size: int = 0
     downloaded: int = 0
     error_message: str = ""
     pausable: bool = True
+    subs_filename: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -133,6 +134,52 @@ class DownloadItem:
             "error_message": self.error_message,
             "pausable": self.pausable,
         }
+
+
+async def _embed_subs(video_path: Path, subs_path: Path, ffmpeg: str = "") -> str:
+    """Mux subs into video with ffmpeg (-c copy). Returns new filename, or '' on failure/skip."""
+    if not ffmpeg:
+        ffmpeg = shutil.which("ffmpeg") or ""
+    if not ffmpeg or not subs_path.exists() or not video_path.exists():
+        return ""
+
+    out_path = video_path.with_suffix(".mkv")
+    same_file = out_path == video_path
+    if same_file:
+        out_path = video_path.with_name(video_path.stem + "._mux.mkv")
+
+    kwargs: dict = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            ffmpeg,
+            "-i", str(video_path),
+            "-i", str(subs_path),
+            "-c", "copy",
+            "-y", str(out_path),
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+            **kwargs,
+        )
+        await proc.wait()
+    except Exception:
+        out_path.unlink(missing_ok=True)
+        return ""
+
+    if proc.returncode != 0:
+        out_path.unlink(missing_ok=True)
+        return ""
+
+    video_path.unlink(missing_ok=True)
+    subs_path.unlink(missing_ok=True)
+
+    if same_file:
+        out_path.rename(video_path)
+        return video_path.name
+
+    return out_path.name
 
 
 class Aria2Daemon:
@@ -446,6 +493,8 @@ class Backend(QObject):
         self._meta = DownloadMetadata()
         self._history = DownloadHistory()
         self._recorded_history: set[str] = set()  # gids already added to history
+        self._muxing: set[str] = set()  # gids currently being muxed
+        self._hidden_gids: set[str] = set()  # subs gids hidden from the UI
 
         self._poll_timer = None
         self._polling = False  # guard against stacking poll workers
@@ -487,13 +536,14 @@ class Backend(QObject):
 
             async def _add():
                 gid = await self._aria2.add_uri(url, filename)
+                subs_gid = ""
                 if subs_url and subs_filename:
-                    await self._aria2.add_uri(subs_url, subs_filename)
-                return gid
+                    subs_gid = await self._aria2.add_uri(subs_url, subs_filename)
+                return [gid, subs_gid]
 
             worker = AsyncFunctionWorker(_add)
-            worker.result_str.connect(
-                lambda gid: self._register_item(gid, filename, url)
+            worker.result_list.connect(
+                lambda ids, _sf=subs_filename: self._register_aria2_items(ids, filename, url, _sf)
             )
             self._workers.append(worker)
             worker.completed.connect(
@@ -512,6 +562,18 @@ class Backend(QObject):
                 if subs_url and subs_filename:
                     subs_gid = self._aiohttp_dl.add_download(subs_url, subs_filename)
                     await self._aiohttp_dl.run_download(subs_gid)
+                    new_name = await _embed_subs(
+                        DOWNLOADS_DIR / filename, DOWNLOADS_DIR / subs_filename,
+                        self.settings.get("ffmpeg_path"),
+                    )
+                    if new_name and new_name != filename:
+                        item = self._items.get(gid)
+                        if item:
+                            item.filename = new_name
+                            meta = self._meta.get(filename)
+                            if meta:
+                                self._meta.record(new_name, meta)
+                                self._meta.remove(filename)
 
             from .utils import AsyncFunctionWorker
 
@@ -527,10 +589,21 @@ class Backend(QObject):
             if self._poll_timer and not self._poll_timer.isActive():
                 self._poll_timer.start()
 
-    def _register_item(self, gid: str, filename: str, url: str):
+    def _register_item(self, gid: str, filename: str, url: str, subs_filename: str = ""):
         self._items[gid] = DownloadItem(
-            gid=gid, filename=filename, url=url, status="active"
+            gid=gid, filename=filename, url=url, status="active",
+            subs_filename=subs_filename,
         )
+
+    def _register_aria2_items(self, ids: list, filename: str, url: str, subs_filename: str = ""):
+        if not ids:
+            return
+        video_gid = ids[0] if len(ids) > 0 else ""
+        subs_gid = ids[1] if len(ids) > 1 else ""
+        if video_gid:
+            self._register_item(video_gid, filename, url, subs_filename)
+        if subs_gid:
+            self._hidden_gids.add(subs_gid)
 
     @Slot(str)
     def pause_download(self, gid: str):
@@ -906,6 +979,8 @@ class Backend(QObject):
     def _update_aria2_items(self, results: list):
         for r in results:
             gid = r["gid"]
+            if gid in self._hidden_gids:
+                continue
             if gid not in self._items:
                 # Discovered a download we didn't track (e.g. from previous session)
                 files = r.get("files", [])
@@ -917,6 +992,11 @@ class Backend(QObject):
                 self._items[gid] = DownloadItem(gid=gid, filename=filename, url="")
 
             item = self._items[gid]
+
+            # Don't overwrite status while muxing
+            if gid in self._muxing:
+                continue
+
             item.status = r["status"]
             item.total_size = int(r.get("totalLength", 0))
             item.downloaded = int(r.get("completedLength", 0))
@@ -925,6 +1005,50 @@ class Backend(QObject):
                 item.progress = item.downloaded / item.total_size
             if r.get("errorMessage"):
                 item.error_message = r["errorMessage"]
+
+            # Trigger sub embedding when video is done
+            if (
+                item.status == "complete"
+                and item.subs_filename
+                and gid not in self._recorded_history
+            ):
+                subs_path = DOWNLOADS_DIR / item.subs_filename
+                if subs_path.exists():
+                    self._muxing.add(gid)
+                    item.status = "muxing"
+
+                    async def _do_mux(
+                        _vfn=item.filename, _sfn=item.subs_filename,
+                        _ffmpeg=self.settings.get("ffmpeg_path"),
+                    ) -> str:
+                        return await _embed_subs(
+                            DOWNLOADS_DIR / _vfn, DOWNLOADS_DIR / _sfn, _ffmpeg
+                        )
+
+                    from .utils import AsyncFunctionWorker
+
+                    mux_worker = AsyncFunctionWorker(_do_mux)
+
+                    def _on_mux_done(new_name: str, _gid=gid, _vfn=item.filename):
+                        self._muxing.discard(_gid)
+                        if _gid in self._items:
+                            self._items[_gid].status = "complete"
+                            if new_name and new_name != _vfn:
+                                self._items[_gid].filename = new_name
+                                meta = self._meta.get(_vfn)
+                                if meta:
+                                    self._meta.record(new_name, meta)
+                                    self._meta.remove(_vfn)
+                        self._emit_updates()
+
+                    mux_worker.result_str.connect(_on_mux_done)
+                    self._workers.append(mux_worker)
+                    mux_worker.completed.connect(
+                        lambda *_, w=mux_worker: (
+                            self._workers.remove(w) if w in self._workers else None
+                        )
+                    )
+                    mux_worker.start()
 
         self._emit_updates()
 

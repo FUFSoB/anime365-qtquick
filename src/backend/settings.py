@@ -134,6 +134,7 @@ class Backend(QObject):
             "mpv_path": shutil.which("mpv") or "",
             "vlc_path": shutil.which("vlc") or "",
             "aria2c_path": shutil.which("aria2c") or "",
+            "ffmpeg_path": shutil.which("ffmpeg") or "",
             # extra command line arguments
             "mpv_args": "",
             "vlc_args": "",

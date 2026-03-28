@@ -54,6 +54,8 @@
             pkgs.qt6.qtdeclarative
             pythonEnv
             pkgs.aria2
+            pkgs.ffmpeg
+            pkgs.mpv
           ];
 
           dontWrapQtApps = true;
@@ -64,6 +66,8 @@
             makeWrapper ${pythonEnv}/bin/python $out/bin/anime365 \
               --add-flags "$out/share/anime365/src/main.py" \
               --prefix PATH : "${pkgs.aria2}/bin" \
+              --prefix PATH : "${pkgs.ffmpeg}/bin" \
+              --prefix PATH : "${pkgs.mpv}/bin" \
               --prefix QML2_IMPORT_PATH ':' "${pkgs.qt6.qtdeclarative}/lib/qt-6/qml" \
               --prefix QML_IMPORT_PATH  ':' "${pkgs.qt6.qtdeclarative}/lib/qt-6/qml" \
               "''${qtWrapperArgs[@]}"
@@ -114,6 +118,8 @@
             cacert
             binutils
             aria2
+            ffmpeg
+            mpv
           ];
 
           SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
