@@ -389,6 +389,12 @@ Pane {
                                     coverImage.source = localUrl
                             }
                         }
+
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: coverOverlay.open()
+                        }
                     }
 
                     ColumnLayout {
@@ -833,6 +839,33 @@ Pane {
                     }
                 }
             }
+        }
+    }
+
+    Popup {
+        id: coverOverlay
+        anchors.centerIn: parent
+        modal: true
+        dim: true
+        padding: 0
+        background: Rectangle { color: "transparent" }
+
+        Overlay.modal: Rectangle {
+            color: "#C0000000"
+        }
+
+        contentItem: Image {
+            source: coverImage.source
+            fillMode: Image.PreserveAspectFit
+            sourceSize.width: coverImage.sourceSize.width
+            sourceSize.height: coverImage.sourceSize.height
+            width: Math.min(sourceSize.width, root.width - 48)
+            height: Math.min(sourceSize.height, root.height - 48)
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: coverOverlay.close()
         }
     }
 }
