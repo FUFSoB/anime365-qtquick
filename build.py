@@ -67,6 +67,16 @@ def _make_icon() -> Path | None:
     return None
 
 
+def _write_version_file():
+    """Read version from pyproject.toml and write src/_version.txt for PyInstaller."""
+    import re
+    text = (ROOT / "pyproject.toml").read_text()
+    m = re.search(r'^version\s*=\s*"(.+?)"', text, re.MULTILINE)
+    version = m.group(1) if m else "0.0.0"
+    (SRC / "_version.txt").write_text(version)
+    print(f"Wrote version {version} to src/_version.txt")
+
+
 def clean():
     for d in (DIST, BUILD):
         if d.exists():
@@ -86,6 +96,9 @@ def build_desktop(onefile: bool = False):
 
     icon_path = _make_icon()
 
+    # Write version file so the frozen app can read it without package metadata
+    _write_version_file()
+
     cmd = [
         sys.executable,
         "-m",
@@ -96,9 +109,9 @@ def build_desktop(onefile: bool = False):
         # Include QML files in the bundle
         "--add-data",
         f"src/qml{SEP}qml",
-        # Include package metadata so importlib.metadata.version() works when frozen
-        "--copy-metadata",
-        "anime365-qtquick",
+        # Include version file in the bundle
+        "--add-data",
+        f"src/_version.txt{SEP}.",
         # Add src/ to Python path so 'backend' and 'constants' imports resolve
         "--paths",
         "src",

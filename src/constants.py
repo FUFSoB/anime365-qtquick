@@ -4,13 +4,17 @@ from pathlib import Path
 
 APP_NAME = "anime365"
 
-from importlib.metadata import PackageNotFoundError, version
-
-try:
-    APP_VERSION = version("anime365-qtquick")
-except PackageNotFoundError:
-    APP_VERSION = "0.0.0"
 FROZEN = getattr(sys, "frozen", False)
+
+if FROZEN:
+    _version_file = Path(sys._MEIPASS) / "_version.txt"
+    APP_VERSION = _version_file.read_text().strip() if _version_file.exists() else "0.0.0"
+else:
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        APP_VERSION = version("anime365-qtquick")
+    except PackageNotFoundError:
+        APP_VERSION = "0.0.0"
 IS_ANDROID = hasattr(sys, "getandroidapilevel")
 
 # --- Resource paths (QML, bundled assets) ---

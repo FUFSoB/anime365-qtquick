@@ -174,3 +174,4 @@ cache/
 pysidedeploy.spec
 result
 result-*
+src/_version.txt
