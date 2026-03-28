@@ -355,6 +355,11 @@ Pane {
                             }
 
                             StyledButton {
+                                text: "Delete"
+                                onClicked: downloaderBackend.delete_history_item(model.index)
+                            }
+
+                            StyledButton {
                                 implicitWidth: 28
                                 implicitHeight: 28
                                 leftPadding: 0

@@ -158,6 +158,7 @@ Pane {
             var episodesTotal = episodeDropdown.model ? episodeDropdown.model.length : 1
             var baseFile = animeBackend.title_to_filename(title, episodesTotal, "mp4")
             var baseStem = baseFile.substring(0, baseFile.lastIndexOf("."))
+            var prevProgress = episodeDownloadProgress
             episodeDownloadProgress = -1
             episodeDownloadSpeed = 0
             episodeDownloaded = 0
@@ -165,9 +166,7 @@ Pane {
             for (var i = 0; i < items.length; i++) {
                 var fn = items[i].filename
                 if (fn.startsWith(baseStem) && (fn.endsWith(".mp4") || fn.endsWith(".mkv") || fn.endsWith(".webm"))) {
-                    if (items[i].status === "complete") {
-                        checkLocalFiles()
-                    } else if (items[i].status === "active" || items[i].status === "waiting") {
+                    if (items[i].status === "active" || items[i].status === "waiting") {
                         episodeDownloadProgress = items[i].progress
                         episodeDownloadSpeed = items[i].speed
                         episodeDownloaded = items[i].downloaded
@@ -176,6 +175,9 @@ Pane {
                     break
                 }
             }
+            // Refresh local file status when download finishes or is canceled
+            if (prevProgress >= 0 && episodeDownloadProgress < 0)
+                checkLocalFiles()
         }
     }
 
@@ -300,20 +302,21 @@ Pane {
             var filename = downloaderBackend.resolve_filename(
                 baseFilename, anime.title, ep,
                 streamSelected, videoStreamSelected, "video")
-            downloaderBackend.add_download(item.url, filename)
-            downloaderBackend.record_meta(
-                filename, anime.title, ep,
-                streamSelected, videoStreamSelected, qualitySelected)
-            if (item.subs_url) {
+            var subsUrl = item.subs_url || ""
+            var subsFilename = ""
+            if (subsUrl) {
                 var baseSubsFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
-                var subsFilename = downloaderBackend.resolve_filename(
+                subsFilename = downloaderBackend.resolve_filename(
                     baseSubsFilename, anime.title, ep,
                     streamSelected, videoStreamSelected, "subs")
-                downloaderBackend.add_download(item.subs_url, subsFilename)
                 downloaderBackend.record_meta(
                     subsFilename, anime.title, ep,
                     streamSelected, videoStreamSelected, qualitySelected)
             }
+            downloaderBackend.add_download(item.url, filename, subsUrl, subsFilename)
+            downloaderBackend.record_meta(
+                filename, anime.title, ep,
+                streamSelected, videoStreamSelected, qualitySelected)
         }
 
         function onBatch_complete() {
@@ -577,9 +580,6 @@ Pane {
                         placeholder: "Select Quality"
                         onSelectionChangedIndex: function(value) {
                             urlsContainer.visible = true
-                            dlButton.enabled = downloadAvailable
-                            dlButtonSubs.enabled = downloadAvailable
-                            dlEpisodeButton.enabled = downloadAvailable
                             mpvButton.enabled = mpvAvailable
                             vlcButton.enabled = vlcAvailable
 
@@ -651,26 +651,6 @@ Pane {
                                     }
                                 }
 
-                                StyledButton {
-                                    id: dlButton
-                                    text: "Download"
-                                    visible: !isAndroid
-                                    onClicked: {
-                                        var url = videoUrlField.text
-                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
-                                        var ep = episodeDropdown.selectedValue
-                                        var episodesTotal = episodeDropdown.model.length
-                                        var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
-                                        var filename = downloaderBackend.resolve_filename(
-                                            baseFilename, anime.title, ep,
-                                            streamSelected, videoStreamSelected, "video")
-                                        downloaderBackend.add_download(url, filename)
-                                        downloaderBackend.record_meta(
-                                            filename, anime.title, ep,
-                                            streamSelected, videoStreamSelected, qualitySelected)
-                                        dlButton.enabled = false
-                                    }
-                                }
                             }
 
                             RowLayout {
@@ -705,26 +685,6 @@ Pane {
                                     }
                                 }
 
-                                StyledButton {
-                                    id: dlButtonSubs
-                                    text: "Download"
-                                    visible: !isAndroid
-                                    onClicked: {
-                                        var url = subsUrlField.text
-                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
-                                        var ep = episodeDropdown.selectedValue
-                                        var episodesTotal = episodeDropdown.model.length
-                                        var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
-                                        var filename = downloaderBackend.resolve_filename(
-                                            baseFilename, anime.title, ep,
-                                            streamSelected, videoStreamSelected, "subs")
-                                        downloaderBackend.add_download(url, filename)
-                                        downloaderBackend.record_meta(
-                                            filename, anime.title, ep,
-                                            streamSelected, videoStreamSelected, qualitySelected)
-                                        dlButtonSubs.enabled = false
-                                    }
-                                }
                             }
 
                             RowLayout {
@@ -798,32 +758,52 @@ Pane {
 
                                 StyledButton {
                                     id: dlEpisodeButton
-                                    text: "Download Episode"
+                                    text: "Download"
                                     visible: !isAndroid
+                                    enabled: downloadAvailable && episodeDownloadProgress < 0
                                     onClicked: {
-                                        dlButton.clicked()
-                                        if (subsRow.visible)
-                                            dlButtonSubs.clicked()
-                                        dlEpisodeButton.enabled = false
+                                        var url = videoUrlField.text
+                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        var ep = episodeDropdown.selectedValue
+                                        var episodesTotal = episodeDropdown.model.length
+                                        var baseFilename = animeBackend.title_to_filename(title, episodesTotal, "mp4")
+                                        var filename = downloaderBackend.resolve_filename(
+                                            baseFilename, anime.title, ep,
+                                            streamSelected, videoStreamSelected, "video")
+                                        var subsUrl = subsUrlField.text || ""
+                                        var subsFilename = ""
+                                        if (subsUrl) {
+                                            var baseSubsFilename = animeBackend.title_to_filename(title, episodesTotal, "ass")
+                                            subsFilename = downloaderBackend.resolve_filename(
+                                                baseSubsFilename, anime.title, ep,
+                                                streamSelected, videoStreamSelected, "subs")
+                                            downloaderBackend.record_meta(
+                                                subsFilename, anime.title, ep,
+                                                streamSelected, videoStreamSelected, qualitySelected)
+                                        }
+                                        downloaderBackend.add_download(url, filename, subsUrl, subsFilename)
+                                        downloaderBackend.record_meta(
+                                            filename, anime.title, ep,
+                                            streamSelected, videoStreamSelected, qualitySelected)
                                     }
                                 }
 
                                 Label {
-                                    visible: localVideoPath !== "" && localVideoMeta === ""
+                                    visible: episodeDownloadProgress < 0 && localVideoPath !== "" && localVideoMeta === ""
                                     text: "\u2714 Downloaded"
                                     color: "#4CAF50"
                                     font.bold: true
                                 }
 
                                 Label {
-                                    visible: localVideoPath !== "" && localVideoMeta !== ""
+                                    visible: episodeDownloadProgress < 0 && localVideoPath !== "" && localVideoMeta !== ""
                                     text: "\u2714 Downloaded (" + localVideoMeta + ")"
                                     color: "#FF9800"
                                     font.bold: true
                                 }
 
                                 Label {
-                                    visible: localVideoMeta.startsWith("lower_quality")
+                                    visible: episodeDownloadProgress < 0 && localVideoMeta.startsWith("lower_quality")
                                     text: {
                                         if (!localVideoMeta.startsWith("lower_quality")) return ""
                                         var parts = localVideoMeta.split(":")
@@ -834,7 +814,7 @@ Pane {
                                 }
 
                                 Label {
-                                    visible: otherDownloadsInfo !== "" && localVideoPath === ""
+                                    visible: episodeDownloadProgress < 0 && otherDownloadsInfo !== "" && localVideoPath === ""
                                         && !localVideoMeta.startsWith("lower_quality")
                                     text: "\u2193 Also downloaded: " + otherDownloadsInfo
                                     color: "#64B5F6"
@@ -842,7 +822,7 @@ Pane {
                                 }
 
                                 Label {
-                                    visible: otherDownloadsInfo !== "" && localVideoPath !== ""
+                                    visible: episodeDownloadProgress < 0 && otherDownloadsInfo !== "" && localVideoPath !== ""
                                     text: "Also downloaded by: " + otherDownloadsInfo
                                     color: palette.text
                                     opacity: 0.6

@@ -303,7 +303,9 @@ class AiohttpDownloader:
     def add_download(self, url: str, filename: str) -> str:
         self._counter += 1
         gid = f"aio-{self._counter}"
-        item = DownloadItem(gid=gid, filename=filename, url=url, status="active", pausable=False)
+        item = DownloadItem(
+            gid=gid, filename=filename, url=url, status="active", pausable=False
+        )
         self._downloads[gid] = item
         return gid
 
@@ -450,8 +452,10 @@ class Backend(QObject):
             if not self._poll_timer.isActive():
                 self._poll_timer.start()
 
-    @Slot(str, str)
-    def add_download(self, url: str, filename: str):
+    @Slot(str, str, str, str)
+    def add_download(
+        self, url: str, filename: str, subs_url: str = "", subs_filename: str = ""
+    ):
         from .utils import AsyncFunctionWorker
 
         if self._aria2:
@@ -459,6 +463,8 @@ class Backend(QObject):
 
             async def _add():
                 gid = await self._aria2.add_uri(url, filename)
+                if subs_url and subs_filename:
+                    await self._aria2.add_uri(subs_url, subs_filename)
                 return gid
 
             worker = AsyncFunctionWorker(_add)
@@ -479,6 +485,9 @@ class Backend(QObject):
 
             async def _run():
                 await self._aiohttp_dl.run_download(gid)
+                if subs_url and subs_filename:
+                    subs_gid = self._aiohttp_dl.add_download(subs_url, subs_filename)
+                    await self._aiohttp_dl.run_download(subs_gid)
 
             from .utils import AsyncFunctionWorker
 
@@ -535,6 +544,9 @@ class Backend(QObject):
     def cancel_download(self, gid: str):
         from .utils import AsyncFunctionWorker
 
+        item = self._items.get(gid)
+        filename = item.filename if item else None
+
         if self._aria2:
             worker = AsyncFunctionWorker(self._aria2.remove, gid)
             self._workers.append(worker)
@@ -548,6 +560,17 @@ class Backend(QObject):
             self._aiohttp_dl.remove(gid)
 
         self._items.pop(gid, None)
+
+        # Delete partial file and associated subs from disk
+        if filename:
+            filepath = DOWNLOADS_DIR / filename
+            filepath.unlink(missing_ok=True)
+            # Also remove subs with matching stem
+            stem = Path(filename).stem
+            for ext in (".ass", ".srt", ".ssa"):
+                (DOWNLOADS_DIR / (stem + ext)).unlink(missing_ok=True)
+            self._meta.remove(filename)
+
         self._emit_updates()
 
     @Slot()
@@ -582,6 +605,21 @@ class Backend(QObject):
 
     @Slot(int)
     def remove_history_item(self, index: int):
+        self._history.remove(index)
+        self.history_updated.emit(self._history.get_all())
+
+    @Slot(int)
+    def delete_history_item(self, index: int):
+        entries = self._history.get_all()
+        if 0 <= index < len(entries):
+            filename = entries[index].get("filename", "")
+            if filename:
+                filepath = DOWNLOADS_DIR / filename
+                filepath.unlink(missing_ok=True)
+                stem = Path(filename).stem
+                for ext in (".ass", ".srt", ".ssa"):
+                    (DOWNLOADS_DIR / (stem + ext)).unlink(missing_ok=True)
+                self._meta.remove(filename)
         self._history.remove(index)
         self.history_updated.emit(self._history.get_all())
 
