@@ -3,11 +3,24 @@ import signal
 import sys
 from pathlib import Path
 
-from PySide6.QtCore import QTimer, QUrl
+from PySide6.QtCore import QTimer, QUrl, qInstallMessageHandler, QtMsgType
 from PySide6.QtGui import QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 from PySide6.QtQuickControls2 import QQuickStyle
 from PySide6.QtWidgets import QApplication
+
+
+def _msg_handler(msg_type, context, message):
+    if msg_type == QtMsgType.QtWarningMsg and (
+        "Error downloading" in message
+        or "QML Image: Cannot open:" in message
+        or "error transferring" in message.lower()
+    ):
+        return
+    print(message, file=sys.stderr)
+
+
+qInstallMessageHandler(_msg_handler)
 
 from constants import ICON_PATH, IS_ANDROID, create_dirs
 
