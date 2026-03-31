@@ -8,8 +8,6 @@ import uuid
 
 DISCORD_APP_ID = "1019972663294308400"
 
-IS_ANDROID = hasattr(sys, "getandroidapilevel")
-
 OP_HANDSHAKE = 0
 OP_FRAME = 1
 
@@ -62,8 +60,6 @@ class DiscordRPC:
     async def connect(self) -> bool:
         if self._connected:
             return True
-        if IS_ANDROID:
-            return False
 
         if sys.platform == "win32":
             pipe_path = r"\\.\pipe\discord-ipc-0"

@@ -15,8 +15,6 @@ from constants import DATA_DIR, DOWNLOADS_DIR
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
 
-IS_ANDROID = hasattr(sys, "getandroidapilevel")
-
 _METADATA_FILE = DOWNLOADS_DIR / ".metadata.json"
 _HISTORY_FILE = DATA_DIR / "download_history.json"
 
@@ -500,7 +498,7 @@ class Backend(QObject):
         self._polling = False  # guard against stacking poll workers
 
         aria2c_path = settings.get("aria2c_path") or shutil.which("aria2c") or ""
-        if aria2c_path and not IS_ANDROID:
+        if aria2c_path:
             extra_args = settings.get("aria2c_args") or ""
             download_threads = int(settings.get("download_threads") or 4)
             self._aria2 = Aria2Daemon(aria2c_path, extra_args, download_threads)

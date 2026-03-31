@@ -1,4 +1,5 @@
 import asyncio
+import re
 import socket
 import subprocess
 import time
@@ -8,6 +9,8 @@ from dataclasses import dataclass, field
 import aiohttp
 import ass
 from PySide6.QtCore import QThread, Signal
+
+_MPC_VAR_RE = re.compile(r'<p id="(\w+)">(.*?)</p>')
 
 
 @dataclass
@@ -275,6 +278,92 @@ async def _vlc_driver(
 
 
 # ---------------------------------------------------------------------------
+# MPC-HC driver (polls /variables.html on the built-in web interface)
+# ---------------------------------------------------------------------------
+
+
+async def _mpc_driver(
+    process: subprocess.Popen[bytes],
+    state: _PlaybackState,
+    push_rpc,
+    rpc_drift_interval: float,
+    port: int,
+):
+    await asyncio.sleep(2)  # MPC-HC needs a moment to start its web server
+
+    status_url = f"http://localhost:{port}/variables.html"
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            while process.poll() is None:
+                try:
+                    async with session.get(
+                        status_url, timeout=aiohttp.ClientTimeout(total=1.5)
+                    ) as resp:
+                        if resp.status == 200:
+                            text = await resp.text()
+                            vrs = dict(_MPC_VAR_RE.findall(text))
+
+                            # positions are REFERENCE_TIME (100-ns units)
+                            raw_position = int(vrs.get("position", 0))
+                            raw_duration = int(vrs.get("filedur", 0))
+                            raw_state = int(vrs.get("state", -1))
+                            raw_rate = float(vrs.get("playbackrate", 1) or 1)
+
+                            new_time = raw_position / 10_000_000.0
+                            new_duration = raw_duration / 10_000_000.0
+
+                            # --- duration ---
+                            if new_duration > 0 and new_duration != state.duration:
+                                state.duration = new_duration
+                                await push_rpc()
+
+                            # --- speed ---
+                            new_speed = raw_rate if raw_rate > 0 else 1.0
+                            if abs(new_speed - state.speed) > 0.01:
+                                state.speed = new_speed
+                                await push_rpc()
+
+                            # --- pause state (0=stopped, 1=paused, 2=playing) ---
+                            new_paused = raw_state != 2
+                            if new_paused != state.is_paused:
+                                state.is_paused = new_paused
+                                state.last_time_pos_wall = time.time()
+                                await push_rpc()
+
+                            # --- time position / seek ---
+                            seeked = _on_time_pos(new_time, state, push_rpc)
+                            if seeked and not state.is_paused:
+                                await push_rpc()
+
+                            # --- percent / completion ---
+                            if state.duration > 0:
+                                pct = (new_time / state.duration) * 100.0
+                                if pct > state.max_percent:
+                                    state.max_percent = pct
+                                    if state.max_percent >= 85:
+                                        state.completed = True
+
+                            # --- drift correction ---
+                            if (
+                                not state.is_paused
+                                and (time.time() - state.last_rpc_update)
+                                >= rpc_drift_interval
+                            ):
+                                await push_rpc()
+
+                except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
+                    pass
+
+                await asyncio.sleep(1.0)
+
+    except Exception:
+        pass
+
+    process.wait()
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -304,6 +393,20 @@ async def monitor_vlc_status(
 ) -> bool:
     async def driver(proc, state, push_rpc, drift):
         await _vlc_driver(proc, state, push_rpc, drift, port, password)
+
+    return await _monitor(process, driver, title, episode, cover_url, discord_rpc_enabled)
+
+
+async def monitor_mpc_status(
+    process: subprocess.Popen[bytes],
+    port: int,
+    title: str = "",
+    episode: str = "",
+    cover_url: str = "",
+    discord_rpc_enabled: bool = True,
+) -> bool:
+    async def driver(proc, state, push_rpc, drift):
+        await _mpc_driver(proc, state, push_rpc, drift, port)
 
     return await _monitor(process, driver, title, episode, cover_url, discord_rpc_enabled)
 

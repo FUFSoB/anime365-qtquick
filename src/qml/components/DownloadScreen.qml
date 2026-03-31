@@ -10,6 +10,7 @@ Pane {
 
     readonly property bool mpvAvailable: settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpv_path"))
     readonly property bool vlcAvailable: settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path"))
+    readonly property bool mpcAvailable: isWindows && settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpc_path"))
 
     function formatSpeed(bytesPerSec) {
         if (bytesPerSec <= 0) return ""
@@ -296,6 +297,17 @@ Pane {
                                         animeBackend.launch_vlc(path, "", model.filename, "")
                                 }
                             }
+
+                            StyledButton {
+                                text: "MPC-HC"
+                                visible: model.status === "complete" && mpcAvailable
+                                    && (model.filename.endsWith(".mp4") || model.filename.endsWith(".mkv") || model.filename.endsWith(".webm"))
+                                onClicked: {
+                                    var path = downloaderBackend.get_local_file(model.filename)
+                                    if (path)
+                                        animeBackend.launch_mpc(path, "", model.filename, "")
+                                }
+                            }
                         }
                     }
                 }
@@ -400,6 +412,17 @@ Pane {
                                     var path = downloaderBackend.get_local_file(model.filename)
                                     if (path)
                                         animeBackend.launch_vlc(path, "", model.filename, "")
+                                }
+                            }
+
+                            StyledButton {
+                                text: "MPC-HC"
+                                visible: mpcAvailable
+                                    && (model.filename.endsWith(".mp4") || model.filename.endsWith(".mkv") || model.filename.endsWith(".webm"))
+                                onClicked: {
+                                    var path = downloaderBackend.get_local_file(model.filename)
+                                    if (path)
+                                        animeBackend.launch_mpc(path, "", model.filename, "")
                                 }
                             }
 

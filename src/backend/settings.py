@@ -77,7 +77,7 @@ def _light_palette() -> QPalette:
     return p
 
 
-from constants import IS_ANDROID, LEGACY_SETTINGS_FILE, SETTINGS_FILE
+from constants import LEGACY_SETTINGS_FILE, SETTINGS_FILE
 
 from .net import Api
 from .utils import AsyncFunctionWorker
@@ -95,19 +95,34 @@ class Backend(QObject):
         self._workers = []
         self.api = Api(self)
 
+    _BINARY_CANDIDATES = {
+        "mpv_path": ("mpv",),
+        "vlc_path": ("vlc",),
+        "mpc_path": ("mpc-hc64", "mpc-hc"),
+        "aria2c_path": ("aria2c",),
+        "ffmpeg_path": ("ffmpeg",),
+    }
+
+    def _which_binary(self, key: str) -> str:
+        for name in self._BINARY_CANDIDATES.get(key, ()):
+            path = shutil.which(name)
+            if path:
+                return path
+        return ""
+
     def __getattr__(self, item):
         value = self.get_settings().get(item, self.EmptyValue)
         if value is self.EmptyValue:
             raise AttributeError(f"Attribute {item} not found")
-        if item in ("mpv_path", "vlc_path", "aria2c_path") and not value:
-            return shutil.which(item.split("_")[0]) or ""
+        if item in self._BINARY_CANDIDATES and not value:
+            return self._which_binary(item)
         return value
 
     @Slot(str, result=str)
     def get(self, key: str) -> str:
         value = self.get_settings().get(key, "")
-        if key in ("mpv_path", "vlc_path", "aria2c_path") and not value:
-            return shutil.which(key.split("_")[0]) or ""
+        if key in self._BINARY_CANDIDATES and not value:
+            return self._which_binary(key)
         return value
 
     @Slot(result=dict)
@@ -133,12 +148,16 @@ class Backend(QObject):
             # binary paths
             "mpv_path": shutil.which("mpv") or "",
             "vlc_path": shutil.which("vlc") or "",
+            "mpc_path": shutil.which("mpc-hc64") or shutil.which("mpc-hc") or "",
             "aria2c_path": shutil.which("aria2c") or "",
             "ffmpeg_path": shutil.which("ffmpeg") or "",
             # extra command line arguments
             "mpv_args": "",
             "vlc_args": "",
+            "mpc_args": "",
             "aria2c_args": "",
+            # MPC-HC web interface port (must match MPC-HC settings)
+            "mpc_port": 13579,
             # behavior
             "discord_rpc": True,
             "check_updates": True,
@@ -170,25 +189,18 @@ class Backend(QObject):
     def save_settings(self, settings: dict[str, str]):
         self._settings = settings
 
-        if not IS_ANDROID:
-            for key, binary in (
-                ("mpv_path", "mpv"),
-                ("vlc_path", "vlc"),
-                ("aria2c_path", "aria2c"),
-            ):
-                val = settings.get(key, "")
-                if val == (shutil.which(binary) or ""):
-                    settings[key] = ""
-                else:
-                    settings[key] = shutil.which(val) or val
+        for key in self._BINARY_CANDIDATES:
+            val = settings.get(key, "")
+            if val == self._which_binary(key):
+                settings[key] = ""
+            else:
+                settings[key] = shutil.which(val) or val
 
         with SETTINGS_FILE.open("w") as file:
             json.dump(settings, file, indent=4, ensure_ascii=False)
 
     @Slot(str, result=bool)
     def is_valid_binary(self, path: str) -> bool:
-        if IS_ANDROID:
-            return True
         shutil_path = shutil.which(path)
         is_executable = shutil_path and os.access(shutil_path, os.X_OK) or False
 

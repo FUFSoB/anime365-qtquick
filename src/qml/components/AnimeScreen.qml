@@ -40,9 +40,9 @@ Pane {
 
     property var qualitySelected: ""
 
-    readonly property bool mpvAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpv_path")))
-    readonly property bool vlcAvailable: isAndroid || (settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path")))
-    readonly property bool downloadAvailable: !isAndroid
+    readonly property bool mpvAvailable: settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpv_path"))
+    readonly property bool vlcAvailable: settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path"))
+    readonly property bool mpcAvailable: isWindows && settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpc_path"))
     readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
     property bool episodeIdsReady: false
@@ -561,8 +561,8 @@ Pane {
                         StyledButton {
                             id: batchDownloadButton
                             text: batchBusy ? ("Fetching " + batchCurrent + "/" + batchTotal + "...") : "Download All"
-                            visible: !isAndroid && episodeIdsReady
-                            enabled: !batchBusy && downloadAvailable && urlsContainer.visible
+                            visible: episodeIdsReady
+                            enabled: !batchBusy && urlsContainer.visible
                             property bool batchBusy: false
                             property int batchCurrent: 0
                             property int batchTotal: 0
@@ -664,6 +664,7 @@ Pane {
                             urlsContainer.visible = true
                             mpvButton.enabled = mpvAvailable
                             vlcButton.enabled = vlcAvailable
+                            mpcButton.enabled = mpcAvailable
 
                             videoUrlField.text = ""
                             subsUrlField.text = ""
@@ -726,7 +727,6 @@ Pane {
                                 StyledButton {
                                     id: copyButton
                                     text: "Copy"
-                                    visible: !isAndroid
                                     onClicked: {
                                         videoUrlField.selectAll()
                                         videoUrlField.copy()
@@ -760,7 +760,6 @@ Pane {
                                 StyledButton {
                                     id: copyButtonSubs
                                     text: "Copy"
-                                    visible: !isAndroid
                                     onClicked: {
                                         subsUrlField.selectAll()
                                         subsUrlField.copy()
@@ -839,10 +838,29 @@ Pane {
                                 }
 
                                 StyledButton {
+                                    id: mpcButton
+                                    visible: mpcAvailable
+                                    text: localVideoPath ? "MPC-HC (local)" : "MPC-HC"
+                                    Timer {
+                                        id: mpcTimer
+                                        interval: 5000
+                                        repeat: false
+                                        onTriggered: mpcButton.enabled = mpcAvailable
+                                    }
+                                    onClicked: {
+                                        var url = localVideoPath || videoUrlField.text
+                                        var subs = localSubsPath || subsUrlField.text
+                                        var title = anime.title + " \u2014 " + episodeDropdown.selectedValue
+                                        animeBackend.launch_mpc(url, subs, title, anime.image_url || "")
+                                        mpcButton.enabled = false
+                                        mpcTimer.start()
+                                    }
+                                }
+
+                                StyledButton {
                                     id: dlEpisodeButton
                                     text: "Download"
-                                    visible: !isAndroid
-                                    enabled: downloadAvailable && episodeDownloadProgress < 0
+                                    enabled: episodeDownloadProgress < 0
                                     onClicked: {
                                         var url = videoUrlField.text
                                         var title = anime.title + " \u2014 " + episodeDropdown.selectedValue

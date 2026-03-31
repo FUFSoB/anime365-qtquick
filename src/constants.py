@@ -15,7 +15,6 @@ else:
         APP_VERSION = version("anime365-qtquick")
     except PackageNotFoundError:
         APP_VERSION = "0.0.0"
-IS_ANDROID = hasattr(sys, "getandroidapilevel")
 
 # --- Resource paths (QML, bundled assets) ---
 
@@ -31,8 +30,6 @@ ICON_PATH = SRC_DIR / "icon-512.png" if FROZEN else Path(__file__).parent.parent
 
 
 def _get_config_dir() -> Path:
-    if IS_ANDROID:
-        return _get_data_dir()
     if sys.platform == "win32":
         return Path(os.environ.get("APPDATA", Path.home())) / APP_NAME
     elif sys.platform == "darwin":
@@ -44,11 +41,6 @@ def _get_config_dir() -> Path:
 
 
 def _get_data_dir() -> Path:
-    if IS_ANDROID:
-        # External app-specific dir: accessible via file manager / ADB without root.
-        # $EXTERNAL_STORAGE is typically /storage/emulated/0 or /sdcard.
-        ext = os.environ.get("EXTERNAL_STORAGE", "/storage/emulated/0")
-        return Path(ext) / "Android" / "data" / f"org.{APP_NAME}.app" / "files"
     if sys.platform == "win32":
         return Path(os.environ.get("APPDATA", Path.home())) / APP_NAME
     elif sys.platform == "darwin":
@@ -61,8 +53,6 @@ def _get_data_dir() -> Path:
 
 
 def _get_cache_dir() -> Path:
-    if IS_ANDROID:
-        return _get_data_dir() / "cache"
     if sys.platform == "win32":
         return Path(os.environ.get("LOCALAPPDATA", Path.home())) / APP_NAME / "cache"
     elif sys.platform == "darwin":
@@ -85,9 +75,6 @@ LEGACY_DATABASE_FILE = _PROJECT_ROOT / "database.json"
 
 
 def _get_downloads_dir() -> Path:
-    if IS_ANDROID:
-        ext = os.environ.get("EXTERNAL_STORAGE", "/storage/emulated/0")
-        return Path(ext) / "Download"
     if sys.platform == "win32":
         # Windows: use the known folder, fallback to ~/Downloads
         import ctypes.wintypes

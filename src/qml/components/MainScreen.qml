@@ -94,7 +94,6 @@ Pane {
             StyledButton {
                 Layout.fillWidth: true
                 text: "Downloads"
-                visible: !isAndroid
                 onClicked: stackView.push(downloadScreen)
             }
 

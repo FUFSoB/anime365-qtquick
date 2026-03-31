@@ -16,10 +16,13 @@ Pane {
         savedTheme = settings.theme || "auto"
         mpvPathField.text = settings.mpv_path || ""
         vlcPathField.text = settings.vlc_path || ""
+        mpcPathField.text = settings.mpc_path || ""
         aria2cPathField.text = settings.aria2c_path || ""
         ffmpegPathField.text = settings.ffmpeg_path || ""
         mpvArgsField.text = settings.mpv_args || ""
         vlcArgsField.text = settings.vlc_args || ""
+        mpcArgsField.text = settings.mpc_args || ""
+        mpcPortField.text = (settings.mpc_port || 13579).toString()
         aria2cArgsField.text = settings.aria2c_args || ""
         discordRpcSwitch.checked = settings.discord_rpc !== false
         checkUpdatesSwitch.checked = settings.check_updates !== false
@@ -76,10 +79,13 @@ Pane {
                 palette.buttonText: "#FFFFFF"
                 enabled: (mpvPathField.text || defaults.mpv_path) !== (settings.mpv_path || defaults.mpv_path)
                     || (vlcPathField.text || defaults.vlc_path) !== (settings.vlc_path || defaults.vlc_path)
+                    || (mpcPathField.text || defaults.mpc_path) !== (settings.mpc_path || defaults.mpc_path)
                     || (aria2cPathField.text || defaults.aria2c_path) !== (settings.aria2c_path || defaults.aria2c_path)
                     || (ffmpegPathField.text || defaults.ffmpeg_path) !== (settings.ffmpeg_path || defaults.ffmpeg_path)
                     || mpvArgsField.text !== (settings.mpv_args ?? "")
                     || vlcArgsField.text !== (settings.vlc_args ?? "")
+                    || mpcArgsField.text !== (settings.mpc_args ?? "")
+                    || parseInt(mpcPortField.text) !== (settings.mpc_port || 13579)
                     || aria2cArgsField.text !== (settings.aria2c_args ?? "")
                     || discordRpcSwitch.checked !== (settings.discord_rpc !== false)
                     || checkUpdatesSwitch.checked !== (settings.check_updates !== false)
@@ -92,10 +98,13 @@ Pane {
                     settingsBackend.save_settings({
                         "mpv_path": mpvPathField.text,
                         "vlc_path": vlcPathField.text,
+                        "mpc_path": mpcPathField.text,
                         "aria2c_path": aria2cPathField.text,
                         "ffmpeg_path": ffmpegPathField.text,
                         "mpv_args": mpvArgsField.text,
                         "vlc_args": vlcArgsField.text,
+                        "mpc_args": mpcArgsField.text,
+                        "mpc_port": parseInt(mpcPortField.text) || 13579,
                         "aria2c_args": aria2cArgsField.text,
                         "discord_rpc": discordRpcSwitch.checked,
                         "check_updates": checkUpdatesSwitch.checked,
@@ -280,7 +289,6 @@ Pane {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    visible: !isAndroid
 
                     Label { text: "Download threads per file" }
 
@@ -301,13 +309,11 @@ Pane {
                     text: "Programs"
                     font.pixelSize: 16
                     font.bold: true
-                    visible: !isAndroid
                 }
 
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    visible: !isAndroid
 
                     Label { text: "MPV" }
 
@@ -344,7 +350,6 @@ Pane {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    visible: !isAndroid
 
                     Label { text: "VLC" }
 
@@ -381,7 +386,50 @@ Pane {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    visible: !isAndroid
+                    visible: isWindows
+
+                    Label { text: "MPC-HC" }
+
+                    StyledTextField {
+                        id: mpcPathField
+                        Layout.fillWidth: true
+                        placeholderText: defaults.mpc_path || "Path to binary"
+                        property bool isValidPath: true
+                        onTextChanged: {
+                            if (text) {
+                                isValidPath = false
+                                validateMpcTimer.restart()
+                            } else {
+                                isValidPath = true
+                            }
+                        }
+                        background: Rectangle {
+                            color: palette.base
+                            border.color: mpcPathField.isValidPath
+                                ? "#4CAF50"
+                                : (mpcPathField.text ? "#EF5350" : palette.mid)
+                            border.width: mpcPathField.isValidPath || mpcPathField.text ? 2 : 1
+                            radius: 4
+                        }
+                    }
+
+                    StyledTextField {
+                        id: mpcArgsField
+                        Layout.fillWidth: true
+                        placeholderText: "Extra command line arguments"
+                    }
+
+                    StyledTextField {
+                        id: mpcPortField
+                        Layout.fillWidth: true
+                        placeholderText: "Web interface port (default: 13579)"
+                        validator: IntValidator { bottom: 1; top: 65535 }
+                    }
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 8
 
                     Label { text: "aria2c" }
 
@@ -418,7 +466,6 @@ Pane {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 8
-                    visible: !isAndroid
 
                     Label { text: "ffmpeg" }
 
@@ -498,6 +545,18 @@ Pane {
         onTriggered: {
             if (vlcPathField.text) {
                 vlcPathField.isValidPath = settingsBackend.is_valid_binary(vlcPathField.text)
+            }
+        }
+    }
+
+    Timer {
+        id: validateMpcTimer
+        interval: 500
+        running: false
+        repeat: false
+        onTriggered: {
+            if (mpcPathField.text) {
+                mpcPathField.isValidPath = settingsBackend.is_valid_binary(mpcPathField.text)
             }
         }
     }

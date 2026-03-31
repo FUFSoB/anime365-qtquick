@@ -5,8 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiohttp
-from PySide6.QtCore import QObject, QUrl, Signal, Slot
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtCore import QObject, Signal, Slot
 
 from constants import CACHE_DIR
 
@@ -14,15 +13,13 @@ from .utils import (
     AsyncFunctionWorker,
     find_free_port,
     get_subtitle_fonts,
+    monitor_mpc_status,
     monitor_mpv_status,
     monitor_vlc_status,
 )
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
-
-IS_ANDROID = hasattr(sys, "getandroidapilevel")
-
 
 class GetEpisodesWorker(AsyncFunctionWorker):
     def __init__(self, anime_id: int, settings: "SettingsBackend"):
@@ -239,6 +236,7 @@ class Backend(QObject):
         self.workers: list[AsyncFunctionWorker] = []
         self.mpv_worker = None
         self.vlc_worker = None
+        self.mpc_worker = None
         self.api = settings.api
 
     def _clear_workers(self):
@@ -293,10 +291,6 @@ class Backend(QObject):
 
     @Slot(str, str, str, str)
     def launch_mpv(self, url: str, subs_url: str, title: str, cover_url: str = ""):
-        if IS_ANDROID:
-            self._launch_android_player(url, subs_url, title, "is.xyz.mpv")
-            return
-
         import tempfile
 
         if sys.platform == "win32":
@@ -342,10 +336,6 @@ class Backend(QObject):
 
     @Slot(str, str, str, str)
     def launch_vlc(self, url: str, subs_url: str, title: str, cover_url: str = ""):
-        if IS_ANDROID:
-            self._launch_android_player(url, subs_url, title, "org.videolan.vlc")
-            return
-
         import secrets
 
         port = find_free_port(41365)  # 4n1m3 + 65 (leet "anime365")
@@ -407,26 +397,52 @@ class Backend(QObject):
         self.vlc_worker.result_bool.connect(self.playback_finished.emit)
         self.vlc_worker.start()
 
-    @staticmethod
-    def _launch_android_player(url: str, subs_url: str, title: str, package: str):
-        extras = f";S.title={title}"
+    @Slot(str, str, str, str)
+    def launch_mpc(self, url: str, subs_url: str, title: str, cover_url: str = ""):
+        port = int(self.settings.get("mpc_port") or 13579)
 
-        if subs_url:
-            if package == "is.xyz.mpv":
-                extras += f";S.subs={subs_url};S.subs.enable={subs_url}"
-            else:
-                # VLC and generic players
-                extras += f";S.subtitles_location={subs_url}"
+        command = [self.settings.mpc_path, url]
 
-        intent_url = (
-            f"intent:{url}"
-            f"#Intent;action=android.intent.action.VIEW"
-            f";type=video/*"
-            f"{extras}"
-            f";package={package}"
-            f";end"
-        )
-        QDesktopServices.openUrl(QUrl(intent_url))
+        extra_args = self.settings.get("mpc_args") or ""
+        if extra_args:
+            import shlex
+
+            command.extend(shlex.split(extra_args, posix=(sys.platform != "win32")))
+
+        parts = title.split(" \u2014 ", 1)
+        anime_title = parts[0] if parts else title
+        episode_str = parts[1] if len(parts) > 1 else ""
+
+        async def _run_mpc():
+            if subs_url:
+                subs_file = CACHE_DIR / ".mpc_subtitles.ass"
+                async with aiohttp.ClientSession(
+                    connector=await self.api.get_connector()
+                ) as session:
+                    async with session.get(subs_url) as response:
+                        if response.status != 200:
+                            raise Exception("Subtitles unavailable")
+                        subtitle_bytes = await response.read()
+                        with subs_file.open("wb") as file:
+                            file.write(subtitle_bytes)
+                command.extend(["/sub", str(subs_file)])
+
+            process = subprocess.Popen(command)
+            discord_rpc_enabled = self.settings.get("discord_rpc") is not False
+            return await monitor_mpc_status(
+                process,
+                port,
+                anime_title,
+                episode_str,
+                cover_url,
+                discord_rpc_enabled,
+            )
+
+        if self.mpc_worker:
+            self.mpc_worker.terminate()
+        self.mpc_worker = AsyncFunctionWorker(_run_mpc)
+        self.mpc_worker.result_bool.connect(self.playback_finished.emit)
+        self.mpc_worker.start()
 
     @Slot(str, str, str, str)
     def batch_download(
