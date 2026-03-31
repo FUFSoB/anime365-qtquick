@@ -34,7 +34,7 @@ class DownloadMetadata:
     def _save(self):
         try:
             _METADATA_FILE.write_text(
-                json.dumps(self._data, indent=2, ensure_ascii=False)
+                json.dumps(self._data, indent=2, ensure_ascii=False), encoding="utf-8"
             )
         except Exception:
             pass
@@ -73,7 +73,8 @@ class DownloadHistory:
     def _save(self):
         try:
             _HISTORY_FILE.write_text(
-                json.dumps(self._entries, indent=2, ensure_ascii=False)
+                json.dumps(self._entries, indent=2, ensure_ascii=False),
+                encoding="utf-8",
             )
         except Exception:
             pass
@@ -153,10 +154,14 @@ async def _embed_subs(video_path: Path, subs_path: Path, ffmpeg: str = "") -> st
     try:
         proc = await asyncio.create_subprocess_exec(
             ffmpeg,
-            "-i", str(video_path),
-            "-i", str(subs_path),
-            "-c", "copy",
-            "-y", str(out_path),
+            "-i",
+            str(video_path),
+            "-i",
+            str(subs_path),
+            "-c",
+            "copy",
+            "-y",
+            str(out_path),
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
             **kwargs,
@@ -541,7 +546,9 @@ class Backend(QObject):
 
             worker = AsyncFunctionWorker(_add)
             worker.result_list.connect(
-                lambda ids, _sf=subs_filename: self._register_aria2_items(ids, filename, url, _sf)
+                lambda ids, _sf=subs_filename: self._register_aria2_items(
+                    ids, filename, url, _sf
+                )
             )
             self._workers.append(worker)
             worker.completed.connect(
@@ -561,7 +568,8 @@ class Backend(QObject):
                     subs_gid = self._aiohttp_dl.add_download(subs_url, subs_filename)
                     await self._aiohttp_dl.run_download(subs_gid)
                     new_name = await _embed_subs(
-                        DOWNLOADS_DIR / filename, DOWNLOADS_DIR / subs_filename,
+                        DOWNLOADS_DIR / filename,
+                        DOWNLOADS_DIR / subs_filename,
                         self.settings.get("ffmpeg_path"),
                     )
                     if new_name and new_name != filename:
@@ -587,13 +595,20 @@ class Backend(QObject):
             if self._poll_timer and not self._poll_timer.isActive():
                 self._poll_timer.start()
 
-    def _register_item(self, gid: str, filename: str, url: str, subs_filename: str = ""):
+    def _register_item(
+        self, gid: str, filename: str, url: str, subs_filename: str = ""
+    ):
         self._items[gid] = DownloadItem(
-            gid=gid, filename=filename, url=url, status="active",
+            gid=gid,
+            filename=filename,
+            url=url,
+            status="active",
             subs_filename=subs_filename,
         )
 
-    def _register_aria2_items(self, ids: list, filename: str, url: str, subs_filename: str = ""):
+    def _register_aria2_items(
+        self, ids: list, filename: str, url: str, subs_filename: str = ""
+    ):
         if not ids:
             return
         video_gid = ids[0] if len(ids) > 0 else ""
@@ -1016,7 +1031,8 @@ class Backend(QObject):
                     item.status = "muxing"
 
                     async def _do_mux(
-                        _vfn=item.filename, _sfn=item.subs_filename,
+                        _vfn=item.filename,
+                        _sfn=item.subs_filename,
                         _ffmpeg=self.settings.get("ffmpeg_path"),
                     ) -> str:
                         return await _embed_subs(
