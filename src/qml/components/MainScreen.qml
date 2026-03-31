@@ -11,9 +11,7 @@ Pane {
     property string updateTag: ""
     property string updateUrl: ""
     property string currentVersion: ""
-    property string updateState: ""   // "available" | "downloading" | "ready" | "failed"
-    property int updateProgress: 0
-    property string updateStatusText: ""
+    property bool updateAvailable: false
 
     Connections {
         target: updaterBackend
@@ -21,12 +19,8 @@ Pane {
             updateTag = tag
             updateUrl = url
             currentVersion = current
-            updateState = "available"
+            updateAvailable = true
         }
-        function onUpdate_progress(pct) { updateProgress = pct }
-        function onUpdate_status(msg)   { updateStatusText = msg }
-        function onUpdate_ready()       { updateState = "ready" }
-        function onUpdate_failed(msg)   { updateState = "failed"; updateStatusText = msg }
     }
 
     Component.onCompleted: {
@@ -106,71 +100,29 @@ Pane {
 
         Pane {
             Layout.fillWidth: true
-            visible: updateState !== ""
+            visible: updateAvailable
             padding: 8
 
-            ColumnLayout {
+            RowLayout {
                 anchors.left: parent.left
                 anchors.right: parent.right
-                spacing: 6
+                spacing: 8
 
-                RowLayout {
+                Label {
                     Layout.fillWidth: true
-                    spacing: 8
-
-                    Label {
-                        Layout.fillWidth: true
-                        textFormat: Text.RichText
-                        text: {
-                            if (updateState === "available")
-                                return `Update available: ${currentVersion} \u2192 <a href='${updateUrl}'>${updateTag}</a>`
-                            if (updateState === "downloading")
-                                return updateStatusText || "Downloading..."
-                            if (updateState === "ready")
-                                return "Update installed — restart to apply"
-                            if (updateState === "failed")
-                                return `Update failed: ${updateStatusText}`
-                            return ""
-                        }
-                        onLinkActivated: (url) => Qt.openUrlExternally(url)
-                        HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                    }
-
-                    StyledButton {
-                        visible: updateState === "available"
-                        text: "Update Now"
-                        palette.button: "#4CAF50"
-                        palette.buttonText: "#FFFFFF"
-                        onClicked: {
-                            updateState = "downloading"
-                            updateProgress = 0
-                            updaterBackend.download_update()
-                        }
-                    }
-
-                    StyledButton {
-                        visible: updateState === "ready"
-                        text: "Restart"
-                        palette.button: "#4CAF50"
-                        palette.buttonText: "#FFFFFF"
-                        onClicked: Qt.quit()
-                    }
-
-                    StyledButton {
-                        visible: updateState !== "downloading"
-                        text: "\u2715"
-                        implicitWidth: 28
-                        implicitHeight: 28
-                        leftPadding: 0
-                        rightPadding: 0
-                        onClicked: updateState = ""
-                    }
+                    textFormat: Text.RichText
+                    text: `Update available: ${currentVersion} \u2192 <a href='${updateUrl}'>${updateTag}</a>`
+                    onLinkActivated: (url) => Qt.openUrlExternally(url)
+                    HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
                 }
 
-                ProgressBar {
-                    Layout.fillWidth: true
-                    visible: updateState === "downloading"
-                    value: updateProgress / 100.0
+                StyledButton {
+                    text: "\u2715"
+                    implicitWidth: 28
+                    implicitHeight: 28
+                    leftPadding: 0
+                    rightPadding: 0
+                    onClicked: updateAvailable = false
                 }
             }
         }
