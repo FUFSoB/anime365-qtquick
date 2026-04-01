@@ -46,11 +46,6 @@ jobs:
           name: Anime365-${{ runner.os }}
           path: dist/${{ matrix.artifact }}
 
-  # Android CI is disabled: PySide6 does not publish prebuilt Android wheels
-  # on PyPI. Building from source requires the full Qt for Android SDK and
-  # cross-compilation, which is impractical in CI. Re-enable when upstream
-  # starts shipping android_aarch64 wheels.
-
   release:
     needs: [build-desktop]
     if: startsWith(github.ref, 'refs/tags/')

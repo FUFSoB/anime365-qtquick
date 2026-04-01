@@ -73,23 +73,6 @@ Clean before building:
 uv run --group build python build.py desktop --clean
 ```
 
-### Android APK
-
-Requires Android SDK, NDK, and pre-built Android aarch64 wheels for PySide6 and
-shiboken6 (PyPI does not publish Android wheels — build from Qt sources or obtain
-from Qt's CI).
-
-```sh
-export ANDROID_SDK_ROOT=$HOME/Android/Sdk
-export ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/<version>
-
-uv run --group android python build.py android \
-    --wheel-pyside /path/to/PySide6-...-android_aarch64.whl \
-    --wheel-shiboken /path/to/shiboken6-...-android_aarch64.whl
-```
-
-A `pysidedeploy.spec` config file will be created on first run; edit it if needed.
-
 ## Data locations
 
 | Platform | Config | Database | Cache |
@@ -97,4 +80,3 @@ A `pysidedeploy.spec` config file will be created on first run; edit it if neede
 | Linux    | `~/.config/anime365/` | `~/.local/share/anime365/` | `~/.cache/anime365/` |
 | Windows  | `%APPDATA%\anime365\` | `%APPDATA%\anime365\` | `%LOCALAPPDATA%\anime365\cache\` |
 | macOS    | `~/Library/Preferences/anime365/` | `~/Library/Application Support/anime365/` | `~/Library/Caches/anime365/` |
-| Android  | `/storage/emulated/0/Android/data/org.anime365.app/files/` | same | same |
