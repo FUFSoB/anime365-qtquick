@@ -17,11 +17,14 @@ class Worker(AsyncFunctionWorker):
 
     @staticmethod
     def _create_search_result(item: dict) -> dict:
+        titles = item.get("titles") or {}
         title = (
-            item["titles"].get("romaji")
-            or item["titles"].get("en")
-            or item["titles"].get("ru")
-            or item["titles"].get("ja")
+            titles.get("romaji")
+            or titles.get("en")
+            or titles.get("ru")
+            or titles.get("ja")
+            or item.get("title")
+            or "Unknown"
         )
 
         score = item.get("myAnimeListScore")
@@ -29,21 +32,23 @@ class Worker(AsyncFunctionWorker):
             score = "N/A"
 
         description = ""
-        if item.get("descriptions"):
+        descriptions = item.get("descriptions") or []
+        if descriptions:
             description = (
-                f"{item['descriptions'][0]['value']}\n\n"
-                f"Source: {item['descriptions'][0]['source']}"
+                f"{descriptions[0]['value']}\n\n"
+                f"Source: {descriptions[0]['source']}"
             )
 
-        genres = ", ".join(i["title"] for i in item.get("genres", []))
+        genres = ", ".join(i["title"] for i in (item.get("genres") or []))
 
-        episode_list = ";".join(i["episodeFull"] for i in item.get("episodes", []))
-        episode_ids = ";".join(str(i["id"]) for i in item.get("episodes", []))
+        episodes = item.get("episodes") or []
+        episode_list = ";".join(i["episodeFull"] for i in episodes)
+        episode_ids = ";".join(str(i["id"]) for i in episodes)
 
         return dict(
             id=str(item["id"]),
             title=title,
-            titles=item["titles"],
+            titles=titles,
             total_episodes=item["numberOfEpisodes"],
             episode_list=episode_list,
             episode_ids=episode_ids,

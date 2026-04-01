@@ -152,10 +152,14 @@ Pane {
                 }
 
                 delegate: Rectangle {
+                    id: cwDelegateRoot
                     width: 180
                     height: 250
                     radius: 6
                     color: cwMouseArea.containsMouse ? palette.highlight : palette.base
+
+                    property bool isDestroyed: false
+                    Component.onDestruction: isDestroyed = true
 
                     MouseArea {
                         id: cwMouseArea
@@ -178,14 +182,15 @@ Pane {
                             id: cwImage
                             Layout.fillWidth: true
                             Layout.preferredHeight: 160
-                            source: imageCacheBackend.cache_image(model.image_url)
+                            source: model.image_url ? imageCacheBackend.cache_image(model.image_url) : ""
                             fillMode: Image.PreserveAspectFit
                             cache: true
                             asynchronous: true
                             Connections {
                                 target: imageCacheBackend
+                                enabled: !cwDelegateRoot.isDestroyed
                                 function onImage_downloaded(origUrl, localUrl) {
-                                    if (origUrl === model.image_url)
+                                    if (!cwDelegateRoot.isDestroyed && model.image_url && origUrl === model.image_url)
                                         cwImage.source = localUrl
                                 }
                             }
@@ -193,7 +198,7 @@ Pane {
 
                         Label {
                             Layout.fillWidth: true
-                            text: model.title
+                            text: model.title || ""
                             font.pixelSize: 13
                             font.bold: true
                             elide: Text.ElideRight

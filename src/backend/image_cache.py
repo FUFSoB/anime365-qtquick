@@ -26,13 +26,13 @@ class DownloadImageWorker(AsyncFunctionWorker):
             ) as session:
                 async with session.get(self.url) as response:
                     if response.status != 200:
-                        raise Exception(f"Failed to download image: {response.status}")
+                        return ""  # Don't try to load failed URLs
                     image_bytes = await response.read()
                     with self.save_path.open("wb") as file:
                         file.write(image_bytes)
-                    return QUrl.fromLocalFile(self.save_path).toString()
+                    return QUrl.fromLocalFile(str(self.save_path)).toString()
         except Exception:
-            return self.url
+            return ""  # Don't try to load failed URLs
 
 
 class Backend(QObject):
@@ -54,10 +54,17 @@ class Backend(QObject):
 
         worker = DownloadImageWorker(url, save_path, self.settings)
         self.workers.append(worker)
+
+        def on_result(local_url, orig=url):
+            if local_url:  # Only emit if download succeeded
+                self.image_downloaded.emit(orig, local_url)
+
+        def on_completed(w=worker):
+            if w in self.workers:
+                self.workers.remove(w)
+
+        worker.result_str.connect(on_result)
+        worker.completed.connect(on_completed)
         worker.start()
-        worker.result_str.connect(
-            lambda local_url, orig=url: self.image_downloaded.emit(orig, local_url)
-        )
-        worker.completed.connect(lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None)
 
         return ""

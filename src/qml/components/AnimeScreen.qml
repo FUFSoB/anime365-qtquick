@@ -191,6 +191,15 @@ Pane {
             anime.episode_list = result.episode_list
             anime.episode_ids = result.episode_ids
             episodeIdsReady = true
+            busyIndicator.running = false
+
+            // Handle anime with no episodes (unreleased)
+            if (!result.episode_list) {
+                episodeDropdown.model = []
+                episodeDropdown.visible = false
+                return
+            }
+
             episodeDropdown.model = result.episode_list.split(";")
             episodeDropdown.visible = true
             if (anime.episode) {
@@ -205,8 +214,6 @@ Pane {
                     }
                 }
             }
-
-            busyIndicator.running = false
         }
 
         function onTranslations_got(results) {

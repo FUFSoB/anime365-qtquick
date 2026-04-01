@@ -32,6 +32,9 @@ ListView {
         color: mouseArea.containsMouse ? pal.highlight
              : (index % 2 == 0 ? "transparent" : pal.alternateBase)
 
+        property bool isDestroyed: false
+        Component.onDestruction: isDestroyed = true
+
         MouseArea {
             id: mouseArea
             anchors.fill: parent
@@ -150,14 +153,15 @@ ListView {
                 id: listItemImage
                 width: 120
                 height: 120
-                source: imageCacheBackend.cache_image(model.image_url)
+                source: model.image_url ? imageCacheBackend.cache_image(model.image_url) : ""
                 fillMode: Image.PreserveAspectFit
                 cache: true
                 asynchronous: true
                 Connections {
                     target: imageCacheBackend
+                    enabled: !delegateRoot.isDestroyed
                     function onImage_downloaded(origUrl, localUrl) {
-                        if (origUrl === model.image_url)
+                        if (!delegateRoot.isDestroyed && model.image_url && origUrl === model.image_url)
                             listItemImage.source = localUrl
                     }
                 }
@@ -167,40 +171,40 @@ ListView {
                 spacing: 5
 
                 Text {
-                    text: model.title
+                    text: model.title || ""
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.bold: true
                     font.pixelSize: 16
                 }
 
                 Text {
-                    text: `Episode "${model.episode}" by "${model.translation}" out of ${model.total_episodes} episodes`
+                    text: `Episode "${model.episode || ""}" by "${model.translation || ""}" out of ${model.total_episodes || 0} episodes`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.highlight
                     visible: model.episode !== undefined && model.episode !== ""
                     font.pixelSize: 14
                 }
 
                 Text {
-                    text: `Episodes: ${model.total_episodes}`
+                    text: `Episodes: ${model.total_episodes || 0}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     visible: model.episode === undefined || model.episode === ""
                     font.pixelSize: 14
                 }
 
                 Text {
-                    text: `Genres: ${model.genres}`
+                    text: `Genres: ${model.genres || ""}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }
 
                 Text {
-                    text: `Type: ${model.h_type} | Year: ${model.year}`
+                    text: `Type: ${model.h_type || ""} | Year: ${model.year || ""}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }
 
                 Text {
-                    text: `Score: ${model.score}`
+                    text: `Score: ${model.score || "N/A"}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }

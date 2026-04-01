@@ -87,7 +87,11 @@ class Api:
                 f"{self.anime365_url}/api/series/{anime_id}",
                 params={"fields": "episodes"},
             ) as response:
-                return (await response.json())["data"]["episodes"]
+                data = (await response.json())["data"]
+                # API returns empty array for unreleased anime, dict with episodes otherwise
+                if isinstance(data, list):
+                    return []
+                return data.get("episodes") or []
 
     async def get_translations(self, episode_id: int) -> list[dict]:
         async with aiohttp.ClientSession(
