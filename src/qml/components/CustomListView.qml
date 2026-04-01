@@ -204,7 +204,7 @@ ListView {
                 }
 
                 Text {
-                    text: `Score: ${model.score || "N/A"}`
+                    text: "Score: " + (model.score !== undefined && model.score !== null && model.score !== "" && model.score > 0 ? model.score : "N/A")
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
                 }
