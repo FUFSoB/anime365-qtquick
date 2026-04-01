@@ -390,6 +390,14 @@ Pane {
 
                     Label { text: "MPC-HC" }
 
+                    Label {
+                        Layout.fillWidth: true
+                        text: "⚠ Please use an updated fork for stable playback. Disable 'Options → Advanced → UseYDL' to prevent subtitle loading issues"
+                        font.pixelSize: 12
+                        color: "#FF9800"
+                        wrapMode: Text.Wrap
+                    }
+
                     StyledTextField {
                         id: mpcPathField
                         Layout.fillWidth: true

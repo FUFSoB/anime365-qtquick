@@ -10,10 +10,10 @@ SpinBox {
         onWheel: (wheel) => {
             if (wheel.angleDelta.y > 0) {
                 if (control.value < control.to)
-                    control.increase()
+                    control.value += control.stepSize
             } else {
                 if (control.value > control.from)
-                    control.decrease()
+                    control.value -= control.stepSize
             }
         }
         propagateComposedEvents: true

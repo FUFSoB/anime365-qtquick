@@ -57,7 +57,9 @@ Pane {
 
         searchResultsModel.clear()
         for (var i = 0; i < results.length; i++) {
-            searchResultsModel.append(results[i])
+            var item = Object.assign({}, results[i])
+            item.score = parseFloat(item.score) || 0
+            searchResultsModel.append(item)
         }
     }
 
