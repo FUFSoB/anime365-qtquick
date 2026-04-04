@@ -6,6 +6,11 @@ from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QColor, QPalette
 from PySide6.QtWidgets import QApplication
 
+from constants import LEGACY_SETTINGS_FILE, SETTINGS_FILE
+
+from .net import Api
+from .utils import AsyncFunctionWorker
+
 
 def _dark_palette() -> QPalette:
     p = QPalette()
@@ -75,12 +80,6 @@ def _light_palette() -> QPalette:
     ):
         p.setColor(QPalette.ColorGroup.Disabled, role, QColor(148, 148, 148))
     return p
-
-
-from constants import LEGACY_SETTINGS_FILE, SETTINGS_FILE
-
-from .net import Api
-from .utils import AsyncFunctionWorker
 
 
 class Backend(QObject):

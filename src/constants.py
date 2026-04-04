@@ -8,9 +8,12 @@ FROZEN = getattr(sys, "frozen", False)
 
 if FROZEN:
     _version_file = Path(sys._MEIPASS) / "_version.txt"
-    APP_VERSION = _version_file.read_text().strip() if _version_file.exists() else "0.0.0"
+    APP_VERSION = (
+        _version_file.read_text().strip() if _version_file.exists() else "0.0.0"
+    )
 else:
     from importlib.metadata import PackageNotFoundError, version
+
     try:
         APP_VERSION = version("anime365-qtquick")
     except PackageNotFoundError:
@@ -24,7 +27,11 @@ else:
     SRC_DIR = Path(__file__).parent  # src/
 
 QML_DIR = SRC_DIR / "qml"
-ICON_PATH = SRC_DIR / "icon-512.png" if FROZEN else Path(__file__).parent.parent / "resources" / "icon-512.png"
+ICON_PATH = (
+    SRC_DIR / "icon-512.png"
+    if FROZEN
+    else Path(__file__).parent.parent / "resources" / "icon-512.png"
+)
 
 # --- User data paths: always OS-standard, dev or packaged ---
 

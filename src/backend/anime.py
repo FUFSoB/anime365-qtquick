@@ -21,6 +21,7 @@ from .utils import (
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
 
+
 class GetEpisodesWorker(AsyncFunctionWorker):
     def __init__(self, anime_id: int, settings: "SettingsBackend"):
         super().__init__(self.perform_get_episodes_operation)

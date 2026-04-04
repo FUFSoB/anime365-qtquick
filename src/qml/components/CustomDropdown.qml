@@ -227,7 +227,7 @@ Item {
     }
 
     onModelChanged: {
-        selectedValue = null
+        selectedValue = ""
         selectedIndex = -1
     }
 }

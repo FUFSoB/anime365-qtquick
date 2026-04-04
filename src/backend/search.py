@@ -1,4 +1,3 @@
-import json
 from typing import TYPE_CHECKING
 
 from PySide6.QtCore import QObject, Signal, Slot
@@ -35,8 +34,7 @@ class Worker(AsyncFunctionWorker):
         descriptions = item.get("descriptions") or []
         if descriptions:
             description = (
-                f"{descriptions[0]['value']}\n\n"
-                f"Source: {descriptions[0]['source']}"
+                f"{descriptions[0]['value']}\n\nSource: {descriptions[0]['source']}"
             )
 
         genres = ", ".join(i["title"] for i in (item.get("genres") or []))

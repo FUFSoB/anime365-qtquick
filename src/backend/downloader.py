@@ -3,7 +3,7 @@ import json
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -382,7 +382,6 @@ class AiohttpDownloader:
         async with session.get(url, headers=headers) as resp:
             if resp.status not in (200, 206):
                 raise Exception(f"HTTP {resp.status} for chunk {start}-{end}")
-            offset = start
             with filepath.open("r+b") as f:
                 f.seek(start)
                 async for chunk in resp.content.iter_chunked(65536):
@@ -915,12 +914,12 @@ class Backend(QObject):
         elif others:
             # Don't set path — just report what's available
             # Pick highest quality other download for display
-            best_f, best_m, best_h = others[0][0], others[0][1], -1
-            for fname, meta in others:
+            best_m, best_h = others[0][1], -1
+            for _, meta in others:
                 dl_h = _parse_height(meta.get("quality", ""))
                 if dl_h > best_h:
                     best_h = dl_h
-                    best_f, best_m = fname, meta
+                    best_m = meta
             result = {
                 "path": "",
                 "exact_match": False,

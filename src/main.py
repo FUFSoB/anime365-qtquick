@@ -22,11 +22,11 @@ def _msg_handler(msg_type, context, message):
 
 qInstallMessageHandler(_msg_handler)
 
-from constants import ICON_PATH, create_dirs
+from constants import ICON_PATH, create_dirs  # noqa: E402
 
 create_dirs()
 
-from backend import backends
+from backend import backends  # noqa: E402
 
 
 class Anime365:
@@ -53,7 +53,9 @@ class Anime365:
         for name, backend in backends.items():
             self.engine.rootContext().setContextProperty(name, backend)
 
-        self.engine.rootContext().setContextProperty("isWindows", sys.platform == "win32")
+        self.engine.rootContext().setContextProperty(
+            "isWindows", sys.platform == "win32"
+        )
 
         qml_dir = Path(__file__).parent / "qml"
         main_qml = qml_dir / "main.qml"
