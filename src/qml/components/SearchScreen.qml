@@ -10,6 +10,7 @@ Pane {
     function focusSearch() { searchField.forceActiveFocus() }
 
     property var allResults: []
+    property string searchError: ""
     property string currentSort: "year"
     property bool sortAscending: false
     property bool filterHideHentai: false
@@ -116,13 +117,14 @@ Pane {
         target: searchBackend
 
         function onSearch_completed(results) {
+            searchError = ""
             allResults = results
             applyFilterSort()
             busyIndicator.running = false
         }
 
         function onSearch_error(errorMessage) {
-            console.error("Search error:", errorMessage)
+            searchError = errorMessage
             busyIndicator.running = false
         }
     }
@@ -148,6 +150,7 @@ Pane {
                 placeholderText: "Search anime\u2026"
                 onAccepted: {
                     if (text.trim() !== "") {
+                        searchError = ""
                         searchBackend.perform_search(text.trim())
                         searchQuery = text
                         busyIndicator.running = true
@@ -159,6 +162,7 @@ Pane {
                 text: "Search"
                 onClicked: {
                     if (searchField.text.trim() !== "") {
+                        searchError = ""
                         searchBackend.perform_search(searchField.text.trim())
                         searchQuery = searchField.text
                         busyIndicator.running = true
@@ -388,6 +392,16 @@ Pane {
             spacing: 8
 
             Label {
+                visible: searchError !== ""
+                text: "\u26A0 Search failed: " + searchError
+                color: "#EF5350"
+                font.pixelSize: 11
+                Layout.fillWidth: true
+                elide: Text.ElideRight
+            }
+
+            Label {
+                visible: searchError === ""
                 text: {
                     if (busyIndicator.running) return ""
                     if (allResults.length === 0) return ""

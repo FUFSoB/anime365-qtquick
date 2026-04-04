@@ -120,7 +120,7 @@ Pane {
 
             StyledButton {
                 text: "Active"
-                flat: !showHistory
+                flat: showHistory
                 highlighted: !showHistory
                 onClicked: showHistory = false
             }

@@ -9,9 +9,7 @@ ListView {
 
     property var onItemClicked: function(item) {}
 
-    property var onContextMenuAction: function(action, item) {
-        console.log("Context Menu Action: " + action)
-    }
+    property var onContextMenuAction: function(action, item) {}
 
     property var contextMenuModel: []
 
@@ -145,14 +143,16 @@ ListView {
             }
         }
 
-        Row {
+        RowLayout {
+            anchors.fill: parent
+            anchors.margins: 10
             spacing: 10
-            padding: 10
 
             Image {
                 id: listItemImage
-                width: 120
-                height: 120
+                Layout.preferredWidth: 120
+                Layout.preferredHeight: 120
+                Layout.alignment: Qt.AlignTop
                 source: model.image_url ? imageCacheBackend.cache_image(model.image_url) : ""
                 fillMode: Image.PreserveAspectFit
                 cache: true
@@ -168,45 +168,58 @@ ListView {
             }
 
             Column {
+                Layout.fillWidth: true
                 spacing: 5
 
                 Text {
+                    width: parent.width
                     text: model.title || ""
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.bold: true
                     font.pixelSize: 16
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    width: parent.width
                     text: `Episode "${model.episode || ""}" by "${model.translation || ""}" out of ${model.total_episodes || 0} episodes`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.highlight
                     visible: model.episode !== undefined && model.episode !== ""
                     font.pixelSize: 14
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    width: parent.width
                     text: `Episodes: ${model.total_episodes || 0}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     visible: model.episode === undefined || model.episode === ""
                     font.pixelSize: 14
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    width: parent.width
                     text: `Genres: ${model.genres || ""}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    width: parent.width
                     text: `Type: ${model.h_type || ""} | Year: ${model.year || ""}`
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
+                    elide: Text.ElideRight
                 }
 
                 Text {
+                    width: parent.width
                     text: "Score: " + (model.score !== undefined && model.score !== null && model.score !== "" && model.score > 0 ? model.score : "N/A")
                     color: mouseArea.containsMouse ? pal.highlightedText : pal.windowText
                     font.pixelSize: 14
+                    elide: Text.ElideRight
                 }
             }
         }

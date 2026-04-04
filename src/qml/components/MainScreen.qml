@@ -204,6 +204,7 @@ Pane {
                             elide: Text.ElideRight
                             maximumLineCount: 2
                             wrapMode: Text.WordWrap
+                            color: cwMouseArea.containsMouse ? palette.highlightedText : palette.windowText
                         }
 
                         Label {
@@ -224,6 +225,7 @@ Pane {
                             font.pixelSize: 11
                             opacity: 0.7
                             elide: Text.ElideRight
+                            color: cwMouseArea.containsMouse ? palette.highlightedText : palette.windowText
                         }
                     }
                 }
