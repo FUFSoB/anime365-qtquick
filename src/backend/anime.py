@@ -222,7 +222,9 @@ class Backend(QObject):
     episodes_got = Signal(dict)
     translations_got = Signal(list)
     streams_got = Signal(list, bool)
-    subtitle_fonts_got = Signal(list)
+    subtitle_fonts_got = Signal(dict)
+    font_status = Signal(str, str)   # (font_name, "downloading"|"done"|"failed")
+    fonts_downloaded = Signal(dict)  # {"downloaded": [...], "not_found": [...]}
     batch_progress = Signal(int, int)
     batch_item_ready = Signal(dict)
     batch_unavailable = Signal(
@@ -284,11 +286,43 @@ class Backend(QObject):
     def get_subtitle_fonts(self, url: str):
         worker = AsyncFunctionWorker(get_subtitle_fonts, url)
         self.workers.append(worker)
-        worker.result_list.connect(self.subtitle_fonts_got)
+        worker.result_dict.connect(self.subtitle_fonts_got)
         worker.completed.connect(
             lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None
         )
         worker.start()
+
+    @Slot(list, list)
+    def download_missing_fonts(self, fonts: list, scripts: list):
+        from .fonts import search_and_download_fonts
+
+        worker = AsyncFunctionWorker(
+            search_and_download_fonts, fonts, scripts,
+            status_cb=self.font_status.emit,
+        )
+        self.workers.append(worker)
+
+        def _on_result(result: dict) -> None:
+            from PySide6.QtGui import QFontDatabase
+
+            paths = result.get("downloaded", [])
+            for p in paths:
+                QFontDatabase.addApplicationFont(str(p))
+            self.fonts_downloaded.emit({
+                "downloaded": [str(p) for p in paths],
+                "not_found": result.get("not_found", []),
+            })
+
+        worker.result_dict.connect(_on_result)
+        worker.completed.connect(
+            lambda *_, w=worker: self.workers.remove(w) if w in self.workers else None
+        )
+        worker.start()
+
+    @Slot(result=str)
+    def get_fonts_dir(self) -> str:
+        from .fonts import FONTS_DIR
+        return str(FONTS_DIR)
 
     @Slot(str, str, str, str)
     def launch_mpv(self, url: str, subs_url: str, title: str, cover_url: str = ""):
@@ -308,6 +342,10 @@ class Backend(QObject):
 
         if subs_url:
             command.append(f"--sub-file={subs_url}")
+
+        from .fonts import FONTS_DIR
+        if FONTS_DIR.exists():
+            command.append(f"--sub-font-dir={FONTS_DIR}")
 
         extra_args = self.settings.get("mpv_args") or ""
         if extra_args:

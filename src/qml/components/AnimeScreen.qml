@@ -47,6 +47,10 @@ Pane {
 
     property bool episodeIdsReady: false
 
+    property var missingSubtitleFonts: []
+    property var subtitleFontScripts: []
+    property var fontStatuses: ({})  // font_name -> "downloading"|"done"|"failed"
+
     property string localVideoPath: ""
     property string localSubsPath: ""
     property string localVideoMeta: ""  // info about local file quality/translation
@@ -361,16 +365,53 @@ Pane {
         }
 
         function onSubtitle_fonts_got(results) {
-            var formatted = "Fonts availability (during application startup): <br><br>" + results.map(fontName => {
-                var isAvailable = Qt.fontFamilies().includes(fontName)
+            var fonts = results.fonts || []
+            var scripts = results.scripts || []
+            subtitleFontScripts = scripts
 
+            var missing = fonts.filter(f => !Qt.fontFamilies().includes(f))
+            missingSubtitleFonts = missing
+            downloadFontsButton.visible = missing.length > 0
+            downloadFontsButton.enabled = true
+            downloadFontsButton.text = "Download Missing Fonts (" + missing.length + ")"
+
+            var formatted = "Fonts (during application startup):<br><br>" + fonts.map(fontName => {
+                var isAvailable = Qt.fontFamilies().includes(fontName)
                 return isAvailable ?
-                    `\u2714 <b>${fontName}</b>` :
-                    `\u274C ${fontName}`
+                    "\u2714 <b>" + fontName + "</b>" :
+                    "\u274C " + fontName
             }).join("<br>")
+            if (scripts.length > 0)
+                formatted += "<br><br>Scripts: " + scripts.join(", ")
 
             subsUrlField.ToolTip.text = formatted
             subsUrlField.ToolTip.textFormat = Text.RichText
+        }
+
+        function onFont_status(fontName, status) {
+            var s = Object.assign({}, fontStatuses)
+            s[fontName] = status
+            fontStatuses = s
+            _refreshFontStatusLabel()
+        }
+
+        function onFonts_downloaded(result) {
+            missingSubtitleFonts = result.not_found || []
+            downloadFontsButton.visible = false
+            downloadFontsButton.enabled = true
+            _refreshFontStatusLabel()
+        }
+
+        function _refreshFontStatusLabel() {
+            var names = Object.keys(fontStatuses)
+            if (names.length === 0) { fontsStatusLabel.text = ""; return }
+            var lines = names.map(name => {
+                var s = fontStatuses[name]
+                if (s === "done")        return '<font color="#4caf50">\u2714 ' + name + '</font>'
+                if (s === "failed")      return '<font color="#f44336">\u2716 ' + name + '</font>'
+                return '<font color="gray">\u22ef ' + name + '</font>'
+            })
+            fontsStatusLabel.text = lines.join("<br>")
         }
     }
 
@@ -685,9 +726,15 @@ Pane {
                             if (subs !== undefined) {
                                 subsRow.visible = true
                                 subsUrlField.text = subs
+                                downloadFontsButton.visible = false
+                                fontsStatusLabel.text = ""
+                                fontStatuses = {}
+                                missingSubtitleFonts = []
+                                subtitleFontScripts = []
                                 animeBackend.get_subtitle_fonts(subs)
                             } else {
                                 subsRow.visible = false
+                                downloadFontsButton.visible = false
                             }
 
                             qualitySelected = qualityDropdown.selectedValue
@@ -771,6 +818,32 @@ Pane {
                                         subsUrlField.selectAll()
                                         subsUrlField.copy()
                                     }
+                                }
+
+                                StyledButton {
+                                    id: downloadFontsButton
+                                    visible: false
+                                    text: "Download Missing Fonts"
+                                    onClicked: {
+                                        enabled = false
+                                        text = "Downloading..."
+                                        fontStatuses = {}
+                                        fontsStatusLabel.text = ""
+                                        animeBackend.download_missing_fonts(
+                                            missingSubtitleFonts,
+                                            subtitleFontScripts
+                                        )
+                                    }
+                                }
+
+                                Label {
+                                    id: fontsStatusLabel
+                                    visible: text !== ""
+                                    text: ""
+                                    font.pixelSize: 11
+                                    opacity: 0.85
+                                    wrapMode: Text.WordWrap
+                                    textFormat: Text.RichText
                                 }
 
                             }

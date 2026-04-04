@@ -11,6 +11,34 @@ import ass
 from PySide6.QtCore import QThread, Signal
 
 _MPC_VAR_RE = re.compile(r'<p id="(\w+)">(.*?)</p>')
+_ASS_TAG_RE = re.compile(r"\{[^}]*\}")
+
+# Unicode codepoint ranges → Google Fonts subset names (mirrors fonts.py)
+_SUBSET_RANGES: list[tuple[int, int, str]] = [
+    (0x0400, 0x052F, "cyrillic"),
+    (0x1C80, 0x1C8F, "cyrillic"),
+    (0x3040, 0x309F, "japanese"),
+    (0x30A0, 0x30FF, "japanese"),
+    (0x4E00, 0x9FFF, "japanese"),
+    (0x3400, 0x4DBF, "japanese"),
+    (0xF900, 0xFAFF, "japanese"),
+    (0xFF00, 0xFFEF, "japanese"),
+    (0xAC00, 0xD7AF, "korean"),
+    (0x1100, 0x11FF, "korean"),
+    (0x0100, 0x024F, "latin-ext"),
+    (0x1E00, 0x1EFF, "latin-ext"),
+]
+
+
+def _detect_scripts(text: str) -> list[str]:
+    found: set[str] = set()
+    for ch in text:
+        cp = ord(ch)
+        for start, end, subset in _SUBSET_RANGES:
+            if start <= cp <= end:
+                found.add(subset)
+                break
+    return sorted(found)
 
 
 @dataclass
@@ -414,22 +442,30 @@ async def monitor_mpc_status(
     )
 
 
-async def get_subtitle_fonts(url: str) -> list[str]:
+async def get_subtitle_fonts(url: str) -> dict:
+    """Fetch ASS subtitle and return font names + detected language scripts."""
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status != 200:
-                return []
+                return {"fonts": [], "scripts": []}
 
             subtitle_bytes = await response.read()
             subtitle_content = subtitle_bytes.decode("utf-8-sig", errors="replace")
 
             try:
                 subtitle = ass.parse_string(subtitle_content)
-                styles: list[ass.Style] = subtitle.styles
-                return sorted({style.fontname for style in styles})
+                fonts = sorted({style.fontname for style in subtitle.styles})
+
+                text_parts: list[str] = []
+                for event in subtitle.events:
+                    raw = getattr(event, "text", "") or ""
+                    text_parts.append(_ASS_TAG_RE.sub("", raw))
+                scripts = _detect_scripts("\n".join(text_parts))
+
+                return {"fonts": fonts, "scripts": scripts}
             except Exception as e:
                 print(f"Error parsing subtitle file: {e}")
-                return []
+                return {"fonts": [], "scripts": []}
 
 
 class AsyncFunctionWorker(QThread):

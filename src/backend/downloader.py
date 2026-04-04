@@ -136,16 +136,41 @@ class DownloadItem:
 
 
 async def _embed_subs(video_path: Path, subs_path: Path, ffmpeg: str = "") -> str:
-    """Mux subs into video with ffmpeg (-c copy). Returns new filename, or '' on failure/skip."""
+    """Mux subs (and all required fonts) into MKV with ffmpeg (-c copy).
+    Returns new filename, or '' on failure/skip."""
     if not ffmpeg:
         ffmpeg = shutil.which("ffmpeg") or ""
     if not ffmpeg or not subs_path.exists() or not video_path.exists():
         return ""
 
+    # Gather font files for the subtitle
+    font_paths: list[Path] = []
+    if subs_path.suffix.lower() == ".ass":
+        try:
+            from .fonts import get_fonts_for_subs
+            font_paths = await get_fonts_for_subs(subs_path)
+        except Exception as exc:
+            print(f"[fonts] Font gathering failed: {exc}")
+
     out_path = video_path.with_suffix(".mkv")
     same_file = out_path == video_path
     if same_file:
         out_path = video_path.with_name(video_path.stem + "._mux.mkv")
+
+    cmd = [ffmpeg, "-i", str(video_path), "-i", str(subs_path)]
+
+    for font_path in font_paths:
+        cmd += ["-attach", str(font_path)]
+
+    for i, font_path in enumerate(font_paths):
+        mime = (
+            "application/vnd.ms-opentype"
+            if font_path.suffix.lower() == ".otf"
+            else "application/x-truetype-font"
+        )
+        cmd += [f"-metadata:s:t:{i}", f"mimetype={mime}"]
+
+    cmd += ["-c", "copy", "-y", str(out_path)]
 
     kwargs: dict = {}
     if sys.platform == "win32":
@@ -153,15 +178,7 @@ async def _embed_subs(video_path: Path, subs_path: Path, ffmpeg: str = "") -> st
 
     try:
         proc = await asyncio.create_subprocess_exec(
-            ffmpeg,
-            "-i",
-            str(video_path),
-            "-i",
-            str(subs_path),
-            "-c",
-            "copy",
-            "-y",
-            str(out_path),
+            *cmd,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
             **kwargs,
