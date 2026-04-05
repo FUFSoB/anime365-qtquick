@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import subprocess
@@ -14,13 +15,13 @@ import ass
 from constants import CACHE_DIR, DOWNLOADS_DIR
 from .utils import _ASS_TAG_RE, _detect_scripts as detect_scripts
 
-# Downloaded fonts land here — user-visible, easy to find and install manually
 FONTS_DIR = DOWNLOADS_DIR / "Fonts"
-
-# Internal registry: font name → list of filenames in FONTS_DIR
 _FONT_REGISTRY = CACHE_DIR / "font_registry.json"
-
 _FONT_EXTS = {".ttf", ".otf", ".ttc", ".otc", ".woff2"}
+
+
+def _normalize_name(name: str) -> str:
+    return re.sub(r"[\s\-_]", "", name).lower()
 
 
 def _load_registry() -> dict[str, list[str]]:
@@ -31,61 +32,76 @@ def _load_registry() -> dict[str, list[str]]:
 
 
 def _save_registry(registry: dict[str, list[str]]) -> None:
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
     _FONT_REGISTRY.write_text(json.dumps(registry, indent=2, ensure_ascii=False))
 
 
-def _find_system_font(font_name: str) -> Path | None:
-    """Return path to a font file for font_name already on the system, or None."""
-    if sys.platform != "win32":
-        try:
-            result = subprocess.run(
-                ["fc-match", "--format=%{file}", font_name],
-                capture_output=True, text=True, timeout=3,
-            )
-            if result.returncode == 0 and result.stdout:
-                path = Path(result.stdout.strip())
-                if path.exists() and path.suffix.lower() in _FONT_EXTS:
-                    return path
-        except (FileNotFoundError, subprocess.TimeoutExpired):
-            pass
+def _fc_match(font_name: str) -> Path | None:
+    try:
+        r = subprocess.run(
+            ["fc-match", "--format=%{file}", font_name],
+            capture_output=True, text=True, timeout=3,
+        )
+        if r.returncode == 0 and r.stdout:
+            p = Path(r.stdout.strip())
+            if p.exists() and p.suffix.lower() in _FONT_EXTS:
+                return p
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    return None
 
-        # Fallback: scan common system/nix font dirs with fuzzy name match
-        search_dirs = [
-            Path.home() / ".nix-profile" / "share" / "fonts",
-            Path.home() / ".local" / "share" / "fonts",
-            Path("/run/current-system/sw/share/X11/fonts"),
-            Path("/run/current-system/sw/share/fonts"),
-            Path("/usr/share/fonts"),
-            Path("/usr/local/share/fonts"),
-        ]
-        needle = re.sub(r"[\s\-_]", "", font_name).lower()
-        for d in search_dirs:
-            if not d.exists():
-                continue
-            for f in d.rglob("*"):
-                if f.suffix.lower() not in _FONT_EXTS:
-                    continue
-                hay = re.sub(r"[\s\-_]", "", f.stem).lower()
-                if needle in hay or hay in needle:
-                    return f
-        return None
-    else:
-        dirs = [
+
+def _system_font_dirs() -> list[Path]:
+    if sys.platform == "win32":
+        return [
             Path("C:/Windows/Fonts"),
             Path.home() / "AppData" / "Local" / "Microsoft" / "Windows" / "Fonts",
         ]
-        needle = re.sub(r"[\s\-_]", "", font_name).lower()
-        for d in dirs:
+    return [
+        Path.home() / ".nix-profile" / "share" / "fonts",
+        Path.home() / ".local" / "share" / "fonts",
+        Path("/run/current-system/sw/share/X11/fonts"),
+        Path("/run/current-system/sw/share/fonts"),
+        Path("/usr/share/fonts"),
+        Path("/usr/local/share/fonts"),
+    ]
+
+
+def _find_system_fonts(font_names: list[str]) -> dict[str, Path | None]:
+    """Find system font files for multiple names with a single directory scan."""
+    results: dict[str, Path | None] = {}
+    need_scan: list[str] = []
+
+    if sys.platform != "win32":
+        for name in font_names:
+            path = _fc_match(name)
+            if path:
+                results[name] = path
+            else:
+                need_scan.append(name)
+    else:
+        need_scan = list(font_names)
+
+    if need_scan:
+        needles = {name: _normalize_name(name) for name in need_scan}
+        for d in _system_font_dirs():
             if not d.exists():
                 continue
             for f in d.rglob("*"):
                 if f.suffix.lower() not in _FONT_EXTS:
                     continue
-                hay = re.sub(r"[\s\-_]", "", f.stem).lower()
-                if needle in hay or hay in needle:
-                    return f
-        return None
+                hay = _normalize_name(f.stem)
+                for name, needle in list(needles.items()):
+                    if needle in hay or hay in needle:
+                        results[name] = f
+                        del needles[name]
+                if not needles:
+                    break
+            if not needles:
+                break
+        for name in needles:
+            results[name] = None
+
+    return results
 
 
 # ---------------------------------------------------------------------------
@@ -131,14 +147,12 @@ async def _google_fonts_urls(
 async def _bunny_fonts_urls(
     font_name: str, subsets: list[str], session: aiohttp.ClientSession
 ) -> list[str]:
-    family_kebab = font_name.lower().replace(" ", "-")
-    url = f"https://fonts.bunny.net/css?family={family_kebab}:400,700"
+    url = f"https://fonts.bunny.net/css?family={_normalize_name(font_name).replace('_', '-')}:{','.join(['400','700'])}"
     if subsets:
         url += "&subset=" + ",".join(subsets)
     urls = await _fetch_css_font_urls(url, session)
     if not urls:
-        family_plus = font_name.replace(" ", "+")
-        url2 = f"https://fonts.bunny.net/css2?family={family_plus}:wght@400;700"
+        url2 = f"https://fonts.bunny.net/css2?family={font_name.replace(' ', '+')}:wght@400;700"
         urls = await _fetch_css_font_urls(url2, session, accept_woff2=True)
     return urls
 
@@ -147,9 +161,11 @@ async def _fontsource_urls(
     font_name: str, subsets: list[str], session: aiohttp.ClientSession
 ) -> list[str]:
     pkg = font_name.lower().replace(" ", "-")
-    meta_url = f"https://cdn.jsdelivr.net/npm/@fontsource/{pkg}/package.json"
     try:
-        async with session.get(meta_url, timeout=aiohttp.ClientTimeout(total=8)) as resp:
+        async with session.get(
+            f"https://cdn.jsdelivr.net/npm/@fontsource/{pkg}/package.json",
+            timeout=aiohttp.ClientTimeout(total=8),
+        ) as resp:
             if resp.status != 200:
                 return []
             meta = await resp.json(content_type=None)
@@ -159,14 +175,12 @@ async def _fontsource_urls(
     if not version:
         return []
     wanted = {"latin"} | set(subsets)
-    urls = []
-    for subset in wanted:
-        for weight in ("400", "700"):
-            urls.append(
-                f"https://cdn.jsdelivr.net/npm/@fontsource/{pkg}@{version}"
-                f"/files/{pkg}-{subset}-{weight}-normal.woff2"
-            )
-    return urls
+    return [
+        f"https://cdn.jsdelivr.net/npm/@fontsource/{pkg}@{version}"
+        f"/files/{pkg}-{subset}-{weight}-normal.woff2"
+        for subset in wanted
+        for weight in ("400", "700")
+    ]
 
 
 _SOURCES = [_google_fonts_urls, _bunny_fonts_urls, _fontsource_urls]
@@ -177,12 +191,9 @@ async def _download_urls(
     urls: list[str],
     session: aiohttp.ClientSession,
 ) -> list[str]:
-    """Download font URLs to FONTS_DIR. Returns list of saved filenames."""
-    FONTS_DIR.mkdir(parents=True, exist_ok=True)
     saved: list[str] = []
     for url in urls:
-        raw = url.split("/")[-1].split("?")[0]
-        safe = re.sub(r"[^\w\-.]", "_", raw)
+        safe = re.sub(r"[^\w\-.]", "_", url.split("/")[-1].split("?")[0])
         dest = FONTS_DIR / safe
         if dest.exists():
             saved.append(safe)
@@ -200,61 +211,77 @@ async def _download_urls(
     return saved
 
 
+async def _fetch_one(
+    font_name: str,
+    scripts: list[str],
+    session: aiohttp.ClientSession,
+    registry: dict[str, list[str]],
+    status_cb,
+) -> tuple[str, list[str]]:
+    """Try all sources for one font. Returns (font_name, saved_filenames)."""
+    if font_name in registry:
+        files = [f for f in registry[font_name] if (FONTS_DIR / f).exists()]
+        if files:
+            if status_cb:
+                status_cb(font_name, "done")
+            return font_name, files
+
+    if status_cb:
+        status_cb(font_name, "downloading")
+
+    for source_fn in _SOURCES:
+        urls = await source_fn(font_name, scripts, session)
+        if urls:
+            files = await _download_urls(font_name, urls, session)
+            if files:
+                if status_cb:
+                    status_cb(font_name, "done")
+                return font_name, files
+
+    print(f"[fonts] Not found anywhere: {font_name!r}")
+    if status_cb:
+        status_cb(font_name, "failed")
+    return font_name, []
+
+
 async def search_and_download_fonts(
     missing_fonts: list[str],
     scripts: list[str],
-    status_cb=None,  # callable(font_name: str, status: "downloading"|"done"|"failed")
+    status_cb=None,
 ) -> dict:
     """
-    Try every available source for each missing font.
+    Download missing fonts from all available sources in parallel.
     Returns {"downloaded": [Path, ...], "not_found": [str, ...]}.
-    Fonts land in FONTS_DIR (inside the downloads folder).
+    Fonts are saved to FONTS_DIR (inside the downloads folder).
     """
     if not missing_fonts:
         return {"downloaded": [], "not_found": []}
 
     FONTS_DIR.mkdir(parents=True, exist_ok=True)
     registry = _load_registry()
-    downloaded: list[Path] = []
-    not_found: list[str] = []
 
     async with aiohttp.ClientSession() as session:
-        for font_name in missing_fonts:
-            # Already registered
-            if font_name in registry:
-                for fname in registry[font_name]:
-                    p = FONTS_DIR / fname
-                    if p.exists():
-                        downloaded.append(p)
-                if status_cb:
-                    status_cb(font_name, "done")
-                continue
+        results = await asyncio.gather(
+            *[_fetch_one(name, scripts, session, registry, status_cb) for name in missing_fonts]
+        )
 
-            if status_cb:
-                status_cb(font_name, "downloading")
+    downloaded: list[Path] = []
+    not_found: list[str] = []
+    changed = False
 
-            font_files: list[str] = []
-            for source_fn in _SOURCES:
-                urls = await source_fn(font_name, scripts, session)
-                if urls:
-                    font_files = await _download_urls(font_name, urls, session)
-                    if font_files:
-                        break
+    for font_name, files in results:
+        if files:
+            registry[font_name] = files
+            changed = True
+            for fname in files:
+                p = FONTS_DIR / fname
+                if p.exists():
+                    downloaded.append(p)
+        else:
+            not_found.append(font_name)
 
-            if font_files:
-                registry[font_name] = font_files
-                _save_registry(registry)
-                for fname in font_files:
-                    p = FONTS_DIR / fname
-                    if p.exists():
-                        downloaded.append(p)
-                if status_cb:
-                    status_cb(font_name, "done")
-            else:
-                print(f"[fonts] Not found anywhere: {font_name!r}")
-                not_found.append(font_name)
-                if status_cb:
-                    status_cb(font_name, "failed")
+    if changed:
+        _save_registry(registry)
 
     return {"downloaded": downloaded, "not_found": not_found}
 
@@ -262,8 +289,8 @@ async def search_and_download_fonts(
 async def get_fonts_for_subs(subs_path: Path) -> list[Path]:
     """
     Parse an ASS subtitle file, find/download all required fonts.
-    Returns only fonts found exactly (for MKV attachment — substitute fonts
-    are skipped because they won't match the ASS style name at playback time).
+    Returns font Paths for MKV attachment (only exact matches — the player
+    handles fallback for any that couldn't be sourced).
     """
     try:
         content = subs_path.read_text(encoding="utf-8-sig", errors="replace")
@@ -274,25 +301,15 @@ async def get_fonts_for_subs(subs_path: Path) -> list[Path]:
 
     font_names = sorted({style.fontname for style in subtitle.styles})
 
-    text_parts: list[str] = []
-    for event in subtitle.events:
-        raw = getattr(event, "text", "") or ""
-        text_parts.append(_ASS_TAG_RE.sub("", raw))
+    text_parts = [_ASS_TAG_RE.sub("", getattr(e, "text", "") or "") for e in subtitle.events]
     scripts = detect_scripts("\n".join(text_parts))
 
-    found: list[Path] = []
-    missing: list[str] = []
-
-    for name in font_names:
-        path = _find_system_font(name)
-        if path:
-            found.append(path)
-        else:
-            missing.append(name)
+    system = _find_system_fonts(font_names)
+    found = [p for p in system.values() if p is not None]
+    missing = [name for name, p in system.items() if p is None]
 
     if missing:
         result = await search_and_download_fonts(missing, scripts)
         found.extend(result["downloaded"])
-        # not_found fonts are simply skipped — player handles fallback
 
-    return found
+    return list(dict.fromkeys(found))  # deduplicate preserving order

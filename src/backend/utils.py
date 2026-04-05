@@ -13,7 +13,6 @@ from PySide6.QtCore import QThread, Signal
 _MPC_VAR_RE = re.compile(r'<p id="(\w+)">(.*?)</p>')
 _ASS_TAG_RE = re.compile(r"\{[^}]*\}")
 
-# Unicode codepoint ranges → Google Fonts subset names (mirrors fonts.py)
 _SUBSET_RANGES: list[tuple[int, int, str]] = [
     (0x0400, 0x052F, "cyrillic"),
     (0x1C80, 0x1C8F, "cyrillic"),
@@ -30,6 +29,9 @@ _SUBSET_RANGES: list[tuple[int, int, str]] = [
 ]
 
 
+_ALL_SUBSETS = len({s for _, _, s in _SUBSET_RANGES})
+
+
 def _detect_scripts(text: str) -> list[str]:
     found: set[str] = set()
     for ch in text:
@@ -38,6 +40,8 @@ def _detect_scripts(text: str) -> list[str]:
             if start <= cp <= end:
                 found.add(subset)
                 break
+        if len(found) == _ALL_SUBSETS:
+            break
     return sorted(found)
 
 

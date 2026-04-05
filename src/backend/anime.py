@@ -9,6 +9,7 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 from constants import CACHE_DIR
 
+from .fonts import FONTS_DIR, search_and_download_fonts
 from .utils import (
     AsyncFunctionWorker,
     find_free_port,
@@ -294,8 +295,6 @@ class Backend(QObject):
 
     @Slot(list, list)
     def download_missing_fonts(self, fonts: list, scripts: list):
-        from .fonts import search_and_download_fonts
-
         worker = AsyncFunctionWorker(
             search_and_download_fonts, fonts, scripts,
             status_cb=self.font_status.emit,
@@ -321,7 +320,6 @@ class Backend(QObject):
 
     @Slot(result=str)
     def get_fonts_dir(self) -> str:
-        from .fonts import FONTS_DIR
         return str(FONTS_DIR)
 
     @Slot(str, str, str, str)
@@ -343,7 +341,6 @@ class Backend(QObject):
         if subs_url:
             command.append(f"--sub-file={subs_url}")
 
-        from .fonts import FONTS_DIR
         if FONTS_DIR.exists():
             command.append(f"--sub-font-dir={FONTS_DIR}")
 

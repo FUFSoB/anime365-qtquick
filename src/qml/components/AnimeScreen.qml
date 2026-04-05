@@ -836,16 +836,17 @@ Pane {
                                     }
                                 }
 
-                                Label {
-                                    id: fontsStatusLabel
-                                    visible: text !== ""
-                                    text: ""
-                                    font.pixelSize: 11
-                                    opacity: 0.85
-                                    wrapMode: Text.WordWrap
-                                    textFormat: Text.RichText
-                                }
+                            }
 
+                            Label {
+                                id: fontsStatusLabel
+                                Layout.fillWidth: true
+                                visible: text !== ""
+                                text: ""
+                                font.pixelSize: 11
+                                opacity: 0.85
+                                wrapMode: Text.WordWrap
+                                textFormat: Text.RichText
                             }
 
                             RowLayout {
