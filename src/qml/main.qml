@@ -39,18 +39,26 @@ ApplicationWindow {
                 ToolTip.delay: 600
             }
 
+            Image {
+                source: appIconPath
+                sourceSize: Qt.size(22, 22)
+                fillMode: Image.PreserveAspectFit
+                smooth: true
+                visible: appIconPath !== ""
+                Layout.rightMargin: 4
+            }
+
             Label {
                 text: "Anime365"
                 font.pixelSize: 15
                 font.bold: true
-                leftPadding: 2
             }
 
             Item { Layout.fillWidth: true }
 
             BusyIndicator {
                 id: headerBusyIndicator
-                running: stackView.currentItem && stackView.currentItem.isBusy
+                running: stackView && stackView.currentItem ? (stackView.currentItem.isBusy === true) : false
                 visible: running
                 implicitWidth: 24
                 implicitHeight: 24

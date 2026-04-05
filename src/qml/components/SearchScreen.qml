@@ -74,27 +74,38 @@ Pane {
         signal activated()
 
         implicitWidth: chipLabel.implicitWidth + 22
-        implicitHeight: 28
-        radius: 14
+        implicitHeight: 26
+        radius: 13
 
         property bool _hovered: false
 
         color: active ? palette.highlight
-                      : _hovered ? palette.midlight
-                                 : palette.button
-        border.color: active ? "transparent" : (_hovered ? palette.highlight : palette.mid)
+                      : _hovered ? Qt.rgba(palette.highlight.r,
+                                           palette.highlight.g,
+                                           palette.highlight.b, 0.12)
+                                 : "transparent"
+        border.color: active  ? Qt.lighter(palette.highlight, 1.15)
+                    : _hovered ? Qt.rgba(palette.highlight.r,
+                                         palette.highlight.g,
+                                         palette.highlight.b, 0.55)
+                               : palette.mid
         border.width: 1
 
-        Behavior on color { ColorAnimation { duration: 100 } }
-        Behavior on border.color { ColorAnimation { duration: 100 } }
+        Behavior on color        { ColorAnimation { duration: 90 } }
+        Behavior on border.color { ColorAnimation { duration: 90 } }
 
         Label {
             id: chipLabel
             anchors.centerIn: parent
             text: chipRoot.label
-            color: chipRoot.active ? palette.highlightedText : palette.buttonText
+            color: chipRoot.active ? palette.highlightedText
+                 : chipRoot._hovered ? palette.windowText
+                 : palette.windowText
             font.pixelSize: 12
             font.weight: chipRoot.active ? Font.Medium : Font.Normal
+            opacity: chipRoot.active ? 1.0 : (chipRoot._hovered ? 0.90 : 0.70)
+
+            Behavior on opacity { NumberAnimation { duration: 90 } }
         }
 
         MouseArea {
@@ -110,9 +121,9 @@ Pane {
     // Thin vertical divider for the control strip
     component VDivider: Rectangle {
         implicitWidth: 1
-        implicitHeight: 20
+        implicitHeight: 18
         color: palette.mid
-        opacity: 0.5
+        opacity: 0.4
     }
 
     Connections {
@@ -174,6 +185,8 @@ Pane {
             implicitHeight: controlColumn.implicitHeight + 14
             color: palette.alternateBase
             radius: 6
+            border.color: palette.mid
+            border.width: 1
 
             ColumnLayout {
                 id: controlColumn
@@ -191,11 +204,12 @@ Pane {
 
                     Label {
                         text: "Sort"
-                        color: palette.windowText
-                        opacity: 0.5
-                        font.pixelSize: 11
+                        color: palette.highlight
+                        opacity: 0.75
+                        font.pixelSize: 10
                         font.capitalization: Font.AllUppercase
-                        font.letterSpacing: 0.5
+                        font.letterSpacing: 0.8
+                        font.bold: true
                     }
 
                     Repeater {
@@ -229,11 +243,12 @@ Pane {
 
                     Label {
                         text: "Type"
-                        color: palette.windowText
-                        opacity: 0.5
-                        font.pixelSize: 11
+                        color: palette.highlight
+                        opacity: 0.75
+                        font.pixelSize: 10
                         font.capitalization: Font.AllUppercase
-                        font.letterSpacing: 0.5
+                        font.letterSpacing: 0.8
+                        font.bold: true
                     }
 
                     Repeater {
@@ -268,21 +283,36 @@ Pane {
 
                     Label {
                         text: "Score \u2265"
-                        color: palette.windowText
-                        opacity: 0.5
-                        font.pixelSize: 11
+                        color: palette.highlight
+                        opacity: 0.75
+                        font.pixelSize: 10
                         font.capitalization: Font.AllUppercase
-                        font.letterSpacing: 0.5
+                        font.letterSpacing: 0.8
+                        font.bold: true
                     }
 
-                    Label {
-                        id: scoreValueLabel
-                        text: filterMinScore > 0 ? filterMinScore.toFixed(1) : "Any"
-                        color: filterMinScore > 0 ? palette.highlight : palette.windowText
-                        font.pixelSize: 12
-                        font.bold: filterMinScore > 0
-                        Layout.minimumWidth: 28
-                        horizontalAlignment: Text.AlignHCenter
+                    Rectangle {
+                        radius: 4
+                        implicitWidth: scoreValueLabel.implicitWidth + 12
+                        implicitHeight: 20
+                        color: filterMinScore > 0
+                             ? Qt.rgba(palette.highlight.r, palette.highlight.g, palette.highlight.b, 0.15)
+                             : Qt.rgba(0.5, 0.5, 0.5, 0.08)
+                        border.color: filterMinScore > 0
+                                    ? Qt.rgba(palette.highlight.r, palette.highlight.g, palette.highlight.b, 0.4)
+                                    : palette.mid
+                        border.width: 1
+                        Behavior on color { ColorAnimation { duration: 90 } }
+
+                        Label {
+                            id: scoreValueLabel
+                            anchors.centerIn: parent
+                            text: filterMinScore > 0 ? filterMinScore.toFixed(1) : "Any"
+                            color: filterMinScore > 0 ? palette.highlight : palette.windowText
+                            font.pixelSize: 11
+                            font.bold: filterMinScore > 0
+                            opacity: filterMinScore > 0 ? 1.0 : 0.55
+                        }
                     }
 
                     Slider {

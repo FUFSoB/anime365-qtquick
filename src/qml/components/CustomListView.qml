@@ -14,12 +14,35 @@ ListView {
     function setContextMenu(menuModel) { contextMenuModel = menuModel }
     function addContextMenuItem(menuItem) { contextMenuModel.push(menuItem) }
 
+    // Smooth gradient: red(0) → orange(6.0) → green(7.5) → vivid-green(10)
+    function scoreColor(score) {
+        var s = Math.max(0, Math.min(10, parseFloat(score) || 0))
+        var r, g, b
+        if (s >= 7.5) {
+            var t = (s - 7.5) / 2.5
+            r = 0.298 * (1 - t)
+            g = 0.686 + t * (0.902 - 0.686)
+            b = 0.314 + t * (0.463 - 0.314)
+        } else if (s >= 6.0) {
+            var t = (s - 6.0) / 1.5
+            r = 1.000 - t * (1.000 - 0.298)
+            g = 0.596 + t * (0.686 - 0.596)
+            b = t * 0.314
+        } else {
+            var t = s / 6.0
+            r = 0.827 + t * (1.000 - 0.827)
+            g = 0.184 + t * (0.596 - 0.184)
+            b = 0.184 * (1 - t)
+        }
+        return Qt.rgba(r, g, b, 1.0)
+    }
+
     clip: true
 
     delegate: Item {
         id: delegateRoot
         width: ListView.view.width
-        height: 108
+        height: 112
 
         property bool isDestroyed: false
         Component.onDestruction: isDestroyed = true
@@ -28,6 +51,43 @@ ListView {
         Rectangle {
             anchors.fill: parent
             color: index % 2 === 0 ? "transparent" : pal.alternateBase
+        }
+
+        // Left watch-progress bar
+        Item {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 3
+
+            // Track (always visible, subtle)
+            Rectangle {
+                anchors.fill: parent
+                color: pal.mid
+                opacity: 0.20
+            }
+
+            // Fill (proportional to episode progress)
+            Rectangle {
+                // episodeFull format: "ONA 1 серия", "TV SP 3 серия", "1 серия", "Фильм", "Трейлер"
+                property real ep: {
+                    var s = (model.episode || "").trim()
+                    if (!s || s === "\u0422\u0440\u0435\u0439\u043b\u0435\u0440") return 0  // empty or "Трейлер"
+                    var m = s.match(/(\d+)\s+\u0441\u0435\u0440\u0438\u044f/)  // "N серия"
+                    if (m) return parseFloat(m[1])
+                    return 1  // "Фильм" or other single-episode strings
+                }
+                property real total: parseFloat(model.total_episodes) || 0
+                property real frac:  (total > 0 && ep > 0) ? Math.min(ep / total, 1.0) : 0
+
+                visible: frac > 0
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: parent.height * frac
+                color: pal.highlight
+                opacity: 0.80
+            }
         }
 
         MouseArea {
@@ -125,16 +185,31 @@ ListView {
 
         RowLayout {
             anchors.fill: parent
-            anchors.margins: 8
+            anchors.leftMargin: 11   // 3px accent + 8px gap
+            anchors.rightMargin: 8
+            anchors.topMargin: 8
+            anchors.bottomMargin: 8
             spacing: 10
 
             // Cover image — clipped rect for aspect-crop
             Rectangle {
-                Layout.preferredWidth: 62
+                Layout.preferredWidth: 68
                 Layout.fillHeight: true
-                radius: 4
+                radius: 5
                 clip: true
                 color: pal.alternateBase
+
+                // Subtle gradient placeholder
+                Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: Qt.rgba(0.5, 0.5, 0.5, 0.08) }
+                        GradientStop { position: 1.0; color: Qt.rgba(0.5, 0.5, 0.5, 0.18) }
+                    }
+                    visible: listItemImage.status !== Image.Ready
+                }
 
                 Image {
                     id: listItemImage
@@ -153,13 +228,22 @@ ListView {
                         }
                     }
                 }
+
+                BusyIndicator {
+                    anchors.centerIn: parent
+                    running: listItemImage.status === Image.Loading
+                    visible: running
+                    width: 24
+                    height: 24
+                    padding: 0
+                }
             }
 
             // Info column
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 3
+                spacing: 4
 
                 // Title
                 Text {
@@ -175,68 +259,84 @@ ListView {
                 Row {
                     spacing: 4
 
-                    // Type badge
+                    // Type badge — colour-coded by type
                     Rectangle {
                         visible: (model.h_type || "") !== ""
-                        radius: 3
-                        width: typeLabel.implicitWidth + 10
-                        height: 18
-                        color: Qt.rgba(0.5, 0.5, 0.5, 0.14)
+                        radius: 4
+                        width: typeLabel.implicitWidth + 12
+                        height: 19
+                        color: {
+                            switch ((model.h_type || "").toLowerCase()) {
+                                case "tv":      return Qt.rgba(0.129, 0.588, 0.953, 0.15)
+                                case "movie":   return Qt.rgba(0.612, 0.153, 0.690, 0.15)
+                                case "ova":     return Qt.rgba(0.000, 0.588, 0.533, 0.15)
+                                case "ona":     return Qt.rgba(0.000, 0.588, 0.533, 0.15)
+                                case "special": return Qt.rgba(1.000, 0.596, 0.000, 0.15)
+                                default:        return Qt.rgba(0.5,   0.5,   0.5,   0.12)
+                            }
+                        }
+                        border.color: Qt.rgba(0.5, 0.5, 0.5, 0.12)
+                        border.width: 1
 
                         Text {
                             id: typeLabel
                             anchors.centerIn: parent
                             text: (model.h_type || "").toUpperCase()
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                             font.bold: true
-                            color: pal.windowText
-                            opacity: 0.60
+                            color: {
+                                switch ((model.h_type || "").toLowerCase()) {
+                                    case "tv":      return "#2196F3"
+                                    case "movie":   return "#9C27B0"
+                                    case "ova":     return "#009688"
+                                    case "ona":     return "#009688"
+                                    case "special": return "#FF9800"
+                                    default:        return pal.windowText
+                                }
+                            }
+                            opacity: 0.85
                         }
                     }
 
                     // Year badge
                     Rectangle {
                         visible: (model.year || 0) > 0
-                        radius: 3
-                        width: yearLabel.implicitWidth + 10
-                        height: 18
-                        color: Qt.rgba(0.5, 0.5, 0.5, 0.14)
+                        radius: 4
+                        width: yearLabel.implicitWidth + 12
+                        height: 19
+                        color: Qt.rgba(0.5, 0.5, 0.5, 0.10)
+                        border.color: Qt.rgba(0.5, 0.5, 0.5, 0.12)
+                        border.width: 1
 
                         Text {
                             id: yearLabel
                             anchors.centerIn: parent
                             text: model.year || ""
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                             color: pal.windowText
                             opacity: 0.60
                         }
                     }
 
-                    // Score badge (green / orange / red)
+                    // Score badge — continuous gradient
                     Rectangle {
                         property real scoreVal: parseFloat(model.score) || 0
+                        property color sc: scoreVal > 0 ? root.scoreColor(scoreVal) : "transparent"
                         visible: scoreVal > 0
-                        radius: 3
-                        width: scoreLabel.implicitWidth + 10
-                        height: 18
-                        color: {
-                            if (scoreVal >= 8.0) return Qt.rgba(0.298, 0.686, 0.314, 0.18)
-                            if (scoreVal >= 6.5) return Qt.rgba(1.0,  0.596, 0.0,   0.18)
-                            return                       Qt.rgba(0.937, 0.325, 0.314, 0.18)
-                        }
+                        radius: 4
+                        width: scoreLabel.implicitWidth + 12
+                        height: 19
+                        color: Qt.rgba(sc.r, sc.g, sc.b, 0.15)
+                        border.color: Qt.rgba(sc.r, sc.g, sc.b, 0.30)
+                        border.width: 1
 
                         Text {
                             id: scoreLabel
                             anchors.centerIn: parent
                             text: "\u2605 " + (parseFloat(model.score) || 0).toFixed(1)
-                            font.pixelSize: 10
+                            font.pixelSize: 11
                             font.bold: true
-                            color: {
-                                var s = parseFloat(model.score) || 0
-                                if (s >= 8.0) return "#4CAF50"
-                                if (s >= 6.5) return "#FF9800"
-                                return "#EF5350"
-                            }
+                            color: parent.sc
                         }
                     }
                 }
@@ -249,8 +349,9 @@ ListView {
                         var ep    = model.episode || ""
                         var total = model.total_episodes || 0
                         var tl    = model.translation || ""
-                        var base  = ep + (total > 0 ? " / " + total : "")
-                        return tl ? base + "  \u00B7  " + tl : base
+                        var m = ep.match(/(\d+)\s+серия/)
+                        var display = m ? m[1] + (total > 0 ? " / " + total : "") : ep
+                        return tl ? display + "  \u00B7  " + tl : display
                     }
                     font.pixelSize: 12
                     color: pal.highlight
@@ -275,7 +376,7 @@ ListView {
                     text: model.genres || ""
                     font.pixelSize: 11
                     color: pal.windowText
-                    opacity: 0.50
+                    opacity: 0.45
                     elide: Text.ElideRight
                 }
 

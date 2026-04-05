@@ -56,6 +56,10 @@ class Anime365:
         self.engine.rootContext().setContextProperty(
             "isWindows", sys.platform == "win32"
         )
+        self.engine.rootContext().setContextProperty(
+            "appIconPath",
+            QUrl.fromLocalFile(str(ICON_PATH)).toString() if ICON_PATH.exists() else ""
+        )
 
         qml_dir = Path(__file__).parent / "qml"
         main_qml = qml_dir / "main.qml"

@@ -1,4 +1,5 @@
 import json
+import re
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -157,21 +158,19 @@ class Database:
             d = _decode(r)
             ep = d.get("episode", "")
             total = d.get("total_episodes", 0) or 0
-            # Parse the episode number from the episode string (e.g. "5" or "OVA 2")
-            parts = ep.rsplit(" ", 1)
+            # episodeFull format: "ONA 1 серия", "TV SP 3 серия", "1 серия", "Фильм", "Трейлер"
             ep_num = 0
-            if parts[-1].isdigit():
-                ep_num = int(parts[-1])
+            if ep and ep != "Трейлер":
+                m = re.search(r"(\d+)\s+серия", ep)
+                if m:
+                    ep_num = int(m.group(1))
+                else:
+                    ep_num = 1  # "Фильм" or other single-episode strings
             # Skip completed series (last episode watched == total episodes, total known)
             if total > 0 and ep_num >= total:
                 continue
-            # Skip single-episode titles (total unknown but only ep 1 of an OVA/ONA/Special)
-            if (
-                total == 0
-                and ep_num == 1
-                and len(parts) == 2
-                and not parts[0].isdigit()
-            ):
+            # Skip single-episode titles (movie/special with total=1 already watched)
+            if total <= 1 and ep_num >= 1 and not re.search(r"серия", ep):
                 continue
             results.append(d)
             if len(results) >= 10:

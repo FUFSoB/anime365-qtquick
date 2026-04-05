@@ -372,18 +372,24 @@ Pane {
             var scripts = results.scripts || []
             subtitleFontScripts = scripts
 
-            var missing = fonts.filter(f => !Qt.fontFamilies().includes(f))
+            // Prefer fontconfig list (same source as MPV/libass); fall back to Qt on Windows
+            var availableSet = results.available !== null && results.available !== undefined
+                ? results.available
+                : Qt.fontFamilies()
+
+            function isAvailable(name) { return availableSet.includes(name) }
+
+            var missing = fonts.filter(f => !isAvailable(f))
             missingSubtitleFonts = missing
             downloadFontsButton.visible = missing.length > 0
             downloadFontsButton.enabled = true
             downloadFontsButton.text = "Download Missing Fonts (" + missing.length + ")"
 
-            var formatted = "Fonts (during application startup):<br><br>" + fonts.map(fontName => {
-                var isAvailable = Qt.fontFamilies().includes(fontName)
-                return isAvailable ?
-                    "\u2714 <b>" + fontName + "</b>" :
-                    "\u274C " + fontName
-            }).join("<br>")
+            var formatted = "Fonts:<br><br>" + fonts.map(name =>
+                isAvailable(name)
+                    ? "\u2714 <b>" + name + "</b>"
+                    : "\u274C " + name
+            ).join("<br>")
             if (scripts.length > 0)
                 formatted += "<br><br>Scripts: " + scripts.join(", ")
 
@@ -808,6 +814,11 @@ Pane {
                                     id: downloadFontsButton
                                     visible: false
                                     text: "Download Missing Fonts"
+
+                                    ToolTip.visible: hovered && missingSubtitleFonts.length > 0
+                                    ToolTip.delay: 500
+                                    ToolTip.text: missingSubtitleFonts.join("\n")
+
                                     onClicked: {
                                         enabled = false
                                         text = "Downloading..."

@@ -342,7 +342,7 @@ class Backend(QObject):
             command.append(f"--sub-file={subs_url}")
 
         if FONTS_DIR.exists():
-            command.append(f"--sub-font-dir={FONTS_DIR}")
+            command.append(f"--sub-fonts-dir={FONTS_DIR}")
 
         extra_args = self.settings.get("mpv_args") or ""
         if extra_args:
@@ -508,15 +508,22 @@ class Backend(QObject):
         name, episode = title.split(" \u2014 ", 1)
         name = re.sub(r"[^\w\d\-_]", "_", name).strip("_")
         pad = len(str(max(episodes_total, 1)))
-        parts = episode.rsplit(" ", 1)
-        if len(parts) == 2 and parts[-1].isdigit():
-            # e.g. "ONA 1", "OVA 2", "Серия 5"
-            prefix = re.sub(r"[^\w\d\-_]", "_", parts[0]).strip("_")
-            num = parts[-1].rjust(pad, "0")
+        # Primary: "PREFIX N серия" format — e.g. "ONA 1 серия", "TV SP 2 серия", "1 серия"
+        m = re.match(r"^(.*?)(\d+)\s+серия$", episode.strip())
+        if m:
+            prefix_raw = m.group(1).strip()
+            num = m.group(2).rjust(pad, "0")
+            prefix = re.sub(r"[^\w\d\-_]", "_", prefix_raw).strip("_")
             ep_part = f"{prefix}_{num}" if prefix else num
-        elif parts[0].isdigit():
-            # bare number e.g. "5"
-            ep_part = parts[0].rjust(pad, "0")
         else:
-            ep_part = re.sub(r"[^\w\d\-_]", "_", episode).strip("_")
+            # Legacy / non-numbered: bare "N", "PREFIX N" (no серия), or "Фильм" etc.
+            parts = episode.rsplit(" ", 1)
+            if len(parts) == 2 and parts[-1].isdigit():
+                prefix = re.sub(r"[^\w\d\-_]", "_", parts[0]).strip("_")
+                num = parts[-1].rjust(pad, "0")
+                ep_part = f"{prefix}_{num}" if prefix else num
+            elif parts[0].isdigit():
+                ep_part = parts[0].rjust(pad, "0")
+            else:
+                ep_part = re.sub(r"[^\w\d\-_]", "_", episode).strip("_")
         return f"{name}-{ep_part}.{ext}"

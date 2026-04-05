@@ -33,13 +33,17 @@ Pane {
         var history = databaseBackend.get_list()
         historyModel.clear()
         for (var i = 0; i < history.length; i++) {
-            historyModel.append(history[i])
+            var h = Object.assign({}, history[i])
+            h.score = parseFloat(h.score) || 0
+            historyModel.append(h)
         }
 
         var cw = databaseBackend.get_continue_watching()
         continueWatchingModel.clear()
         for (var i = 0; i < cw.length; i++) {
-            continueWatchingModel.append(cw[i])
+            var c = Object.assign({}, cw[i])
+            c.score = parseFloat(c.score) || 0
+            continueWatchingModel.append(c)
         }
     }
 
@@ -201,15 +205,15 @@ Pane {
                             text: {
                                 var ep = model.episode || ""
                                 var total = model.total_episodes || 0
-                                var match = ep.match(/\d+/)
-                                if (match) {
-                                    var epNum = parseInt(match[0])
-                                    if (epNum > 0 && (total === 0 || epNum < total)) {
-                                        var nextEp = ep.replace(/\d+/, String(epNum + 1))
-                                        return ep + " \u2192 " + nextEp
-                                    }
+                                var m = ep.match(/(\d+)\s+серия/)
+                                if (m) {
+                                    var epNum = parseInt(m[1])
+                                    var suffix = total > 0 ? " / " + total : ""
+                                    if (epNum > 0 && (total === 0 || epNum < total))
+                                        return epNum + " \u2192 " + (epNum + 1) + suffix
+                                    return epNum + suffix
                                 }
-                                return ep
+                                return ep  // "Фильм" etc.
                             }
                             font.pixelSize: 11
                             color: "white"

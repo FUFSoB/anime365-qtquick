@@ -1,7 +1,9 @@
 import asyncio
+import functools
 import re
 import socket
 import subprocess
+import sys
 import time
 import traceback
 from dataclasses import dataclass, field
@@ -30,6 +32,34 @@ _SUBSET_RANGES: list[tuple[int, int, str]] = [
 
 
 _ALL_SUBSETS = len({s for _, _, s in _SUBSET_RANGES})
+
+
+@functools.lru_cache(maxsize=1)
+def _fc_list_families() -> frozenset[str]:
+    """
+    Return all font family names known to fontconfig, lowercased.
+    Cached for the process lifetime — same source libass/MPV use for font lookup.
+    Returns an empty frozenset on Windows or if fc-list is unavailable.
+    """
+    if sys.platform == "win32":
+        return frozenset()
+    try:
+        r = subprocess.run(
+            ["fc-list", "--format=%{family}\n"],
+            capture_output=True, text=True, timeout=10,
+        )
+        if r.returncode != 0:
+            return frozenset()
+        names: set[str] = set()
+        for line in r.stdout.splitlines():
+            # Each line may be "Primary Name,Localized Name" — accept any variant
+            for part in line.split(","):
+                part = part.strip()
+                if part:
+                    names.add(part.lower())
+        return frozenset(names)
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return frozenset()
 
 
 def _detect_scripts(text: str) -> list[str]:
@@ -466,7 +496,15 @@ async def get_subtitle_fonts(url: str) -> dict:
                     text_parts.append(_ASS_TAG_RE.sub("", raw))
                 scripts = _detect_scripts("\n".join(text_parts))
 
-                return {"fonts": fonts, "scripts": scripts}
+                fc = _fc_list_families()
+                if fc:
+                    # Use fontconfig — same source as MPV/libass
+                    available = [f for f in fonts if f.lower() in fc]
+                else:
+                    # Windows / fc-list unavailable: let QML fall back to Qt.fontFamilies()
+                    available = None
+
+                return {"fonts": fonts, "scripts": scripts, "available": available}
             except Exception as e:
                 print(f"Error parsing subtitle file: {e}")
                 return {"fonts": [], "scripts": []}

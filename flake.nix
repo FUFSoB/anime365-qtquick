@@ -63,6 +63,7 @@
           installPhase = ''
             mkdir -p $out/share/anime365 $out/bin
             cp -r src $out/share/anime365/
+            cp -r resources $out/share/anime365/
             makeWrapper ${pythonEnv}/bin/python $out/bin/anime365 \
               --add-flags "$out/share/anime365/src/main.py" \
               --prefix PATH : "${pkgs.aria2}/bin" \
