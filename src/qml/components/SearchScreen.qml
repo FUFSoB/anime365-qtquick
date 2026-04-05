@@ -8,6 +8,7 @@ Pane {
     padding: 12
 
     function focusSearch() { searchField.forceActiveFocus() }
+    function handleBack() { stackView.pop() }
 
     property var allResults: []
     property string searchError: ""
@@ -19,9 +20,10 @@ Pane {
     property real filterMinScore: 0
 
     property bool hasActiveFilters: filterHideHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
+    property bool isBusy: false
 
     Component.onCompleted: {
-        busyIndicator.running = true
+        isBusy = true
     }
 
     function applyFilterSort() {
@@ -120,12 +122,12 @@ Pane {
             searchError = ""
             allResults = results
             applyFilterSort()
-            busyIndicator.running = false
+            isBusy = false
         }
 
         function onSearch_error(errorMessage) {
             searchError = errorMessage
-            busyIndicator.running = false
+            isBusy = false
         }
     }
 
@@ -138,11 +140,6 @@ Pane {
             Layout.fillWidth: true
             spacing: 8
 
-            StyledButton {
-                text: "\u2190 Back"
-                onClicked: stackView.pop()
-            }
-
             StyledTextField {
                 id: searchField
                 Layout.fillWidth: true
@@ -153,7 +150,7 @@ Pane {
                         searchError = ""
                         searchBackend.perform_search(text.trim())
                         searchQuery = text
-                        busyIndicator.running = true
+                        isBusy = true
                     }
                 }
             }
@@ -165,7 +162,7 @@ Pane {
                         searchError = ""
                         searchBackend.perform_search(searchField.text.trim())
                         searchQuery = searchField.text
-                        busyIndicator.running = true
+                        isBusy = true
                     }
                 }
             }
@@ -336,13 +333,6 @@ Pane {
                         }
                     }
 
-                    BusyIndicator {
-                        id: busyIndicator
-                        running: false
-                        Layout.preferredWidth: 28
-                        Layout.preferredHeight: 28
-                        Layout.leftMargin: 4
-                    }
                 }
             }
         }
@@ -403,7 +393,7 @@ Pane {
             Label {
                 visible: searchError === ""
                 text: {
-                    if (busyIndicator.running) return ""
+                    if (isBusy) return ""
                     if (allResults.length === 0) return ""
                     return searchResultsModel.count + " of " + allResults.length + " results"
                 }

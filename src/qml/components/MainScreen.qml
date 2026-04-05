@@ -7,6 +7,7 @@ Pane {
     padding: 12
 
     function focusSearch() { searchField.forceActiveFocus() }
+    function handleBack() {} // root screen — no action
 
     property string updateTag: ""
     property string updateUrl: ""
@@ -81,23 +82,6 @@ Pane {
             }
         }
 
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            StyledButton {
-                Layout.fillWidth: true
-                text: "Downloads"
-                onClicked: stackView.push(downloadScreen)
-            }
-
-            StyledButton {
-                Layout.fillWidth: true
-                text: "Settings"
-                onClicked: stackView.push(settingsScreen)
-            }
-        }
-
         Pane {
             Layout.fillWidth: true
             visible: updateAvailable
@@ -142,7 +126,7 @@ Pane {
             ListView {
                 id: continueWatchingList
                 Layout.fillWidth: true
-                Layout.preferredHeight: 260
+                Layout.preferredHeight: 248
                 orientation: ListView.Horizontal
                 spacing: 10
                 clip: true
@@ -153,62 +137,67 @@ Pane {
 
                 delegate: Rectangle {
                     id: cwDelegateRoot
-                    width: 180
-                    height: 250
+                    width: 160
+                    height: 240
                     radius: 6
-                    color: cwMouseArea.containsMouse ? palette.highlight : palette.base
+                    clip: true
+                    color: palette.alternateBase
 
                     property bool isDestroyed: false
                     Component.onDestruction: isDestroyed = true
 
-                    MouseArea {
-                        id: cwMouseArea
+                    // Full-bleed cover image
+                    Image {
+                        id: cwImage
                         anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: {
-                            var item = Object.assign({}, model)
-                            item.next_episode = true
-                            stackView.push(animeScreen, { anime: item })
+                        source: model.image_url ? imageCacheBackend.cache_image(model.image_url) : ""
+                        fillMode: Image.PreserveAspectCrop
+                        cache: true
+                        asynchronous: true
+                        Connections {
+                            target: imageCacheBackend
+                            enabled: !cwDelegateRoot.isDestroyed
+                            function onImage_downloaded(origUrl, localUrl) {
+                                if (!cwDelegateRoot.isDestroyed && model.image_url && origUrl === model.image_url)
+                                    cwImage.source = localUrl
+                            }
                         }
                     }
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        spacing: 4
-
-                        Image {
-                            id: cwImage
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 160
-                            source: model.image_url ? imageCacheBackend.cache_image(model.image_url) : ""
-                            fillMode: Image.PreserveAspectFit
-                            cache: true
-                            asynchronous: true
-                            Connections {
-                                target: imageCacheBackend
-                                enabled: !cwDelegateRoot.isDestroyed
-                                function onImage_downloaded(origUrl, localUrl) {
-                                    if (!cwDelegateRoot.isDestroyed && model.image_url && origUrl === model.image_url)
-                                        cwImage.source = localUrl
-                                }
-                            }
+                    // Bottom gradient overlay
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        height: 88
+                        gradient: Gradient {
+                            orientation: Gradient.Vertical
+                            GradientStop { position: 0.0; color: "transparent" }
+                            GradientStop { position: 1.0; color: Qt.rgba(0, 0, 0, 0.78) }
                         }
+                    }
 
-                        Label {
-                            Layout.fillWidth: true
+                    // Text over gradient
+                    Column {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 8
+                        spacing: 2
+
+                        Text {
+                            width: parent.width
                             text: model.title || ""
-                            font.pixelSize: 13
+                            font.pixelSize: 12
                             font.bold: true
+                            color: "white"
                             elide: Text.ElideRight
                             maximumLineCount: 2
                             wrapMode: Text.WordWrap
-                            color: cwMouseArea.containsMouse ? palette.highlightedText : palette.windowText
                         }
 
-                        Label {
-                            Layout.fillWidth: true
+                        Text {
+                            width: parent.width
                             text: {
                                 var ep = model.episode || ""
                                 var total = model.total_episodes || 0
@@ -223,13 +212,54 @@ Pane {
                                 return ep
                             }
                             font.pixelSize: 11
-                            opacity: 0.7
+                            color: "white"
+                            opacity: 0.78
                             elide: Text.ElideRight
-                            color: cwMouseArea.containsMouse ? palette.highlightedText : palette.windowText
+                        }
+                    }
+
+                    // Hover highlight overlay
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: parent.radius
+                        color: cwMouseArea.containsMouse ? Qt.rgba(1, 1, 1, 0.12) : "transparent"
+                        Behavior on color { ColorAnimation { duration: 80 } }
+                    }
+
+                    MouseArea {
+                        id: cwMouseArea
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            var item = Object.assign({}, model)
+                            item.next_episode = true
+                            stackView.push(animeScreen, { anime: item })
                         }
                     }
                 }
             }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            spacing: 8
+            visible: historyModel.count > 0
+
+            Label {
+                text: "Watch History"
+                font.pixelSize: 13
+                font.bold: true
+                opacity: 0.75
+            }
+
+            Label {
+                text: historyModel.count + " titles"
+                font.pixelSize: 11
+                opacity: 0.40
+            }
+
+            Item { Layout.fillWidth: true }
         }
 
         Rectangle {

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
 import "components"
 
 ApplicationWindow {
@@ -9,32 +10,126 @@ ApplicationWindow {
     visible: true
     title: "Anime365"
 
+    function handleBackForCurrentScreen() {
+        var current = stackView.currentItem
+        if (current && typeof current.handleBack === "function") {
+            current.handleBack()
+        } else if (stackView.depth > 1) {
+            stackView.pop()
+        }
+    }
+
+    header: ToolBar {
+        RowLayout {
+            anchors.fill: parent
+            anchors.leftMargin: 4
+            anchors.rightMargin: 8
+            spacing: 0
+
+            ToolButton {
+                id: backButton
+                opacity: stackView.depth > 1 ? 1.0 : 0.0
+                enabled: stackView.depth > 1
+                text: "\u2190"
+                font.pixelSize: 18
+                implicitWidth: 40
+                onClicked: mainWindow.handleBackForCurrentScreen()
+                ToolTip.text: "Back (Esc)"
+                ToolTip.visible: hovered
+                ToolTip.delay: 600
+            }
+
+            Label {
+                text: "Anime365"
+                font.pixelSize: 15
+                font.bold: true
+                leftPadding: 2
+            }
+
+            Item { Layout.fillWidth: true }
+
+            BusyIndicator {
+                id: headerBusyIndicator
+                running: stackView.currentItem && stackView.currentItem.isBusy
+                visible: running
+                implicitWidth: 24
+                implicitHeight: 24
+                Layout.rightMargin: 4
+            }
+
+            ToolButton {
+                text: "\u2302"
+                font.pixelSize: 16
+                implicitWidth: 40
+                visible: stackView.depth > 1
+                onClicked: stackView.pop(null)
+                ToolTip.text: "Home (Ctrl+H)"
+                ToolTip.visible: hovered
+                ToolTip.delay: 600
+            }
+
+            ToolButton {
+                text: "\u2193"
+                font.pixelSize: 14
+                implicitWidth: 40
+                opacity: stackView.currentItem && stackView.currentItem.objectName === "downloadScreen" ? 0.4 : 1.0
+                onClicked: {
+                    if (stackView.currentItem.objectName !== "downloadScreen")
+                        stackView.push(downloadScreen)
+                }
+                ToolTip.text: "Downloads (Ctrl+D)"
+                ToolTip.visible: hovered
+                ToolTip.delay: 600
+            }
+
+            ToolButton {
+                text: "\u2699"
+                font.pixelSize: 16
+                implicitWidth: 40
+                opacity: stackView.currentItem && stackView.currentItem.objectName === "settingsScreen" ? 0.4 : 1.0
+                onClicked: {
+                    if (stackView.currentItem.objectName !== "settingsScreen")
+                        stackView.push(settingsScreen)
+                }
+                ToolTip.text: "Settings (Ctrl+,)"
+                ToolTip.visible: hovered
+                ToolTip.delay: 600
+            }
+        }
+    }
+
     StackView {
         id: stackView
         anchors.fill: parent
         initialItem: mainScreen
+
+        pushEnter: Transition {
+            PropertyAnimation { property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutQuart }
+        }
+        pushExit: Transition {
+            PropertyAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+        }
+        popEnter: Transition {
+            PropertyAnimation { property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutQuart }
+        }
+        popExit: Transition {
+            PropertyAnimation { property: "opacity"; from: 1; to: 0; duration: 100 }
+        }
     }
 
-    Component { id: mainScreen; MainScreen {} }
+    Component { id: mainScreen;     MainScreen {} }
     Component { id: settingsScreen; SettingsScreen {} }
-    Component { id: searchScreen; SearchScreen {} }
-    Component { id: animeScreen; AnimeScreen {} }
+    Component { id: searchScreen;   SearchScreen {} }
+    Component { id: animeScreen;    AnimeScreen {} }
     Component { id: downloadScreen; DownloadScreen {} }
 
-    // Global keyboard shortcuts
     Shortcut {
         sequence: "Escape"
-        onActivated: {
-            if (stackView.depth > 1)
-                stackView.pop()
-        }
+        onActivated: mainWindow.handleBackForCurrentScreen()
     }
     Shortcut {
         sequence: "Alt+Left"
-        onActivated: {
-            if (stackView.depth > 1)
-                stackView.pop()
-        }
+        onActivated: mainWindow.handleBackForCurrentScreen()
     }
     Shortcut {
         sequence: "Ctrl+,"
@@ -48,6 +143,13 @@ ApplicationWindow {
         onActivated: {
             if (stackView.currentItem.objectName !== "downloadScreen")
                 stackView.push(downloadScreen)
+        }
+    }
+    Shortcut {
+        sequence: "Ctrl+H"
+        onActivated: {
+            if (stackView.depth > 1)
+                stackView.pop(null)
         }
     }
     Shortcut {

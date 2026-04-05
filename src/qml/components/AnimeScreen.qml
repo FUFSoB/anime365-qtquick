@@ -29,6 +29,8 @@ Pane {
         }
     }
 
+    function handleBack() { stackView.pop() }
+
     property var anime: ({})
     property var translations: ({})
 
@@ -46,6 +48,7 @@ Pane {
     readonly property bool hasToken: settingsBackend && settingsBackend.get("anime365_token") !== ""
 
     property bool episodeIdsReady: false
+    property bool isBusy: false
 
     property var missingSubtitleFonts: []
     property var subtitleFontScripts: []
@@ -103,7 +106,7 @@ Pane {
 
     Component.onCompleted: {
         if (!anime.episode_list) {
-            busyIndicator.running = true
+            isBusy = true
             episodeDropdown.visible = false
             animeBackend.get_episodes(anime.id)
         } else {
@@ -195,7 +198,7 @@ Pane {
             anime.episode_list = result.episode_list
             anime.episode_ids = result.episode_ids
             episodeIdsReady = true
-            busyIndicator.running = false
+            isBusy = false
 
             // Handle anime with no episodes (unreleased)
             if (!result.episode_list) {
@@ -239,7 +242,7 @@ Pane {
                 }
             }
 
-            busyIndicator.running = false
+            isBusy = false
         }
 
         function onStreams_got(results, isForOtherVideo) {
@@ -291,7 +294,7 @@ Pane {
                 }
             }
 
-            busyIndicator.running = false
+            isBusy = false
         }
 
         function onPlayback_finished(completed) {
@@ -418,25 +421,6 @@ Pane {
     ColumnLayout {
         anchors.fill: parent
         spacing: 12
-
-        RowLayout {
-            Layout.fillWidth: true
-            spacing: 12
-
-            StyledButton {
-                text: "\u2190 Back"
-                onClicked: stackView.pop()
-            }
-
-            Item { Layout.fillWidth: true }
-
-            BusyIndicator {
-                id: busyIndicator
-                running: false
-                Layout.preferredWidth: 32
-                Layout.preferredHeight: 32
-            }
-        }
 
         ScrollView {
             Layout.fillWidth: true
@@ -588,7 +572,7 @@ Pane {
                                 qualityDropdown.visible = false
                                 urlsContainer.visible = false
 
-                                busyIndicator.running = true
+                                isBusy = true
 
                                 // Persist episode selection immediately so it survives navigation
                                 // even if the user never reaches quality selection.
@@ -670,7 +654,7 @@ Pane {
                             qualityDropdown.visible = false
                             urlsContainer.visible = false
 
-                            busyIndicator.running = true
+                            isBusy = true
 
                             var item = translations[value]
                             animeBackend.get_streams(item.id, false)
@@ -696,7 +680,7 @@ Pane {
                                 videoStreamSelected = videoSourceDropdown.selectedValue
                             }
 
-                            busyIndicator.running = true
+                            isBusy = true
 
                             var item = translations[value - 1]
                             animeBackend.get_streams(item.id, true)
