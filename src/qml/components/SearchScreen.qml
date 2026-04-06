@@ -14,12 +14,12 @@ Pane {
     property string searchError: ""
     property string currentSort: "year"
     property bool sortAscending: false
-    property bool filterHideHentai: false
+    property bool filterShowHentai: false
     property bool filterHideUnreleased: true
     property var filterTypes: []
     property real filterMinScore: 0
 
-    property bool hasActiveFilters: filterHideHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
+    property bool hasActiveFilters: filterShowHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
     property bool isBusy: false
 
     Component.onCompleted: {
@@ -30,9 +30,9 @@ Pane {
         var results = allResults.slice()
 
         if (filterHideUnreleased) {
-            results = results.filter(r => r.year > 0 && r.total_episodes > 0)
+            results = results.filter(r => (r.episode_list || "") !== "")
         }
-        if (filterHideHentai) {
+        if (!filterShowHentai) {
             results = results.filter(r => !r.hentai)
         }
         if (filterTypes.length > 0) {
@@ -339,10 +339,10 @@ Pane {
                     }
 
                     Chip {
-                        label: filterHideHentai ? "Hide hentai" : "Hentai"
-                        active: filterHideHentai
+                        label: "Hentai"
+                        active: filterShowHentai
                         onActivated: {
-                            filterHideHentai = !filterHideHentai
+                            filterShowHentai = !filterShowHentai
                             applyFilterSort()
                         }
                     }
@@ -354,7 +354,7 @@ Pane {
                         label: "Reset filters"
                         active: false
                         onActivated: {
-                            filterHideHentai = false
+                            filterShowHentai = false
                             filterHideUnreleased = true
                             filterTypes = []
                             filterMinScore = 0
@@ -373,6 +373,46 @@ Pane {
             Layout.fillHeight: true
             color: palette.base
             radius: 4
+
+            // Empty state
+            Column {
+                anchors.centerIn: parent
+                spacing: 8
+                visible: !isBusy && searchResultsModel.count === 0
+
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: searchError !== "" ? "\u26A0" : (searchQuery !== "" ? "\uD83D\uDD0D" : "\u2315")
+                    font.pixelSize: 40
+                    opacity: 0.18
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: searchError !== ""           ? "Search failed"
+                        : searchQuery !== ""           ? "No results for \u201C" + searchQuery + "\u201D"
+                        :                                "Search for anime"
+                    font.pixelSize: 15
+                    opacity: 0.40
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: searchResultsModel.count === 0 && allResults.length > 0
+                    text: "All results filtered out \u2014 try clearing filters"
+                    font.pixelSize: 11
+                    opacity: 0.28
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    visible: searchError !== ""
+                    text: searchError
+                    font.pixelSize: 11
+                    color: "#EF5350"
+                    opacity: 0.75
+                    wrapMode: Text.WordWrap
+                    width: 260
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
 
             CustomListView {
                 id: searchResultsList

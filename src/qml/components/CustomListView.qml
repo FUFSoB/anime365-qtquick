@@ -58,7 +58,7 @@ ListView {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            width: 3
+            width: 2
 
             // Track (always visible, subtle)
             Rectangle {
@@ -264,18 +264,24 @@ ListView {
                         visible: (model.h_type || "") !== ""
                         radius: 4
                         width: typeLabel.implicitWidth + 12
-                        height: 19
+                        height: 20
+                        property string t: (model.h_type || "").toLowerCase()
                         color: {
-                            switch ((model.h_type || "").toLowerCase()) {
-                                case "tv":      return Qt.rgba(0.129, 0.588, 0.953, 0.15)
-                                case "movie":   return Qt.rgba(0.612, 0.153, 0.690, 0.15)
-                                case "ova":     return Qt.rgba(0.000, 0.588, 0.533, 0.15)
-                                case "ona":     return Qt.rgba(0.000, 0.588, 0.533, 0.15)
-                                case "special": return Qt.rgba(1.000, 0.596, 0.000, 0.15)
-                                default:        return Qt.rgba(0.5,   0.5,   0.5,   0.12)
+                            switch (t) {
+                                case "tv":    return Qt.rgba(0.129, 0.588, 0.953, 0.18)
+                                case "movie": return Qt.rgba(0.612, 0.153, 0.690, 0.18)
+                                case "ova":
+                                case "ona":   return Qt.rgba(0.000, 0.588, 0.533, 0.13)
+                                default:      return Qt.rgba(0.5,   0.5,   0.5,   0.10)
                             }
                         }
-                        border.color: Qt.rgba(0.5, 0.5, 0.5, 0.12)
+                        border.color: {
+                            switch (t) {
+                                case "tv":    return Qt.rgba(0.129, 0.588, 0.953, 0.35)
+                                case "movie": return Qt.rgba(0.612, 0.153, 0.690, 0.35)
+                                default:      return Qt.rgba(0.5,   0.5,   0.5,   0.15)
+                            }
+                        }
                         border.width: 1
 
                         Text {
@@ -285,13 +291,12 @@ ListView {
                             font.pixelSize: 11
                             font.bold: true
                             color: {
-                                switch ((model.h_type || "").toLowerCase()) {
-                                    case "tv":      return "#2196F3"
-                                    case "movie":   return "#9C27B0"
-                                    case "ova":     return "#009688"
-                                    case "ona":     return "#009688"
-                                    case "special": return "#FF9800"
-                                    default:        return pal.windowText
+                                switch (parent.t) {
+                                    case "tv":    return "#2196F3"
+                                    case "movie": return "#9C27B0"
+                                    case "ova":
+                                    case "ona":   return "#009688"
+                                    default:      return pal.windowText
                                 }
                             }
                             opacity: 0.85
@@ -303,9 +308,9 @@ ListView {
                         visible: (model.year || 0) > 0
                         radius: 4
                         width: yearLabel.implicitWidth + 12
-                        height: 19
+                        height: 20
                         color: Qt.rgba(0.5, 0.5, 0.5, 0.10)
-                        border.color: Qt.rgba(0.5, 0.5, 0.5, 0.12)
+                        border.color: Qt.rgba(0.5, 0.5, 0.5, 0.15)
                         border.width: 1
 
                         Text {
@@ -314,7 +319,7 @@ ListView {
                             text: model.year || ""
                             font.pixelSize: 11
                             color: pal.windowText
-                            opacity: 0.60
+                            opacity: 0.65
                         }
                     }
 
@@ -325,7 +330,7 @@ ListView {
                         visible: scoreVal > 0
                         radius: 4
                         width: scoreLabel.implicitWidth + 12
-                        height: 19
+                        height: 20
                         color: Qt.rgba(sc.r, sc.g, sc.b, 0.15)
                         border.color: Qt.rgba(sc.r, sc.g, sc.b, 0.30)
                         border.width: 1

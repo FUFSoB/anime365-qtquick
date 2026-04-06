@@ -48,8 +48,15 @@ Item {
         id: header
         width: parent.width
         height: parent.height
-        color: pal.button
-        radius: 4
+        color: headerMouse.containsMouse ? Qt.lighter(pal.button, 1.06) : pal.button
+        radius: 6
+        border.width: 1
+        border.color: dropdown.isOpen ? pal.highlight
+                    : headerMouse.containsMouse ? Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.5)
+                    : pal.mid
+
+        Behavior on color        { ColorAnimation { duration: 80 } }
+        Behavior on border.color { ColorAnimation { duration: 80 } }
 
         Row {
             anchors.fill: parent
@@ -61,7 +68,7 @@ Item {
                 width: parent.width - arrow.width - parent.spacing
                 height: parent.height
                 text: selectedValue || placeholder
-                color: pal.buttonText
+                color: selectedValue ? pal.buttonText : Qt.rgba(pal.buttonText.r, pal.buttonText.g, pal.buttonText.b, 0.5)
                 font.pixelSize: 14
                 verticalAlignment: Text.AlignVCenter
                 elide: Text.ElideRight
@@ -72,27 +79,24 @@ Item {
                 width: 12
                 height: parent.height
                 text: dropdown.isOpen ? "\u25B2" : "\u25BC"
-                color: pal.buttonText
-                font.pixelSize: 12
+                color: pal.mid
+                font.pixelSize: 10
                 verticalAlignment: Text.AlignVCenter
             }
         }
 
         MouseArea {
+            id: headerMouse
             anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
             property bool wasOpenOnPress: false
-            onPressed: {
-                wasOpenOnPress = dropdownPopup.visible
-            }
+            onPressed: { wasOpenOnPress = dropdownPopup.visible }
             onClicked: {
-                if (wasOpenOnPress) {
-                    // popup was already closed by CloseOnPressOutside, don't reopen
-                    return
-                }
+                if (wasOpenOnPress) return
                 dropdownPopup.open()
-                if (selectedIndex >= 0) {
+                if (selectedIndex >= 0)
                     listView.positionViewAtIndex(selectedIndex, ListView.Center)
-                }
             }
         }
     }
@@ -164,15 +168,32 @@ Item {
                 delegate: Rectangle {
                     width: dropdown.width
                     height: 36
-                    color: mouseArea.containsMouse ? pal.highlight
-                         : (modelData === dropdown.selectedValue ? pal.mid : "transparent")
+                    color: mouseArea.containsMouse
+                         ? pal.highlight
+                         : modelData === dropdown.selectedValue
+                           ? Qt.rgba(pal.highlight.r, pal.highlight.g, pal.highlight.b, 0.15)
+                           : "transparent"
+
+                    // Selected indicator bar
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.top: parent.top
+                        anchors.bottom: parent.bottom
+                        width: 2
+                        color: pal.highlight
+                        visible: modelData === dropdown.selectedValue && !mouseArea.containsMouse
+                    }
 
                     Text {
                         anchors.fill: parent
-                        anchors.margins: 8
+                        anchors.leftMargin: modelData === dropdown.selectedValue ? 10 : 8
+                        anchors.rightMargin: 8
                         text: modelData
-                        color: mouseArea.containsMouse ? pal.highlightedText : pal.text
+                        color: mouseArea.containsMouse ? pal.highlightedText
+                             : modelData === dropdown.selectedValue ? pal.highlight
+                             : pal.text
                         font.pixelSize: 14
+                        font.bold: modelData === dropdown.selectedValue
                         verticalAlignment: Text.AlignVCenter
                         elide: Text.ElideRight
                     }

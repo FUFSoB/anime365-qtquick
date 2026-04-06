@@ -31,6 +31,28 @@ Pane {
 
     function handleBack() { stackView.pop() }
 
+    function scoreColor(score) {
+        var s = Math.max(0, Math.min(10, parseFloat(score) || 0))
+        var r, g, b
+        if (s >= 7.5) {
+            var t = (s - 7.5) / 2.5
+            r = 0.298 * (1 - t)
+            g = 0.686 + t * (0.902 - 0.686)
+            b = 0.314 + t * (0.463 - 0.314)
+        } else if (s >= 6.0) {
+            var t = (s - 6.0) / 1.5
+            r = 1.000 - t * (1.000 - 0.298)
+            g = 0.596 + t * (0.686 - 0.596)
+            b = t * 0.314
+        } else {
+            var t = s / 6.0
+            r = 0.827 + t * (1.000 - 0.827)
+            g = 0.184 + t * (0.596 - 0.184)
+            b = 0.184 * (1 - t)
+        }
+        return Qt.rgba(r, g, b, 1.0)
+    }
+
     property var anime: ({})
     property var translations: ({})
 
@@ -439,22 +461,30 @@ Pane {
 
                 RowLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 200
-                    spacing: 12
+                    Layout.preferredHeight: 210
+                    spacing: 14
 
-                    Image {
-                        id: coverImage
+                    // Cover image — clipped, rounded, aspect-cropped
+                    Rectangle {
                         Layout.preferredWidth: 140
                         Layout.fillHeight: true
-                        source: imageCacheBackend.cache_image(anime.image_url)
-                        fillMode: Image.PreserveAspectFit
-                        cache: true
-                        asynchronous: true
-                        Connections {
-                            target: imageCacheBackend
-                            function onImage_downloaded(origUrl, localUrl) {
-                                if (origUrl === anime.image_url)
-                                    coverImage.source = localUrl
+                        radius: 6
+                        clip: true
+                        color: palette.alternateBase
+
+                        Image {
+                            id: coverImage
+                            anchors.fill: parent
+                            source: imageCacheBackend.cache_image(anime.image_url)
+                            fillMode: Image.PreserveAspectCrop
+                            cache: true
+                            asynchronous: true
+                            Connections {
+                                target: imageCacheBackend
+                                function onImage_downloaded(origUrl, localUrl) {
+                                    if (origUrl === anime.image_url)
+                                        coverImage.source = localUrl
+                                }
                             }
                         }
 
@@ -468,87 +498,240 @@ Pane {
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        spacing: 12
+                        spacing: 8
 
+                        // Title
+                        Label {
+                            text: anime.title
+                            font.pixelSize: 20
+                            font.bold: true
+                            Layout.fillWidth: true
+                            wrapMode: Text.WordWrap
+                            maximumLineCount: 2
+                            elide: Text.ElideRight
+                        }
+
+                        // Metadata badges row
+                        Row {
+                            spacing: 5
+
+                            // Score badge
+                            Rectangle {
+                                property real sv: parseFloat(anime.score) || 0
+                                property color sc: sv > 0 ? scoreColor(sv) : "transparent"
+                                visible: sv > 0
+                                radius: 4
+                                width: scoreBadgeLabel.implicitWidth + 12
+                                height: 20
+                                color: Qt.rgba(sc.r, sc.g, sc.b, 0.15)
+                                border.color: Qt.rgba(sc.r, sc.g, sc.b, 0.30)
+                                border.width: 1
+
+                                Label {
+                                    id: scoreBadgeLabel
+                                    anchors.centerIn: parent
+                                    text: "\u2605 " + (parseFloat(parent.sv) || 0).toFixed(1)
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    color: parent.sc
+                                }
+                            }
+
+                            // Type badge
+                            Rectangle {
+                                visible: (anime.h_type || anime.type || "") !== ""
+                                radius: 4
+                                width: typeBadgeLabel.implicitWidth + 12
+                                height: 20
+                                property string t: (anime.h_type || anime.type || "").toLowerCase()
+                                color: {
+                                    switch (t) {
+                                        case "tv":    return Qt.rgba(0.129, 0.588, 0.953, 0.18)
+                                        case "movie": return Qt.rgba(0.612, 0.153, 0.690, 0.18)
+                                        case "ova":
+                                        case "ona":   return Qt.rgba(0.000, 0.588, 0.533, 0.13)
+                                        default:      return Qt.rgba(0.5,   0.5,   0.5,   0.10)
+                                    }
+                                }
+                                border.color: {
+                                    switch (t) {
+                                        case "tv":    return Qt.rgba(0.129, 0.588, 0.953, 0.35)
+                                        case "movie": return Qt.rgba(0.612, 0.153, 0.690, 0.35)
+                                        default:      return Qt.rgba(0.5,   0.5,   0.5,   0.15)
+                                    }
+                                }
+                                border.width: 1
+
+                                Label {
+                                    id: typeBadgeLabel
+                                    anchors.centerIn: parent
+                                    text: (anime.h_type || anime.type || "").toUpperCase()
+                                    font.pixelSize: 11
+                                    font.bold: true
+                                    color: {
+                                        switch (parent.t) {
+                                            case "tv":    return "#2196F3"
+                                            case "movie": return "#9C27B0"
+                                            case "ova":
+                                            case "ona":   return "#009688"
+                                            default:      return palette.windowText
+                                        }
+                                    }
+                                    opacity: 0.85
+                                }
+                            }
+
+                            // Year badge
+                            Rectangle {
+                                visible: (anime.year || 0) > 0
+                                radius: 4
+                                width: yearBadgeLabel.implicitWidth + 12
+                                height: 20
+                                color: Qt.rgba(0.5, 0.5, 0.5, 0.10)
+                                border.color: Qt.rgba(0.5, 0.5, 0.5, 0.15)
+                                border.width: 1
+
+                                Label {
+                                    id: yearBadgeLabel
+                                    anchors.centerIn: parent
+                                    text: anime.year || ""
+                                    font.pixelSize: 11
+                                    color: palette.windowText
+                                    opacity: 0.65
+                                }
+                            }
+
+                            // Episode count badge
+                            Rectangle {
+                                visible: (anime.total_episodes || 0) > 0
+                                radius: 4
+                                width: epsBadgeLabel.implicitWidth + 12
+                                height: 20
+                                color: Qt.rgba(0.5, 0.5, 0.5, 0.10)
+                                border.color: Qt.rgba(0.5, 0.5, 0.5, 0.15)
+                                border.width: 1
+
+                                Label {
+                                    id: epsBadgeLabel
+                                    anchors.centerIn: parent
+                                    text: anime.total_episodes + " ep"
+                                    font.pixelSize: 11
+                                    color: palette.windowText
+                                    opacity: 0.65
+                                }
+                            }
+                        }
+
+                        // Watch progress bar
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            visible: {
+                                var ep = anime.episode || ""
+                                var m = ep.match(/(\d+)\s+серия/)
+                                return m !== null && (anime.total_episodes || 0) > 0
+                            }
+
+                            Item {
+                                Layout.fillWidth: true
+                                height: 2
+
+                                property real frac: {
+                                    var ep = anime.episode || ""
+                                    var m = ep.match(/(\d+)\s+серия/)
+                                    var total = anime.total_episodes || 0
+                                    return (m && total > 0) ? Math.min(parseInt(m[1]) / total, 1.0) : 0
+                                }
+
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: palette.mid
+                                    opacity: 0.20
+                                }
+                                Rectangle {
+                                    x: 0; y: 0
+                                    height: parent.height
+                                    width: parent.width * parent.frac
+                                    color: palette.highlight
+                                    opacity: 0.80
+                                }
+                            }
+
+                            Label {
+                                font.pixelSize: 11
+                                opacity: 0.55
+                                text: {
+                                    var ep = anime.episode || ""
+                                    var m = ep.match(/(\d+)\s+серия/)
+                                    var total = anime.total_episodes || 0
+                                    return m ? m[1] + " / " + total + " watched" : ""
+                                }
+                            }
+                        }
+
+                        // Description
                         ScrollView {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             clip: true
 
-                            ColumnLayout {
-                                width: parent.width
-                                spacing: 8
-
-                                Label {
-                                    text: anime.title
-                                    font.pixelSize: 24
-                                    font.bold: true
-                                    Layout.fillWidth: true
-                                    wrapMode: Text.WordWrap
-                                }
-
-                                Label {
-                                    text: anime.description
-                                    font.pixelSize: 14
-                                    wrapMode: Text.WordWrap
-                                    Layout.fillWidth: true
-                                    opacity: 0.7
-                                }
+                            Label {
+                                width: parent.parent.width
+                                text: anime.description
+                                font.pixelSize: 13
+                                wrapMode: Text.WordWrap
+                                opacity: 0.72
                             }
                         }
 
-                        // External site links
+                        // External site links — chip style
                         Flow {
                             Layout.fillWidth: true
-                            spacing: 8
+                            spacing: 6
 
-                            Label {
-                                text: `<a href='${anime.anime365_url || ""}'>anime365</a>`
-                                visible: (anime.anime365_url || "") !== ""
-                                textFormat: Text.RichText
-                                onLinkActivated: (url) => Qt.openUrlExternally(url)
-                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
+                            component LinkChip: Rectangle {
+                                property string label: ""
+                                property string url: ""
+                                property bool _hov: false
+
+                                visible: url !== ""
+                                radius: 4
+                                width: _lbl.implicitWidth + 16
+                                height: 22
+                                color: _hov ? Qt.rgba(palette.highlight.r, palette.highlight.g, palette.highlight.b, 0.12)
+                                            : "transparent"
+                                border.color: _hov ? palette.highlight : palette.mid
+                                border.width: 1
+                                Behavior on color        { ColorAnimation { duration: 80 } }
+                                Behavior on border.color { ColorAnimation { duration: 80 } }
+
+                                Label {
+                                    id: _lbl
+                                    anchors.centerIn: parent
+                                    text: parent.label
+                                    font.pixelSize: 11
+                                    color: _hov ? palette.highlight : palette.windowText
+                                    opacity: _hov ? 1.0 : 0.65
+                                    Behavior on color   { ColorAnimation { duration: 80 } }
+                                    Behavior on opacity { NumberAnimation  { duration: 80 } }
+                                }
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    onEntered: parent._hov = true
+                                    onExited:  parent._hov = false
+                                    onClicked: Qt.openUrlExternally(parent.url)
+                                }
                             }
 
-                            Label {
-                                text: `<a href='https://shikimori.io/animes/${anime.mal_id}'>Shikimori</a>`
-                                visible: (anime.mal_id || 0) > 0
-                                textFormat: Text.RichText
-                                onLinkActivated: (url) => Qt.openUrlExternally(url)
-                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                            }
-
-                            Label {
-                                text: `<a href='https://myanimelist.net/anime/${anime.mal_id}'>MAL</a>`
-                                visible: (anime.mal_id || 0) > 0
-                                textFormat: Text.RichText
-                                onLinkActivated: (url) => Qt.openUrlExternally(url)
-                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                            }
-
-                            Label {
-                                text: `<a href='https://anidb.net/anime/${anime.anidb_id}'>AniDB</a>`
-                                visible: (anime.anidb_id || 0) > 0
-                                textFormat: Text.RichText
-                                onLinkActivated: (url) => Qt.openUrlExternally(url)
-                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                            }
-
-                            Label {
-                                text: `<a href='http://www.world-art.ru/animation/animation.php?id=${anime.world_art_id}'>World Art</a>`
-                                visible: (anime.world_art_id || 0) > 0
-                                textFormat: Text.RichText
-                                onLinkActivated: (url) => Qt.openUrlExternally(url)
-                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                            }
-
-                            Label {
-                                text: `<a href='https://www.animenewsnetwork.com/encyclopedia/anime.php?id=${anime.ann_id}'>ANN</a>`
-                                visible: (anime.ann_id || 0) > 0
-                                textFormat: Text.RichText
-                                onLinkActivated: (url) => Qt.openUrlExternally(url)
-                                HoverHandler { cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor }
-                            }
+                            LinkChip { label: "anime365";  url: anime.anime365_url || "" }
+                            LinkChip { label: "Shikimori"; url: (anime.mal_id || 0) > 0 ? "https://shikimori.io/animes/" + anime.mal_id : "" }
+                            LinkChip { label: "MAL";       url: (anime.mal_id || 0) > 0 ? "https://myanimelist.net/anime/" + anime.mal_id : "" }
+                            LinkChip { label: "AniDB";     url: (anime.anidb_id || 0) > 0 ? "https://anidb.net/anime/" + anime.anidb_id : "" }
+                            LinkChip { label: "World Art"; url: (anime.world_art_id || 0) > 0 ? "http://www.world-art.ru/animation/animation.php?id=" + anime.world_art_id : "" }
+                            LinkChip { label: "ANN";       url: (anime.ann_id || 0) > 0 ? "https://www.animenewsnetwork.com/encyclopedia/anime.php?id=" + anime.ann_id : "" }
                         }
                     }
                 }

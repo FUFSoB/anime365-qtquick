@@ -19,6 +19,11 @@ ApplicationWindow {
         }
     }
 
+    Shortcut {
+        sequence: "Escape"
+        onActivated: handleBackForCurrentScreen()
+    }
+
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
