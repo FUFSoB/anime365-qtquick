@@ -73,8 +73,6 @@ Pane {
     property bool isBusy: false
 
     property var missingSubtitleFonts: []
-    property var subtitleFontScripts: []
-    property var fontStatuses: ({})  // font_name -> "downloading"|"done"|"failed"
 
     property string localVideoPath: ""
     property string localSubsPath: ""
@@ -392,7 +390,6 @@ Pane {
         function onSubtitle_fonts_got(results) {
             var fonts = results.fonts || []
             var scripts = results.scripts || []
-            subtitleFontScripts = scripts
 
             // Prefer fontconfig list (same source as MPV/libass); fall back to Qt on Windows
             var availableSet = results.available !== null && results.available !== undefined
@@ -403,9 +400,6 @@ Pane {
 
             var missing = fonts.filter(f => !isAvailable(f))
             missingSubtitleFonts = missing
-            downloadFontsButton.visible = missing.length > 0
-            downloadFontsButton.enabled = true
-            downloadFontsButton.text = "Download Missing Fonts (" + missing.length + ")"
 
             var formatted = "Fonts:<br><br>" + fonts.map(name =>
                 isAvailable(name)
@@ -417,32 +411,6 @@ Pane {
 
             subsUrlField.ToolTip.text = formatted
             subsUrlField.ToolTip.textFormat = Text.RichText
-        }
-
-        function onFont_status(fontName, status) {
-            var s = Object.assign({}, fontStatuses)
-            s[fontName] = status
-            fontStatuses = s
-            _refreshFontStatusLabel()
-        }
-
-        function onFonts_downloaded(result) {
-            missingSubtitleFonts = result.not_found || []
-            downloadFontsButton.visible = false
-            downloadFontsButton.enabled = true
-            _refreshFontStatusLabel()
-        }
-
-        function _refreshFontStatusLabel() {
-            var names = Object.keys(fontStatuses)
-            if (names.length === 0) { fontsStatusLabel.text = ""; return }
-            var lines = names.map(name => {
-                var s = fontStatuses[name]
-                if (s === "done")        return '<font color="#4caf50">\u2714 ' + name + '</font>'
-                if (s === "failed")      return '<font color="#f44336">\u2716 ' + name + '</font>'
-                return '<font color="gray">\u22ef ' + name + '</font>'
-            })
-            fontsStatusLabel.text = lines.join("<br>")
         }
     }
 
@@ -899,15 +867,10 @@ Pane {
                             if (subs !== undefined) {
                                 subsRow.visible = true
                                 subsUrlField.text = subs
-                                downloadFontsButton.visible = false
-                                fontsStatusLabel.text = ""
-                                fontStatuses = {}
                                 missingSubtitleFonts = []
-                                subtitleFontScripts = []
                                 animeBackend.get_subtitle_fonts(subs)
                             } else {
                                 subsRow.visible = false
-                                downloadFontsButton.visible = false
                             }
 
                             qualitySelected = qualityDropdown.selectedValue
@@ -994,37 +957,24 @@ Pane {
                                 }
 
                                 StyledButton {
-                                    id: downloadFontsButton
-                                    visible: false
-                                    text: "Download Missing Fonts"
+                                    id: searchFontsButton
+                                    visible: missingSubtitleFonts.length > 0
+                                    text: "Search Missing Fonts (" + missingSubtitleFonts.length + ")"
 
-                                    ToolTip.visible: hovered && missingSubtitleFonts.length > 0
+                                    ToolTip.visible: hovered
                                     ToolTip.delay: 500
                                     ToolTip.text: missingSubtitleFonts.join("\n")
 
                                     onClicked: {
-                                        enabled = false
-                                        text = "Downloading..."
-                                        fontStatuses = {}
-                                        fontsStatusLabel.text = ""
-                                        animeBackend.download_missing_fonts(
-                                            missingSubtitleFonts,
-                                            subtitleFontScripts
-                                        )
+                                        for (var i = 0; i < missingSubtitleFonts.length; i++) {
+                                            Qt.openUrlExternally(
+                                                "https://www.google.com/search?q=" +
+                                                encodeURIComponent(missingSubtitleFonts[i] + " font download")
+                                            )
+                                        }
                                     }
                                 }
 
-                            }
-
-                            Label {
-                                id: fontsStatusLabel
-                                Layout.fillWidth: true
-                                visible: text !== ""
-                                text: ""
-                                font.pixelSize: 11
-                                opacity: 0.85
-                                wrapMode: Text.WordWrap
-                                textFormat: Text.RichText
                             }
 
                             RowLayout {
