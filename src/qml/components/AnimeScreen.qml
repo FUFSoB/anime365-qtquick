@@ -33,6 +33,13 @@ Pane {
 
     Globals { id: globals }
 
+    Component.onDestruction: {
+        if (typeof mpvTimer !== "undefined") mpvTimer.stop()
+        if (typeof vlcTimer !== "undefined") vlcTimer.stop()
+        if (typeof mpcTimer !== "undefined") mpcTimer.stop()
+        if (typeof noticeTimer !== "undefined") noticeTimer.stop()
+    }
+
     property var anime: ({})
     property var translations: ({})
 
@@ -62,6 +69,7 @@ Pane {
     property int episodeDownloadSpeed: 0
     property int episodeDownloaded: 0
     property int episodeDownloadTotal: 0
+    property string episodeDownloadGid: ""  // GID for cancellation
 
     function checkLocalFiles() {
         localVideoPath = ""
@@ -159,6 +167,7 @@ Pane {
             episodeDownloadSpeed = 0
             episodeDownloaded = 0
             episodeDownloadTotal = 0
+            episodeDownloadGid = ""
             for (var i = 0; i < items.length; i++) {
                 var fn = items[i].filename
                 if (fn.startsWith(baseStem) && (fn.endsWith(".mp4") || fn.endsWith(".mkv") || fn.endsWith(".webm"))) {
@@ -167,6 +176,7 @@ Pane {
                         episodeDownloadSpeed = items[i].speed
                         episodeDownloaded = items[i].downloaded
                         episodeDownloadTotal = items[i].total_size
+                        episodeDownloadGid = items[i].gid || ""
                     }
                     break
                 }
@@ -346,6 +356,10 @@ Pane {
         }
 
         function onBatch_complete() {
+            batchDownloadButton.batchBusy = false
+        }
+
+        function onBatch_cancelled() {
             batchDownloadButton.batchBusy = false
         }
 
@@ -715,32 +729,36 @@ Pane {
 
                         StyledButton {
                             id: batchDownloadButton
-                            text: batchBusy ? ("Fetching " + batchCurrent + "/" + batchTotal + "...") : "Download All"
+                            text: batchBusy ? "Cancel" : "Download All"
                             visible: episodeIdsReady
-                            enabled: !batchBusy && urlsContainer.visible
+                            enabled: batchBusy || urlsContainer.visible
                             property bool batchBusy: false
                             property int batchCurrent: 0
                             property int batchTotal: 0
                             property int batchSkipped: 0
                             property string batchStoppedAt: ""
-                            ToolTip.visible: hovered && !urlsContainer.visible
-                            ToolTip.text: "Select an episode, team and quality first"
+                            ToolTip.visible: hovered && (batchBusy || !urlsContainer.visible)
+                            ToolTip.text: batchBusy ? ("Fetching " + batchCurrent + "/" + batchTotal + "...") : "Select an episode, team and quality first"
                             ToolTip.delay: 600
                             onClicked: {
-                                batchBusy = true
-                                batchSkipped = 0
-                                batchStoppedAt = ""
-                                var startIdx = Math.max(0, episodeDropdown.selectedIndex)
-                                var allIds = anime.episode_ids.split(";")
-                                var allNames = anime.episode_list.split(";")
-                                var ids = allIds.slice(startIdx).join(";")
-                                var names = allNames.slice(startIdx).join(";")
-                                animeBackend.batch_download(
-                                    ids,
-                                    names,
-                                    streamSelected,
-                                    qualitySelected
-                                )
+                                if (batchBusy) {
+                                    animeBackend.cancel_batch_download()
+                                } else {
+                                    batchBusy = true
+                                    batchSkipped = 0
+                                    batchStoppedAt = ""
+                                    var startIdx = Math.max(0, episodeDropdown.selectedIndex)
+                                    var allIds = anime.episode_ids.split(";")
+                                    var allNames = anime.episode_list.split(";")
+                                    var ids = allIds.slice(startIdx).join(";")
+                                    var names = allNames.slice(startIdx).join(";")
+                                    animeBackend.batch_download(
+                                        ids,
+                                        names,
+                                        streamSelected,
+                                        qualitySelected
+                                    )
+                                }
                             }
                         }
                     }
@@ -956,7 +974,7 @@ Pane {
                                 }
 
                                 Label {
-                                    Layout.preferredWidth: 180
+                                    Layout.preferredWidth: 150
                                     horizontalAlignment: Text.AlignRight
                                     text: {
                                         var parts = []
@@ -968,6 +986,15 @@ Pane {
                                     }
                                     font.pixelSize: 12
                                     opacity: 0.7
+                                }
+
+                                StyledButton {
+                                    text: "Cancel"
+                                    enabled: episodeDownloadGid !== ""
+                                    onClicked: {
+                                        if (episodeDownloadGid)
+                                            downloaderBackend.cancel_download(episodeDownloadGid)
+                                    }
                                 }
                             }
 

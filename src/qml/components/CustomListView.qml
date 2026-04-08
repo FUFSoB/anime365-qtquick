@@ -169,52 +169,12 @@ ListView {
             anchors.bottomMargin: 8
             spacing: 10
 
-            // Cover image — clipped rect for aspect-crop
-            Rectangle {
+            // Cover image
+            AsyncImage {
                 Layout.preferredWidth: 68
                 Layout.fillHeight: true
                 radius: 5
-                clip: true
-                color: pal.alternateBase
-
-                // Subtle gradient placeholder
-                Rectangle {
-                    anchors.fill: parent
-                    radius: parent.radius
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: Qt.rgba(0.5, 0.5, 0.5, 0.08) }
-                        GradientStop { position: 1.0; color: Qt.rgba(0.5, 0.5, 0.5, 0.18) }
-                    }
-                    visible: listItemImage.status !== Image.Ready
-                }
-
-                Image {
-                    id: listItemImage
-                    anchors.fill: parent
-                    source: model.image_url ? imageCacheBackend.cache_image(model.image_url) : ""
-                    fillMode: Image.PreserveAspectCrop
-                    cache: true
-                    asynchronous: true
-
-                    Connections {
-                        target: imageCacheBackend
-                        enabled: !delegateRoot.isDestroyed
-                        function onImage_downloaded(origUrl, localUrl) {
-                            if (!delegateRoot.isDestroyed && model.image_url && origUrl === model.image_url)
-                                listItemImage.source = localUrl
-                        }
-                    }
-                }
-
-                BusyIndicator {
-                    anchors.centerIn: parent
-                    running: listItemImage.status === Image.Loading
-                    visible: running
-                    width: 24
-                    height: 24
-                    padding: 0
-                }
+                source: model.image_url || ""
             }
 
             // Info column

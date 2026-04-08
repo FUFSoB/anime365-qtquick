@@ -15,6 +15,16 @@ QtObject {
     // Shared animation duration (ms) for hover/transition Behaviors
     readonly property int animDuration: 80
 
+    // Responsive breakpoints
+    readonly property int breakpointCompact: 768
+    readonly property int breakpointMedium: 1200
+
+    function getBreakpoint(width) {
+        if (width < breakpointCompact) return "compact"
+        if (width < breakpointMedium) return "medium"
+        return "wide"
+    }
+
     // Smooth score gradient: red(0) → orange(6.0) → green(7.5) → vivid-green(10)
     function scoreColor(score) {
         var s = Math.max(0, Math.min(10, parseFloat(score) || 0))

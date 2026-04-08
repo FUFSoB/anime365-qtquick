@@ -5,8 +5,10 @@ import "components"
 
 ApplicationWindow {
     id: mainWindow
-    width: 1280
-    height: 720
+    minimumWidth: 800
+    minimumHeight: 500
+    width: Math.min(Screen.width * 0.8, 1440)
+    height: Math.min(Screen.height * 0.8, 900)
     visible: true
     title: "Anime365"
 

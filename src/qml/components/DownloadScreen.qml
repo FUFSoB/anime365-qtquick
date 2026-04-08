@@ -18,11 +18,11 @@ Pane {
 
     function statusLabel(s) {
         switch (s) {
-            case "active":   return "Downloading"
-            case "complete": return "Complete"
-            case "error":    return "Error"
-            case "paused":   return "Paused"
-            case "waiting":  return "Waiting"
+            case "active":   return "\u25B6 Downloading"
+            case "complete": return "\u2714 Complete"
+            case "error":    return "\u2716 Error"
+            case "paused":   return "\u23F8 Paused"
+            case "waiting":  return "\u23F3 Waiting"
             default:         return s
         }
     }

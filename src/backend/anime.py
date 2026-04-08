@@ -232,12 +232,14 @@ class Backend(QObject):
         str
     )  # episode name that lacks the requested team/quality
     batch_complete = Signal()
+    batch_cancelled = Signal()
     playback_finished = Signal(bool)  # True = episode completed (>85% watched)
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
         self.settings = settings
         self.workers: list[AsyncFunctionWorker] = []
+        self.batch_worker: BatchStreamsWorker | None = None
         self.mpv_worker = None
         self.vlc_worker = None
         self.mpc_worker = None
@@ -503,11 +505,14 @@ class Backend(QObject):
         preferred_translation: str,
         preferred_quality: str,
     ):
+        if self.batch_worker and self.batch_worker.isRunning():
+            self.batch_worker.terminate()
         ep_ids = [int(x) for x in episode_ids_str.split(";") if x]
         ep_names = episode_names_str.split(";")
         worker = BatchStreamsWorker(
             ep_ids, ep_names, preferred_translation, preferred_quality, self.settings
         )
+        self.batch_worker = worker
         self.workers.append(worker)
         worker.batch_progress.connect(self.batch_progress.emit)
         worker.batch_item_ready.connect(self.batch_item_ready.emit)
@@ -517,6 +522,15 @@ class Backend(QObject):
             lambda *_: self.workers.remove(worker) if worker in self.workers else None
         )
         worker.start()
+
+    @Slot()
+    def cancel_batch_download(self):
+        if self.batch_worker and self.batch_worker.isRunning():
+            self.batch_worker.terminate()
+            if self.batch_worker in self.workers:
+                self.workers.remove(self.batch_worker)
+            self.batch_worker = None
+            self.batch_cancelled.emit()
 
     @Slot(str, int, str, result=str)
     def title_to_filename(self, title: str, episodes_total: int, ext: str) -> str:

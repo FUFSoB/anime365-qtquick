@@ -77,6 +77,7 @@ class Worker(AsyncFunctionWorker):
 class Backend(QObject):
     search_completed = Signal(list)
     search_error = Signal(str)
+    search_cancelled = Signal()
 
     def __init__(self, settings: "SettingsBackend"):
         super().__init__()
@@ -91,3 +92,10 @@ class Backend(QObject):
         self.search_worker.result_list.connect(self.search_completed.emit)
         self.search_worker.error.connect(self.search_error.emit)
         self.search_worker.start()
+
+    @Slot()
+    def cancel_search(self):
+        if self.search_worker and self.search_worker.isRunning():
+            self.search_worker.terminate()
+            self.search_worker = None
+            self.search_cancelled.emit()

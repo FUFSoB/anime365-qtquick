@@ -21,6 +21,7 @@ Pane {
 
     property bool hasActiveFilters: filterShowHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
     property bool isBusy: false
+    property string viewMode: "list"  // "list" or "grid"
 
     Globals { id: globals }
 
@@ -142,6 +143,10 @@ Pane {
             searchError = errorMessage
             isBusy = false
         }
+
+        function onSearch_cancelled() {
+            isBusy = false
+        }
     }
 
     ColumnLayout {
@@ -169,9 +174,11 @@ Pane {
             }
 
             StyledButton {
-                text: "Search"
+                text: isBusy ? "Cancel" : "Search"
                 onClicked: {
-                    if (searchField.text.trim() !== "") {
+                    if (isBusy) {
+                        searchBackend.cancel_search()
+                    } else if (searchField.text.trim() !== "") {
                         searchError = ""
                         searchBackend.perform_search(searchField.text.trim())
                         searchQuery = searchField.text
@@ -365,6 +372,20 @@ Pane {
                         }
                     }
 
+                    VDivider { Layout.leftMargin: 2; Layout.rightMargin: 2 }
+
+                    Chip {
+                        label: viewMode === "grid" ? "\u25A6" : "\u2630"
+                        active: false
+                        implicitWidth: 32
+                        ToolTip.visible: _hovered
+                        ToolTip.text: viewMode === "grid" ? "Switch to list view" : "Switch to grid view"
+                        ToolTip.delay: 600
+                        onActivated: {
+                            viewMode = viewMode === "grid" ? "list" : "grid"
+                        }
+                    }
+
                 }
             }
         }
@@ -416,21 +437,30 @@ Pane {
                 }
             }
 
+            function handleItemClicked(item) {
+                if (!databaseBackend.put(item.id, item)) {
+                    var _item = item
+                    item = Object.assign({}, databaseBackend.get(item.id))
+                    item.episode_list = _item.episode_list
+                    item.episode_ids = _item.episode_ids
+                }
+                stackView.push(animeScreen, { anime: item })
+            }
+
+            function handleContextMenuAction(action, item) {
+                if (action === "goto_details") {
+                    handleItemClicked(item)
+                }
+            }
+
             CustomListView {
                 id: searchResultsList
                 anchors.fill: parent
+                visible: viewMode === "list"
                 model: ListModel {
                     id: searchResultsModel
                 }
-                onItemClicked: (item) => {
-                    if (!databaseBackend.put(item.id, item)) {
-                        var _item = item
-                        item = Object.assign({}, databaseBackend.get(item.id))
-                        item.episode_list = _item.episode_list
-                        item.episode_ids = _item.episode_ids
-                    }
-                    stackView.push(animeScreen, { anime: item })
-                }
+                onItemClicked: (item) => parent.handleItemClicked(item)
                 Component.onCompleted: {
                     searchResultsList.addContextMenuItem({
                         title: "Open Details",
@@ -438,13 +468,22 @@ Pane {
                         group: "main"
                     })
                 }
-                onContextMenuAction: function(action, item) {
-                    switch (action) {
-                        case "goto_details":
-                            searchResultsList.onItemClicked(item)
-                            break
-                    }
+                onContextMenuAction: (action, item) => parent.handleContextMenuAction(action, item)
+            }
+
+            CustomGridView {
+                id: searchResultsGrid
+                anchors.fill: parent
+                visible: viewMode === "grid"
+                model: searchResultsModel
+                onItemClicked: (item) => parent.handleItemClicked(item)
+                Component.onCompleted: {
+                    searchResultsGrid.addContextMenuItem({
+                        title: "Open Details",
+                        action: "goto_details"
+                    })
                 }
+                onContextMenuAction: (action, item) => parent.handleContextMenuAction(action, item)
             }
         }
 

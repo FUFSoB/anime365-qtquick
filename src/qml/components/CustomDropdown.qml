@@ -16,6 +16,7 @@ Item {
     property string placeholder: "Select option"
     property bool isOpen: false
     property int selectedIndex: -1
+    property real _lastScrollPosition: 0
 
     signal selectionChanged(string value)
     signal selectionChangedIndex(int value)
@@ -118,11 +119,17 @@ Item {
         onOpened: {
             dropdown.isOpen = true
             searchInput.forceActiveFocus()
+            // Restore scroll position if no selection
+            if (selectedIndex < 0 && _lastScrollPosition > 0) {
+                listView.contentY = _lastScrollPosition
+            }
         }
 
         onClosed: {
             dropdown.isOpen = false
             searchInput.text = ""
+            // Save scroll position
+            _lastScrollPosition = listView.contentY
         }
 
         Column {
