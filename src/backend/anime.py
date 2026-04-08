@@ -341,6 +341,9 @@ class Backend(QObject):
             f"--input-ipc-server={ipc_path}",
         ]
 
+        if self.settings.get("player_use_proxy") and self.settings.proxy:
+            command.append(f"--http-proxy={self.settings.proxy}")
+
         if subs_url:
             command.append(f"--sub-file={subs_url}")
 
@@ -393,6 +396,15 @@ class Backend(QObject):
             f"--http-port={port}",
             f"--http-password={http_password}",
         ]
+
+        if self.settings.get("player_use_proxy") and self.settings.proxy:
+            proxy = self.settings.proxy
+            if proxy.startswith("socks"):
+                # VLC uses --socks=host:port (strip socks5:// prefix)
+                socks_host = proxy.split("://", 1)[-1]
+                command.extend(["--socks", socks_host])
+            else:
+                command.extend(["--http-proxy", proxy])
 
         extra_args = self.settings.get("vlc_args") or ""
         if extra_args:

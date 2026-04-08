@@ -23,6 +23,8 @@ ColumnLayout {
 
     spacing: 0
 
+    Globals { id: globals }
+
     StyledTextField {
         id: pathInput
         Layout.fillWidth: true
@@ -38,10 +40,10 @@ ColumnLayout {
 
         background: Rectangle {
             color: palette.base
-            border.color: pathInput.isValidPath
-                ? "#4CAF50"
-                : (pathInput.text ? "#EF5350" : palette.mid)
-            border.width: (pathInput.isValidPath || pathInput.text) ? 2 : 1
+            border.color: root.isValidPath
+                ? globals.colorSuccess
+                : (pathInput.text ? globals.colorError : palette.mid)
+            border.width: (root.isValidPath || pathInput.text) ? 2 : 1
             radius: 4
         }
     }

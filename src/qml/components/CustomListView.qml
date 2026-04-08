@@ -163,8 +163,8 @@ ListView {
 
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 11   // 3px accent + 8px gap
-            anchors.rightMargin: 8
+            anchors.leftMargin: 10   // 2px accent + 8px gap
+            anchors.rightMargin: 10
             anchors.topMargin: 8
             anchors.bottomMargin: 8
             spacing: 10
@@ -235,7 +235,7 @@ ListView {
 
                 // Tags row: type · year · score
                 Row {
-                    spacing: 4
+                    spacing: 5
 
                     // Type badge — colour-coded by type
                     Rectangle {

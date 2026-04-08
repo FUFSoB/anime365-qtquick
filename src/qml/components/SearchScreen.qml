@@ -22,6 +22,8 @@ Pane {
     property bool hasActiveFilters: filterShowHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
     property bool isBusy: false
 
+    Globals { id: globals }
+
     Component.onCompleted: {
         isBusy = true
     }
@@ -91,8 +93,8 @@ Pane {
                                : palette.mid
         border.width: 1
 
-        Behavior on color        { ColorAnimation { duration: 90 } }
-        Behavior on border.color { ColorAnimation { duration: 90 } }
+        Behavior on color        { ColorAnimation { duration: 80 } }
+        Behavior on border.color { ColorAnimation { duration: 80 } }
 
         Label {
             id: chipLabel
@@ -105,7 +107,7 @@ Pane {
             font.weight: chipRoot.active ? Font.Medium : Font.Normal
             opacity: chipRoot.active ? 1.0 : (chipRoot._hovered ? 0.90 : 0.70)
 
-            Behavior on opacity { NumberAnimation { duration: 90 } }
+            Behavior on opacity { NumberAnimation { duration: 80 } }
         }
 
         MouseArea {
@@ -302,7 +304,7 @@ Pane {
                                     ? Qt.rgba(palette.highlight.r, palette.highlight.g, palette.highlight.b, 0.4)
                                     : palette.mid
                         border.width: 1
-                        Behavior on color { ColorAnimation { duration: 90 } }
+                        Behavior on color { ColorAnimation { duration: 80 } }
 
                         Label {
                             id: scoreValueLabel
@@ -406,7 +408,7 @@ Pane {
                     visible: searchError !== ""
                     text: searchError
                     font.pixelSize: 11
-                    color: "#EF5350"
+                    color: globals.colorError
                     opacity: 0.75
                     wrapMode: Text.WordWrap
                     width: 260
@@ -454,7 +456,7 @@ Pane {
             Label {
                 visible: searchError !== ""
                 text: "\u26A0 Search failed: " + searchError
-                color: "#EF5350"
+                color: globals.colorError
                 font.pixelSize: 11
                 Layout.fillWidth: true
                 elide: Text.ElideRight

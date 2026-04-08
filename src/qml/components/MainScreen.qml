@@ -14,6 +14,8 @@ Pane {
     property string currentVersion: ""
     property bool updateAvailable: false
 
+    Globals { id: globals }
+
     Connections {
         target: updaterBackend
         function onUpdate_found(tag, url, current) {
@@ -296,7 +298,7 @@ Pane {
                         title: "Remove Item",
                         action: "delete",
                         group: "dangerous",
-                        color: "#EF5350"
+                        color: globals.colorError
                     })
                 }
                 onContextMenuAction: function(action, item) {

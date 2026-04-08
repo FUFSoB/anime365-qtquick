@@ -29,9 +29,9 @@ Pane {
 
     function statusStripeColor(s) {
         switch (s) {
-            case "complete": return "#4CAF50"
-            case "error":    return "#EF5350"
-            case "paused":   return "#FF9800"
+            case "complete": return globals.colorSuccess
+            case "error":    return globals.colorError
+            case "paused":   return globals.colorWarning
             case "active":   return palette.highlight
             default:         return palette.mid
         }
@@ -122,7 +122,7 @@ Pane {
                         Layout.fillHeight: true
                         radius: 6
                         color: !showHistory ? palette.highlight : "transparent"
-                        Behavior on color { ColorAnimation { duration: 100 } }
+                        Behavior on color { ColorAnimation { duration: 80 } }
 
                         RowLayout {
                             anchors.centerIn: parent
@@ -166,7 +166,7 @@ Pane {
                         Layout.fillHeight: true
                         radius: 6
                         color: showHistory ? palette.highlight : "transparent"
-                        Behavior on color { ColorAnimation { duration: 100 } }
+                        Behavior on color { ColorAnimation { duration: 80 } }
 
                         RowLayout {
                             anchors.centerIn: parent
@@ -305,9 +305,9 @@ Pane {
                                     font.bold: true
                                     color: {
                                         switch (model.status) {
-                                            case "complete": return "#4CAF50"
-                                            case "error":    return "#EF5350"
-                                            case "paused":   return "#FF9800"
+                                            case "complete": return globals.colorSuccess
+                                            case "error":    return globals.colorError
+                                            case "paused":   return globals.colorWarning
                                             default:         return palette.windowText
                                         }
                                     }
@@ -320,7 +320,7 @@ Pane {
                             Layout.fillWidth: true
                             visible: model.status === "error" && (model.error_message || "") !== ""
                             text: model.error_message || ""
-                            color: "#EF5350"
+                            color: globals.colorError
                             font.pixelSize: 11
                             elide: Text.ElideRight
                         }
@@ -456,7 +456,7 @@ Pane {
                         anchors.topMargin: 6; anchors.bottomMargin: 6
                         width: 3
                         radius: 2
-                        color: "#4CAF50"
+                        color: globals.colorSuccess
                         opacity: 0.7
                     }
 

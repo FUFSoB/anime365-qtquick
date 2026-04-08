@@ -678,7 +678,7 @@ Pane {
                     Label {
                         visible: !hasToken
                         text: "\u26A0 No API token set \u2014 configure in Settings"
-                        color: "#EF5350"
+                        color: globals.colorError
                     }
 
                     RowLayout {
@@ -753,7 +753,7 @@ Pane {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         font.pixelSize: 12
-                        color: batchDownloadButton.batchStoppedAt !== "" ? "#FF9800" : "#4CAF50"
+                        color: batchDownloadButton.batchStoppedAt !== "" ? globals.colorWarning : globals.colorSuccess
                         text: {
                             var parts = []
                             if (batchDownloadButton.batchStoppedAt !== "")
@@ -1066,14 +1066,14 @@ Pane {
                                 Label {
                                     visible: episodeDownloadProgress < 0 && localVideoPath !== "" && localVideoMeta === ""
                                     text: "\u2714 Downloaded"
-                                    color: "#4CAF50"
+                                    color: globals.colorSuccess
                                     font.bold: true
                                 }
 
                                 Label {
                                     visible: episodeDownloadProgress < 0 && localVideoPath !== "" && localVideoMeta !== ""
                                     text: "\u2714 Downloaded (" + localVideoMeta + ")"
-                                    color: "#FF9800"
+                                    color: globals.colorWarning
                                     font.bold: true
                                 }
 
@@ -1084,7 +1084,7 @@ Pane {
                                         var parts = localVideoMeta.split(":")
                                         return "\u26A0 Downloaded in " + (parts[1] || "?") + " \u2014 streaming " + qualitySelected + " online"
                                     }
-                                    color: "#FF9800"
+                                    color: globals.colorWarning
                                     font.pixelSize: 12
                                 }
 

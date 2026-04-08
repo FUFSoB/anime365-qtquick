@@ -7,6 +7,14 @@ QtObject {
     // Tooltip delay used across all screens (ms)
     readonly property int tooltipDelay: 600
 
+    // Semantic status colors — use these instead of hardcoding hex values
+    readonly property color colorSuccess: "#4CAF50"
+    readonly property color colorError:   "#EF5350"
+    readonly property color colorWarning: "#FF9800"
+
+    // Shared animation duration (ms) for hover/transition Behaviors
+    readonly property int animDuration: 80
+
     // Smooth score gradient: red(0) → orange(6.0) → green(7.5) → vivid-green(10)
     function scoreColor(score) {
         var s = Math.max(0, Math.min(10, parseFloat(score) || 0))

@@ -162,6 +162,7 @@ class Backend(QObject):
             "check_updates": True,
             "auto_advance": False,
             "download_threads": 4,
+            "player_use_proxy": False,
             # tokens
             "anime365_token": "",
             # not in UI

@@ -27,7 +27,7 @@ ApplicationWindow {
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
-            anchors.leftMargin: 4
+            anchors.leftMargin: 8
             anchors.rightMargin: 8
             spacing: 0
 

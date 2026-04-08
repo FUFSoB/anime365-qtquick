@@ -11,6 +11,8 @@ Pane {
     property string savedTheme: "auto"
     property int currentSection: 0
 
+    Globals { id: globals }
+
     function handleBack() {
         settingsBackend.apply_theme(savedTheme)
         stackView.pop()
@@ -33,6 +35,7 @@ Pane {
         discordRpcSwitch.checked = settings.discord_rpc !== false
         checkUpdatesSwitch.checked = settings.check_updates !== false
         autoAdvanceSwitch.checked = settings.auto_advance === true
+        playerUseProxySwitch.checked = settings.player_use_proxy === true
         downloadThreadsSpin.value = settings.download_threads || 4
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
         proxyField.text = settings.proxy || ""
@@ -155,7 +158,7 @@ Pane {
 
             Label {
                 text: "Settings"
-                font.pixelSize: 18
+                font.pixelSize: 16
                 font.bold: true
             }
 
@@ -164,7 +167,7 @@ Pane {
             StyledButton {
                 id: saveButton
                 text: "Save"
-                palette.button: "#4CAF50"
+                palette.button: globals.colorSuccess
                 palette.buttonText: "#FFFFFF"
                 enabled: (mpvPathField.text || defaults.mpv_path) !== (settings.mpv_path || defaults.mpv_path)
                     || (vlcPathField.text || defaults.vlc_path) !== (settings.vlc_path || defaults.vlc_path)
@@ -179,6 +182,7 @@ Pane {
                     || discordRpcSwitch.checked !== (settings.discord_rpc !== false)
                     || checkUpdatesSwitch.checked !== (settings.check_updates !== false)
                     || autoAdvanceSwitch.checked !== (settings.auto_advance === true)
+                    || playerUseProxySwitch.checked !== (settings.player_use_proxy === true)
                     || downloadThreadsSpin.value !== (settings.download_threads || 4)
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
@@ -198,6 +202,7 @@ Pane {
                         "discord_rpc": discordRpcSwitch.checked,
                         "check_updates": checkUpdatesSwitch.checked,
                         "auto_advance": autoAdvanceSwitch.checked,
+                        "player_use_proxy": playerUseProxySwitch.checked,
                         "download_threads": downloadThreadsSpin.value,
                         "anime365_token": anime365TokenField.text,
                         "proxy": proxyField.text,
@@ -334,8 +339,8 @@ Pane {
                                 background: Rectangle {
                                     color: palette.base
                                     border.color: anime365TokenField.isValidToken
-                                        ? "#4CAF50"
-                                        : (anime365TokenField.text ? "#EF5350" : palette.mid)
+                                        ? globals.colorSuccess
+                                        : (anime365TokenField.text ? globals.colorError : palette.mid)
                                     border.width: anime365TokenField.isValidToken || anime365TokenField.text ? 2 : 1
                                     radius: 4
                                 }
@@ -362,8 +367,8 @@ Pane {
                                 background: Rectangle {
                                     color: palette.base
                                     border.color: proxyField.isValidProxy
-                                        ? "#4CAF50"
-                                        : (proxyField.text ? "#EF5350" : palette.mid)
+                                        ? globals.colorSuccess
+                                        : (proxyField.text ? globals.colorError : palette.mid)
                                     border.width: proxyField.isValidProxy || proxyField.text ? 2 : 1
                                     radius: 4
                                 }
@@ -432,7 +437,7 @@ Pane {
                                     Layout.fillWidth: true
                                     text: "\u26A0 Use an updated fork for stable playback. Disable Options \u2192 Advanced \u2192 UseYDL to prevent subtitle issues."
                                     font.pixelSize: 11
-                                    color: "#FF9800"
+                                    color: globals.colorWarning
                                     wrapMode: Text.Wrap
                                 }
                                 ValidatedPathField {
@@ -543,6 +548,14 @@ Pane {
                             label: "Discord Rich Presence"
                             description: "Show currently watched anime in Discord status"
                             Switch { id: discordRpcSwitch; checked: true }
+                        }
+
+                        ToggleRow {
+                            label: "Use proxy for video players"
+                            description: isWindows
+                                ? "Pass the configured SOCKS proxy to mpv/VLC. MPC-HC uses system proxy settings."
+                                : "Pass the configured SOCKS proxy to mpv/VLC"
+                            Switch { id: playerUseProxySwitch; checked: false }
                         }
 
                         Item { height: 1 }
