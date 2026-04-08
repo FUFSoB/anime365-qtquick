@@ -244,8 +244,11 @@ class Backend(QObject):
         self.api = settings.api
 
     def _clear_workers(self):
-        for worker in self.workers:
-            worker.terminate()
+        for worker in list(self.workers):
+            try:
+                worker.terminate()
+            except Exception:
+                pass
         self.workers.clear()
 
     @Slot(int)

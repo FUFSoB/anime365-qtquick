@@ -137,10 +137,6 @@ ApplicationWindow {
     Component { id: downloadScreen; DownloadScreen {} }
 
     Shortcut {
-        sequence: "Escape"
-        onActivated: mainWindow.handleBackForCurrentScreen()
-    }
-    Shortcut {
         sequence: "Alt+Left"
         onActivated: mainWindow.handleBackForCurrentScreen()
     }

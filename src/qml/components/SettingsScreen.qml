@@ -391,21 +391,10 @@ Pane {
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 6
-                                StyledTextField {
+                                ValidatedPathField {
                                     id: mpvPathField
                                     Layout.fillWidth: true
                                     placeholderText: defaults.mpv_path || "Path to binary"
-                                    property bool isValidPath: true
-                                    onTextChanged: {
-                                        if (text) { isValidPath = false; validateMpvTimer.restart() }
-                                        else isValidPath = true
-                                    }
-                                    background: Rectangle {
-                                        color: palette.base
-                                        border.color: mpvPathField.isValidPath ? "#4CAF50" : (mpvPathField.text ? "#EF5350" : palette.mid)
-                                        border.width: mpvPathField.isValidPath || mpvPathField.text ? 2 : 1
-                                        radius: 4
-                                    }
                                 }
                                 StyledTextField {
                                     id: mpvArgsField
@@ -420,21 +409,10 @@ Pane {
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 6
-                                StyledTextField {
+                                ValidatedPathField {
                                     id: vlcPathField
                                     Layout.fillWidth: true
                                     placeholderText: defaults.vlc_path || "Path to binary"
-                                    property bool isValidPath: true
-                                    onTextChanged: {
-                                        if (text) { isValidPath = false; validateVlcTimer.restart() }
-                                        else isValidPath = true
-                                    }
-                                    background: Rectangle {
-                                        color: palette.base
-                                        border.color: vlcPathField.isValidPath ? "#4CAF50" : (vlcPathField.text ? "#EF5350" : palette.mid)
-                                        border.width: vlcPathField.isValidPath || vlcPathField.text ? 2 : 1
-                                        radius: 4
-                                    }
                                 }
                                 StyledTextField {
                                     id: vlcArgsField
@@ -457,21 +435,10 @@ Pane {
                                     color: "#FF9800"
                                     wrapMode: Text.Wrap
                                 }
-                                StyledTextField {
+                                ValidatedPathField {
                                     id: mpcPathField
                                     Layout.fillWidth: true
                                     placeholderText: defaults.mpc_path || "Path to binary"
-                                    property bool isValidPath: true
-                                    onTextChanged: {
-                                        if (text) { isValidPath = false; validateMpcTimer.restart() }
-                                        else isValidPath = true
-                                    }
-                                    background: Rectangle {
-                                        color: palette.base
-                                        border.color: mpcPathField.isValidPath ? "#4CAF50" : (mpcPathField.text ? "#EF5350" : palette.mid)
-                                        border.width: mpcPathField.isValidPath || mpcPathField.text ? 2 : 1
-                                        radius: 4
-                                    }
                                 }
                                 StyledTextField {
                                     id: mpcArgsField
@@ -508,21 +475,10 @@ Pane {
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 6
-                                StyledTextField {
+                                ValidatedPathField {
                                     id: aria2cPathField
                                     Layout.fillWidth: true
                                     placeholderText: defaults.aria2c_path || "Path to binary"
-                                    property bool isValidPath: true
-                                    onTextChanged: {
-                                        if (text) { isValidPath = false; validateAria2cTimer.restart() }
-                                        else isValidPath = true
-                                    }
-                                    background: Rectangle {
-                                        color: palette.base
-                                        border.color: aria2cPathField.isValidPath ? "#4CAF50" : (aria2cPathField.text ? "#EF5350" : palette.mid)
-                                        border.width: aria2cPathField.isValidPath || aria2cPathField.text ? 2 : 1
-                                        radius: 4
-                                    }
                                 }
                                 StyledTextField {
                                     id: aria2cArgsField
@@ -537,21 +493,10 @@ Pane {
                             ColumnLayout {
                                 width: parent.width
                                 spacing: 6
-                                StyledTextField {
+                                ValidatedPathField {
                                     id: ffmpegPathField
                                     Layout.fillWidth: true
                                     placeholderText: defaults.ffmpeg_path || "Path to binary"
-                                    property bool isValidPath: true
-                                    onTextChanged: {
-                                        if (text) { isValidPath = false; validateFfmpegTimer.restart() }
-                                        else isValidPath = true
-                                    }
-                                    background: Rectangle {
-                                        color: palette.base
-                                        border.color: ffmpegPathField.isValidPath ? "#4CAF50" : (ffmpegPathField.text ? "#EF5350" : palette.mid)
-                                        border.width: ffmpegPathField.isValidPath || ffmpegPathField.text ? 2 : 1
-                                        radius: 4
-                                    }
                                 }
                             }
                         }
@@ -616,25 +561,5 @@ Pane {
     Timer {
         id: validateTokenTimer; interval: 1000; repeat: false
         onTriggered: { if (anime365TokenField.text) settingsBackend.is_valid_token(anime365TokenField.text); else anime365TokenField.isValidToken = false }
-    }
-    Timer {
-        id: validateMpvTimer; interval: 500; repeat: false
-        onTriggered: { if (mpvPathField.text) mpvPathField.isValidPath = settingsBackend.is_valid_binary(mpvPathField.text) }
-    }
-    Timer {
-        id: validateVlcTimer; interval: 500; repeat: false
-        onTriggered: { if (vlcPathField.text) vlcPathField.isValidPath = settingsBackend.is_valid_binary(vlcPathField.text) }
-    }
-    Timer {
-        id: validateMpcTimer; interval: 500; repeat: false
-        onTriggered: { if (mpcPathField.text) mpcPathField.isValidPath = settingsBackend.is_valid_binary(mpcPathField.text) }
-    }
-    Timer {
-        id: validateAria2cTimer; interval: 500; repeat: false
-        onTriggered: { if (aria2cPathField.text) aria2cPathField.isValidPath = settingsBackend.is_valid_binary(aria2cPathField.text) }
-    }
-    Timer {
-        id: validateFfmpegTimer; interval: 500; repeat: false
-        onTriggered: { if (ffmpegPathField.text) ffmpegPathField.isValidPath = settingsBackend.is_valid_binary(ffmpegPathField.text) }
     }
 }

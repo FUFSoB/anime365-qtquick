@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import ssl
 from typing import TYPE_CHECKING
 
 import aiohttp
 import certifi
 from aiohttp_socks import ProxyConnector
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .settings import Backend as SettingsBackend
@@ -36,20 +39,20 @@ class Api:
                     f"{self.anime365_url}/api/series", params={"limit": 1}
                 ) as response:
                     return response.status == 200
-        except Exception:
+        except Exception as e:
+            logger.warning("check_proxy failed: %s", e)
             return False
 
     # Anime365 API
 
     async def check_token(self, token: str) -> bool:
         url = f"{self.anime365_url}/api/me"
-        params = {"access_token": token}
         async with aiohttp.ClientSession(
             connector=await self.get_connector()
         ) as session:
-            async with session.get(url, params=params) as response:
+            async with session.get(url, params={"access_token": token}) as response:
                 data = await response.json()
-                return response.status == 200 and data["data"]["isPremium"]
+                return response.status == 200 and data.get("data", {}).get("isPremium", False)
 
     async def find_anime(self, query: str) -> list[dict]:
         params = [(f"{self.anime365_url}/api/series", query, False)]

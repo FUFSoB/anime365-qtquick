@@ -31,27 +31,7 @@ Pane {
 
     function handleBack() { stackView.pop() }
 
-    function scoreColor(score) {
-        var s = Math.max(0, Math.min(10, parseFloat(score) || 0))
-        var r, g, b
-        if (s >= 7.5) {
-            var t = (s - 7.5) / 2.5
-            r = 0.298 * (1 - t)
-            g = 0.686 + t * (0.902 - 0.686)
-            b = 0.314 + t * (0.463 - 0.314)
-        } else if (s >= 6.0) {
-            var t = (s - 6.0) / 1.5
-            r = 1.000 - t * (1.000 - 0.298)
-            g = 0.596 + t * (0.686 - 0.596)
-            b = t * 0.314
-        } else {
-            var t = s / 6.0
-            r = 0.827 + t * (1.000 - 0.827)
-            g = 0.184 + t * (0.596 - 0.184)
-            b = 0.184 * (1 - t)
-        }
-        return Qt.rgba(r, g, b, 1.0)
-    }
+    Globals { id: globals }
 
     property var anime: ({})
     property var translations: ({})
@@ -163,20 +143,6 @@ Pane {
         }
         qualityDropdown.model = data
         qualityDropdown.visible = true
-    }
-
-    function formatSize(bytes) {
-        if (bytes <= 0) return ""
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB"
-        if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB"
-        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB"
-    }
-
-    function formatSpeed(bytesPerSec) {
-        if (bytesPerSec <= 0) return ""
-        if (bytesPerSec < 1024) return bytesPerSec + " B/s"
-        if (bytesPerSec < 1024 * 1024) return (bytesPerSec / 1024).toFixed(1) + " KB/s"
-        return (bytesPerSec / (1024 * 1024)).toFixed(1) + " MB/s"
     }
 
     Connections {
@@ -486,7 +452,7 @@ Pane {
                             // Score badge
                             Rectangle {
                                 property real sv: parseFloat(anime.score) || 0
-                                property color sc: sv > 0 ? scoreColor(sv) : "transparent"
+                                property color sc: sv > 0 ? globals.scoreColor(sv) : "transparent"
                                 visible: sv > 0
                                 radius: 4
                                 width: scoreBadgeLabel.implicitWidth + 12
@@ -936,7 +902,7 @@ Pane {
                                     readOnly: true
 
                                     ToolTip.visible: subsUrlMouseArea.containsMouse
-                                    ToolTip.delay: 1000
+                                    ToolTip.delay: 600
 
                                     MouseArea {
                                         id: subsUrlMouseArea
@@ -995,9 +961,9 @@ Pane {
                                     text: {
                                         var parts = []
                                         if (episodeDownloadTotal > 0)
-                                            parts.push(formatSize(episodeDownloaded) + " / " + formatSize(episodeDownloadTotal))
+                                            parts.push(globals.formatSize(episodeDownloaded) + " / " + globals.formatSize(episodeDownloadTotal))
                                         if (episodeDownloadSpeed > 0)
-                                            parts.push(formatSpeed(episodeDownloadSpeed))
+                                            parts.push(globals.formatSpeed(episodeDownloadSpeed))
                                         return parts.join("  ") || "Waiting..."
                                     }
                                     font.pixelSize: 12

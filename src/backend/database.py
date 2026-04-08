@@ -69,6 +69,9 @@ class Database:
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute(_CREATE_TABLE)
         self._add_columns_if_missing()
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_last_viewed ON anime(last_viewed DESC)"
+        )
         self.conn.commit()
         self._migrate_legacy()
 

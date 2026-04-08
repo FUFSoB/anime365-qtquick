@@ -14,38 +14,7 @@ Pane {
     readonly property bool vlcAvailable: settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("vlc_path"))
     readonly property bool mpcAvailable: isWindows && settingsBackend && settingsBackend.is_valid_binary(settingsBackend.get("mpc_path"))
 
-    function formatSpeed(bytesPerSec) {
-        if (bytesPerSec <= 0) return ""
-        if (bytesPerSec < 1024) return bytesPerSec + " B/s"
-        if (bytesPerSec < 1024 * 1024) return (bytesPerSec / 1024).toFixed(1) + " KB/s"
-        return (bytesPerSec / (1024 * 1024)).toFixed(1) + " MB/s"
-    }
-
-    function formatSize(bytes) {
-        if (bytes <= 0) return ""
-        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + " KB"
-        if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB"
-        return (bytes / (1024 * 1024 * 1024)).toFixed(2) + " GB"
-    }
-
-    function formatDate(timestamp) {
-        if (!timestamp) return ""
-        var d = new Date(timestamp * 1000)
-        var now = new Date()
-        var pad = (n) => n < 10 ? "0" + n : "" + n
-        var time = pad(d.getHours()) + ":" + pad(d.getMinutes())
-        if (d.toDateString() === now.toDateString())
-            return "Today " + time
-        var yesterday = new Date(now)
-        yesterday.setDate(yesterday.getDate() - 1)
-        if (d.toDateString() === yesterday.toDateString())
-            return "Yesterday " + time
-        return pad(d.getDate()) + "." + pad(d.getMonth() + 1) + "." + d.getFullYear() + " " + time
-    }
-
-    function isVideoFile(filename) {
-        return filename.endsWith(".mp4") || filename.endsWith(".mkv") || filename.endsWith(".webm")
-    }
+    Globals { id: globals }
 
     function statusLabel(s) {
         switch (s) {
@@ -241,10 +210,24 @@ Pane {
 
             StyledButton {
                 text: showHistory ? "Clear History" : "Clear Completed"
-                onClicked: {
-                    if (showHistory) downloaderBackend.clear_history()
-                    else            downloaderBackend.clear_completed()
-                }
+                onClicked: clearConfirmDialog.open()
+            }
+        }
+
+        Dialog {
+            id: clearConfirmDialog
+            anchors.centerIn: parent
+            title: showHistory ? "Clear History" : "Clear Completed"
+            standardButtons: Dialog.Ok | Dialog.Cancel
+            Label {
+                text: showHistory
+                    ? "Remove all download history entries?"
+                    : "Remove all completed downloads from the queue?"
+                wrapMode: Text.WordWrap
+            }
+            onAccepted: {
+                if (showHistory) downloaderBackend.clear_history()
+                else             downloaderBackend.clear_completed()
             }
         }
 
@@ -361,9 +344,9 @@ Pane {
                                 text: {
                                     var parts = []
                                     if (model.total_size > 0)
-                                        parts.push(formatSize(model.downloaded) + " / " + formatSize(model.total_size))
+                                        parts.push(globals.formatSize(model.downloaded) + " / " + globals.formatSize(model.total_size))
                                     if (model.status === "active" && model.speed > 0)
-                                        parts.push(formatSpeed(model.speed))
+                                        parts.push(globals.formatSpeed(model.speed))
                                     return parts.join("   ")
                                 }
                             }
@@ -403,19 +386,19 @@ Pane {
 
                             StyledButton {
                                 text: "mpv"
-                                visible: model.status === "complete" && mpvAvailable && isVideoFile(model.filename)
+                                visible: model.status === "complete" && mpvAvailable && globals.isVideoFile(model.filename)
                                 onClicked: { var p = downloaderBackend.get_local_file(model.filename); if (p) animeBackend.launch_mpv(p, "", model.filename, "") }
                             }
 
                             StyledButton {
                                 text: "VLC"
-                                visible: model.status === "complete" && vlcAvailable && isVideoFile(model.filename)
+                                visible: model.status === "complete" && vlcAvailable && globals.isVideoFile(model.filename)
                                 onClicked: { var p = downloaderBackend.get_local_file(model.filename); if (p) animeBackend.launch_vlc(p, "", model.filename, "") }
                             }
 
                             StyledButton {
                                 text: "MPC-HC"
-                                visible: model.status === "complete" && mpcAvailable && isVideoFile(model.filename)
+                                visible: model.status === "complete" && mpcAvailable && globals.isVideoFile(model.filename)
                                 onClicked: { var p = downloaderBackend.get_local_file(model.filename); if (p) animeBackend.launch_mpc(p, "", model.filename, "") }
                             }
                         }
@@ -497,7 +480,7 @@ Pane {
                             }
 
                             Label {
-                                text: formatDate(model.timestamp)
+                                text: globals.formatDate(model.timestamp)
                                 font.pixelSize: 11
                                 opacity: 0.50
                             }
@@ -517,7 +500,7 @@ Pane {
                                     radius: 3
                                     width: histSizeLabel.implicitWidth + 10; height: 18
                                     color: Qt.rgba(0.5, 0.5, 0.5, 0.14)
-                                    Label { id: histSizeLabel; anchors.centerIn: parent; text: formatSize(model.size); font.pixelSize: 10; opacity: 0.70 }
+                                    Label { id: histSizeLabel; anchors.centerIn: parent; text: globals.formatSize(model.size); font.pixelSize: 10; opacity: 0.70 }
                                 }
 
                                 Rectangle {
@@ -542,19 +525,19 @@ Pane {
                             // Play buttons
                             StyledButton {
                                 text: "mpv"
-                                visible: mpvAvailable && isVideoFile(model.filename)
+                                visible: mpvAvailable && globals.isVideoFile(model.filename)
                                 onClicked: { var p = downloaderBackend.get_local_file(model.filename); if (p) animeBackend.launch_mpv(p, "", model.filename, "") }
                             }
 
                             StyledButton {
                                 text: "VLC"
-                                visible: vlcAvailable && isVideoFile(model.filename)
+                                visible: vlcAvailable && globals.isVideoFile(model.filename)
                                 onClicked: { var p = downloaderBackend.get_local_file(model.filename); if (p) animeBackend.launch_vlc(p, "", model.filename, "") }
                             }
 
                             StyledButton {
                                 text: "MPC-HC"
-                                visible: mpcAvailable && isVideoFile(model.filename)
+                                visible: mpcAvailable && globals.isVideoFile(model.filename)
                                 onClicked: { var p = downloaderBackend.get_local_file(model.filename); if (p) animeBackend.launch_mpc(p, "", model.filename, "") }
                             }
 
