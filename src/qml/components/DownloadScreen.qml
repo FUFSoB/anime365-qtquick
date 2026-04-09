@@ -217,9 +217,11 @@ Pane {
         Dialog {
             id: clearConfirmDialog
             anchors.centerIn: parent
+            width: 360
             title: showHistory ? "Clear History" : "Clear Completed"
             standardButtons: Dialog.Ok | Dialog.Cancel
             Label {
+                width: parent.width
                 text: showHistory
                     ? "Remove all download history entries?"
                     : "Remove all completed downloads from the queue?"
