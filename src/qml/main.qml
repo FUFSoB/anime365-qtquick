@@ -12,6 +12,8 @@ ApplicationWindow {
     visible: true
     title: "Anime365"
 
+    function showToast(message, type) { toast.show(message, type) }
+
     function handleBackForCurrentScreen() {
         var current = stackView.currentItem
         if (current && typeof current.handleBack === "function") {
@@ -138,6 +140,81 @@ ApplicationWindow {
     Component { id: animeScreen;    AnimeScreen {} }
     Component { id: downloadScreen; DownloadScreen {} }
 
+    Toast { id: toast }
+
+    Popup {
+        id: shortcutHelp
+        anchors.centerIn: Overlay.overlay
+        modal: true
+        padding: 24
+
+        background: Rectangle {
+            color: palette.window
+            radius: 10
+            border.color: palette.mid
+            border.width: 1
+        }
+
+        contentItem: Column {
+            spacing: 0
+
+            Label {
+                text: "Keyboard Shortcuts"
+                font.pixelSize: 15
+                font.bold: true
+                bottomPadding: 14
+            }
+
+            component ShortcutRow: Row {
+                property string keys: ""
+                property string action: ""
+                spacing: 0
+                width: 340
+
+                Label {
+                    width: 160
+                    text: parent.keys
+                    font.pixelSize: 12
+                    font.family: "monospace"
+                    color: palette.highlight
+                }
+                Label {
+                    width: 180
+                    text: parent.action
+                    font.pixelSize: 12
+                    opacity: 0.75
+                }
+            }
+
+            component ShortcutGroup: Label {
+                property string heading: ""
+                text: heading
+                font.pixelSize: 10
+                font.capitalization: Font.AllUppercase
+                font.letterSpacing: 0.8
+                font.bold: true
+                opacity: 0.40
+                topPadding: 12
+                bottomPadding: 6
+            }
+
+            ShortcutGroup { heading: "Navigation" }
+            ShortcutRow { keys: "Esc  /  Alt+Left"; action: "Go back" }
+            ShortcutRow { keys: "Ctrl+H";           action: "Go to home" }
+            ShortcutRow { keys: "Ctrl+D";           action: "Downloads" }
+            ShortcutRow { keys: "Ctrl+,";           action: "Settings" }
+            ShortcutRow { keys: "Ctrl+F  /  /";     action: "Focus search" }
+
+            ShortcutGroup { heading: "Anime Screen" }
+            ShortcutRow { keys: "N";                action: "Next episode" }
+            ShortcutRow { keys: "P";                action: "Previous episode" }
+            ShortcutRow { keys: "Space  /  Enter";  action: "Play in default player" }
+
+            ShortcutGroup { heading: "General" }
+            ShortcutRow { keys: "?";                action: "Show this help" }
+        }
+    }
+
     Shortcut {
         sequence: "Alt+Left"
         onActivated: mainWindow.handleBackForCurrentScreen()
@@ -178,5 +255,9 @@ ApplicationWindow {
             if (current && current.focusSearch)
                 current.focusSearch()
         }
+    }
+    Shortcut {
+        sequence: "?"
+        onActivated: shortcutHelp.open()
     }
 }

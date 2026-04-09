@@ -163,9 +163,10 @@ class Backend(QObject):
             "auto_advance": False,
             "download_threads": 4,
             "player_use_proxy": False,
+            "downloader_use_proxy": False,
             # tokens
             "anime365_token": "",
-            # not in UI
+            # network
             "theme": "",
             "proxy": "",
             "anime365_site": "https://smotret-anime.org",

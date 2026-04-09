@@ -204,11 +204,13 @@ async def _embed_subs(video_path: Path, subs_path: Path, ffmpeg: str = "") -> st
 
 class Aria2Daemon:
     def __init__(
-        self, aria2c_path: str, extra_args: str = "", download_threads: int = 4
+        self, aria2c_path: str, extra_args: str = "", download_threads: int = 4,
+        proxy: str = "",
     ):
         self.aria2c_path = aria2c_path
         self.extra_args = extra_args
         self.download_threads = max(1, min(download_threads, 16))
+        self.proxy = proxy
         self.process: subprocess.Popen | None = None
         self.rpc_url = "http://127.0.0.1:6800/jsonrpc"
         self._id_counter = 0
@@ -238,6 +240,8 @@ class Aria2Daemon:
             "--save-session-interval=10",
             "--quiet",
         ]
+        if self.proxy:
+            cmd.append(f"--all-proxy={self.proxy}")
         if self.extra_args:
             import shlex
 
@@ -298,7 +302,11 @@ class Aria2Daemon:
         try:
             await self._rpc_call("aria2.remove", [gid])
         except Exception:
+            pass
+        try:
             await self._rpc_call("aria2.removeDownloadResult", [gid])
+        except Exception:
+            pass
 
     async def tell_active(self) -> list[dict]:
         return (
@@ -514,6 +522,7 @@ class Backend(QObject):
         self._recorded_history: set[str] = set()  # gids already added to history
         self._muxing: set[str] = set()  # gids currently being muxed
         self._hidden_gids: set[str] = set()  # subs gids hidden from the UI
+        self._cancelled_gids: set[str] = set()  # gids being cancelled; prevent poll re-adding them
 
         self._poll_timer = None
         self._polling = False  # guard against stacking poll workers
@@ -522,7 +531,10 @@ class Backend(QObject):
         if aria2c_path:
             extra_args = settings.get("aria2c_args") or ""
             download_threads = int(settings.get("download_threads") or 4)
-            self._aria2 = Aria2Daemon(aria2c_path, extra_args, download_threads)
+            proxy = ""
+            if settings.get("downloader_use_proxy") and settings.get("proxy"):
+                proxy = settings.get("proxy")
+            self._aria2 = Aria2Daemon(aria2c_path, extra_args, download_threads, proxy)
         else:
             self._aiohttp_dl = AiohttpDownloader(settings)
 
@@ -729,6 +741,7 @@ class Backend(QObject):
         filename = item.filename if item else None
 
         if self._aria2:
+            self._cancelled_gids.add(gid)  # prevent poll from re-adding before removal completes
             worker = AsyncFunctionWorker(self._aria2.remove, gid)
             self._workers.append(worker)
             worker.completed.connect(
@@ -1006,10 +1019,16 @@ class Backend(QObject):
             self._emit_updates()
 
     def _update_aria2_items(self, results: list):
+        seen_gids = {r["gid"] for r in results}
+        # Keep only cancelled GIDs still visible in aria2 (once gone, cleanup is done)
+        self._cancelled_gids &= seen_gids
+
         for r in results:
             gid = r["gid"]
             if gid in self._hidden_gids:
                 continue
+            if gid in self._cancelled_gids:
+                continue  # cancel pending in aria2, don't re-add to tracked items
             if gid not in self._items:
                 # Discovered a download we didn't track (e.g. from previous session)
                 files = r.get("files", [])

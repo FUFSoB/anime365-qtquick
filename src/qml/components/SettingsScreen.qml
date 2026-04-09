@@ -36,9 +36,12 @@ Pane {
         checkUpdatesSwitch.checked = settings.check_updates !== false
         autoAdvanceSwitch.checked = settings.auto_advance === true
         playerUseProxySwitch.checked = settings.player_use_proxy === true
+        downloaderUseProxySwitch.checked = settings.downloader_use_proxy === true
         downloadThreadsSpin.value = settings.download_threads || 4
         anime365TokenField.text = settings.anime365_token || defaults.anime365_token
         proxyField.text = settings.proxy || ""
+        anime365SiteField.text = settings.anime365_site || defaults.anime365_site
+        hentai365SiteField.text = settings.hentai365_site || defaults.hentai365_site
         var themeIdx = ["auto", "light", "dark"].indexOf(savedTheme)
         themeDropdown.changeSelection(themeIdx < 0 ? 0 : themeIdx)
     }
@@ -183,9 +186,12 @@ Pane {
                     || checkUpdatesSwitch.checked !== (settings.check_updates !== false)
                     || autoAdvanceSwitch.checked !== (settings.auto_advance === true)
                     || playerUseProxySwitch.checked !== (settings.player_use_proxy === true)
+                    || downloaderUseProxySwitch.checked !== (settings.downloader_use_proxy === true)
                     || downloadThreadsSpin.value !== (settings.download_threads || 4)
                     || anime365TokenField.text !== (settings.anime365_token ?? "")
                     || proxyField.text !== (settings.proxy ?? "")
+                    || anime365SiteField.text !== (settings.anime365_site || defaults.anime365_site)
+                    || hentai365SiteField.text !== (settings.hentai365_site || defaults.hentai365_site)
                     || themeDropdown.selectedValue !== (settings.theme || "auto")
                 onClicked: {
                     settingsBackend.save_settings({
@@ -203,9 +209,12 @@ Pane {
                         "check_updates": checkUpdatesSwitch.checked,
                         "auto_advance": autoAdvanceSwitch.checked,
                         "player_use_proxy": playerUseProxySwitch.checked,
+                        "downloader_use_proxy": downloaderUseProxySwitch.checked,
                         "download_threads": downloadThreadsSpin.value,
                         "anime365_token": anime365TokenField.text,
                         "proxy": proxyField.text,
+                        "anime365_site": anime365SiteField.text || defaults.anime365_site,
+                        "hentai365_site": hentai365SiteField.text || defaults.hentai365_site,
                         "theme": themeDropdown.selectedValue,
                     })
                     stackView.pop()
@@ -338,12 +347,22 @@ Pane {
                                 }
                                 background: Rectangle {
                                     color: palette.base
-                                    border.color: anime365TokenField.isValidToken
-                                        ? globals.colorSuccess
-                                        : (anime365TokenField.text ? globals.colorError : palette.mid)
-                                    border.width: anime365TokenField.isValidToken || anime365TokenField.text ? 2 : 1
+                                    border.color: validateTokenTimer.running
+                                        ? palette.highlight
+                                        : (anime365TokenField.isValidToken ? globals.colorSuccess
+                                           : (anime365TokenField.text ? globals.colorError : palette.mid))
+                                    border.width: anime365TokenField.isValidToken || anime365TokenField.text || validateTokenTimer.running ? 2 : 1
                                     radius: 4
                                 }
+                            }
+                            BusyIndicator {
+                                anchors.right: anime365TokenField.right
+                                anchors.verticalCenter: anime365TokenField.verticalCenter
+                                anchors.rightMargin: 6
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                running: validateTokenTimer.running
+                                visible: running
                             }
                         }
 
@@ -366,12 +385,56 @@ Pane {
                                 }
                                 background: Rectangle {
                                     color: palette.base
-                                    border.color: proxyField.isValidProxy
-                                        ? globals.colorSuccess
-                                        : (proxyField.text ? globals.colorError : palette.mid)
-                                    border.width: proxyField.isValidProxy || proxyField.text ? 2 : 1
+                                    border.color: validateProxyTimer.running
+                                        ? palette.highlight
+                                        : (proxyField.isValidProxy ? globals.colorSuccess
+                                           : (proxyField.text ? globals.colorError : palette.mid))
+                                    border.width: proxyField.isValidProxy || proxyField.text || validateProxyTimer.running ? 2 : 1
                                     radius: 4
                                 }
+                            }
+                            BusyIndicator {
+                                anchors.right: proxyField.right
+                                anchors.verticalCenter: proxyField.verticalCenter
+                                anchors.rightMargin: 6
+                                implicitWidth: 20
+                                implicitHeight: 20
+                                running: validateProxyTimer.running
+                                visible: running
+                            }
+                        }
+
+                        ToggleRow {
+                            label: "Use proxy for video players"
+                            description: isWindows
+                                ? "Pass the configured SOCKS proxy to mpv/VLC. MPC-HC uses system proxy settings."
+                                : "Pass the configured SOCKS proxy to mpv/VLC"
+                            Switch { id: playerUseProxySwitch; checked: false }
+                        }
+
+                        ToggleRow {
+                            label: "Use proxy for downloads"
+                            description: "Pass the configured SOCKS proxy to aria2c (requires restart)"
+                            Switch { id: downloaderUseProxySwitch; checked: false }
+                        }
+
+                        SectionHeading { text: "Site URLs" }
+
+                        FieldBlock {
+                            label: "Anime365 site"
+                            StyledTextField {
+                                id: anime365SiteField
+                                width: parent.width
+                                placeholderText: defaults.anime365_site
+                            }
+                        }
+
+                        FieldBlock {
+                            label: "Hentai365 site"
+                            StyledTextField {
+                                id: hentai365SiteField
+                                width: parent.width
+                                placeholderText: defaults.hentai365_site
                             }
                         }
 
@@ -548,14 +611,6 @@ Pane {
                             label: "Discord Rich Presence"
                             description: "Show currently watched anime in Discord status"
                             Switch { id: discordRpcSwitch; checked: true }
-                        }
-
-                        ToggleRow {
-                            label: "Use proxy for video players"
-                            description: isWindows
-                                ? "Pass the configured SOCKS proxy to mpv/VLC. MPC-HC uses system proxy settings."
-                                : "Pass the configured SOCKS proxy to mpv/VLC"
-                            Switch { id: playerUseProxySwitch; checked: false }
                         }
 
                         Item { height: 1 }

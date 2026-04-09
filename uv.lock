@@ -133,7 +133,7 @@ wheels = [
 
 [[package]]
 name = "anime365-qtquick"
-version = "0.3.9"
+version = "0.5.1"
 source = { virtual = "." }
 dependencies = [
     { name = "aiohttp" },

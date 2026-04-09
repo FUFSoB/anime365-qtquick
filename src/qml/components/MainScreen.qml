@@ -274,6 +274,38 @@ Pane {
             color: palette.base
             radius: 4
 
+            // Empty state for first-time users
+            Column {
+                anchors.centerIn: parent
+                spacing: 10
+                visible: historyModel.count === 0
+
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "\u2315"
+                    font.pixelSize: 52
+                    opacity: 0.10
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Nothing watched yet"
+                    font.pixelSize: 16
+                    opacity: 0.38
+                }
+                Label {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Search for anime to get started"
+                    font.pixelSize: 12
+                    opacity: 0.25
+                }
+                Item { height: 4 }
+                StyledButton {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    text: "Search Anime"
+                    onClicked: searchField.forceActiveFocus()
+                }
+            }
+
             CustomListView {
                 id: historyList
                 anchors.fill: parent

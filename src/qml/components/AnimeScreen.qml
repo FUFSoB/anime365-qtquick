@@ -290,6 +290,11 @@ Pane {
                 }
             }
 
+            // Auto-select highest quality if no prior selection was restored
+            if (qualityDropdown.selectedIndex < 0 && qualityDropdown.model.length > 0) {
+                qualityDropdown.changeSelection(0)
+            }
+
             isBusy = false
         }
 
@@ -357,6 +362,14 @@ Pane {
 
         function onBatch_complete() {
             batchDownloadButton.batchBusy = false
+            var skipped = batchDownloadButton.batchSkipped
+            var queued = Math.max(0, batchDownloadButton.batchTotal - skipped)
+            var msg = queued > 0
+                ? "Queued " + queued + " episode" + (queued !== 1 ? "s" : "") + " for download"
+                : (skipped > 0 ? "All episodes already downloaded" : "Batch download complete")
+            if (skipped > 0 && queued > 0)
+                msg += " \u2022 " + skipped + " skipped"
+            mainWindow.showToast(msg, "success")
         }
 
         function onBatch_cancelled() {

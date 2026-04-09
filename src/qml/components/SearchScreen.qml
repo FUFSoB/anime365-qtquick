@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import Qt.labs.settings
 
 Pane {
     objectName: "searchScreen"
@@ -22,10 +23,18 @@ Pane {
     property bool hasActiveFilters: filterShowHentai || !filterHideUnreleased || filterTypes.length > 0 || filterMinScore > 0
     property bool isBusy: false
     property string viewMode: "list"  // "list" or "grid"
+    onViewModeChanged: viewModeSettings.viewMode = viewMode
 
     Globals { id: globals }
 
+    Settings {
+        id: viewModeSettings
+        category: "SearchScreen"
+        property string viewMode: "list"
+    }
+
     Component.onCompleted: {
+        viewMode = viewModeSettings.viewMode
         isBusy = true
     }
 
